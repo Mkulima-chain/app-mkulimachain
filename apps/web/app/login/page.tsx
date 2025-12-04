@@ -10,6 +10,7 @@ import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { signIn } from 'next-auth/react'
 import { LanguageSelector } from "@/components/language-selector"
 import { ModalWallet } from "@/components/wallet/modal-wallet"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -33,9 +34,10 @@ export default function LoginPage() {
  
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 dark:bg-[#004D73] p-4">
       {/* Language Selector - Top Right */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
         <LanguageSelector />
       </div>
       <div className="w-full max-w-md">
@@ -56,21 +58,21 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-[#5A3E36] mb-2">
+          <h1 className="text-3xl font-bold text-[#5A3E36] dark:text-white mb-2">
             Mkulima Chain
           </h1>
-          <p className="text-[#004D73] text-sm">
+          <p className="text-[#004D73] dark:text-white/80 text-sm">
             Connectez-vous à votre compte agriculteur
           </p>
         </div>
 
         {/* Login Card */}
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm animate-slide-up">
+        <Card className="shadow-xl border-0 bg-white/95 dark:bg-[#003D5C]/95 backdrop-blur-sm animate-slide-up">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl font-semibold text-[#5A3E36]">
+            <CardTitle className="text-2xl font-semibold text-[#5A3E36] dark:text-white">
               Connexion
             </CardTitle>
-            <CardDescription className="text-[#004D73]">
+            <CardDescription className="text-[#004D73] dark:text-white/70">
               Accédez à votre dashboard et gérez vos récoltes
             </CardDescription>
           </CardHeader>
@@ -115,14 +117,14 @@ export default function LoginPage() {
                   />
                   <Label
                     htmlFor="remember"
-                    className="text-sm text-[#5A3E36] cursor-pointer"
+                    className="text-sm text-[#5A3E36] dark:text-white/90 cursor-pointer"
                   >
                     Se souvenir de moi
                   </Label>
                 </div>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-[#004D73] hover:text-[#3A8F4C] transition-colors"
+                  className="text-sm text-[#004D73] dark:text-white/80 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors"
                 >
                   Mot de passe oublié?
                 </Link>
@@ -164,10 +166,10 @@ export default function LoginPage() {
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-[#004D73]/20"></span>
+                  <span className="w-full border-t border-[#004D73]/20 dark:border-white/20"></span>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-[#5A3E36]">Ou</span>
+                  <span className="bg-white dark:bg-[#003D5C] px-2 text-[#5A3E36] dark:text-white/90">Ou</span>
                 </div>
               </div>
 
@@ -178,7 +180,7 @@ export default function LoginPage() {
                   variant="outline"
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
-                  className="border-[#004D73]/20 hover:bg-[#E3F2FD] hover:border-[#004D73]/40 text-[#5A3E36] transition-all duration-200"
+                  className="border-[#004D73]/20 dark:border-white/20 hover:bg-[#E3F2FD] dark:hover:bg-white/10 hover:border-[#004D73]/40 dark:hover:border-white/30 text-[#5A3E36] dark:text-white/90 transition-all duration-200"
                 >
                   <svg
                     className="w-4 h-4 mr-2"
@@ -192,16 +194,18 @@ export default function LoginPage() {
                   </svg>
                   Google
                 </Button>
-                <div className="w-full">
-                  <ModalWallet />
-                </div>
+                <ModalWallet 
+                  triggerClassName="w-full border-[#004D73]/20 dark:border-white/20 hover:bg-[#E3F2FD] dark:hover:bg-white/10 hover:border-[#004D73]/40 dark:hover:border-white/30 text-[#5A3E36] dark:text-white/90 transition-all duration-200"
+                  triggerIconClassName="w-4 h-4 text-[#5A3E36] dark:text-white/90"
+                  triggerTextClassName="text-[#5A3E36] dark:text-white/90"
+                />
               </div>
 
-              <div className="text-center text-sm text-[#5A3E36]">
+              <div className="text-center text-sm text-[#5A3E36] dark:text-white/90">
                 Pas encore de compte?{" "}
                 <Link
                   href="/register"
-                  className="font-medium text-[#3A8F4C] hover:text-[#2E7D32] transition-colors"
+                  className="font-medium text-[#3A8F4C] dark:text-[#3A8F4C] hover:text-[#2E7D32] dark:hover:text-[#2E7D32] transition-colors"
                 >
                   Créer un compte
                 </Link>
@@ -211,14 +215,14 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-[#004D73]/70 animate-fade-in animation-delay-300">
+        <div className="mt-8 text-center text-xs text-[#004D73]/70 dark:text-white/60 animate-fade-in animation-delay-300">
           <p>
             En vous connectant, vous acceptez nos{" "}
-            <Link href="/terms" className="underline hover:text-[#3A8F4C]">
+            <Link href="/terms" className="underline hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C]">
               conditions d&apos;utilisation
             </Link>{" "}
             et notre{" "}
-            <Link href="/privacy" className="underline hover:text-[#3A8F4C]">
+            <Link href="/privacy" className="underline hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C]">
               politique de confidentialité
             </Link>
           </p>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { MeshProviderComponent } from "@/components/providers/mesh-provider";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -33,18 +34,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-            disableTransitionOnChange={false}
-            storageKey="mkulima-chain-theme"
-          >
-            <MeshProviderComponent>
-            {children}
-              <Toaster />
-            </MeshProviderComponent>
-          </ThemeProvider>
+          <SessionProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem={false}
+              disableTransitionOnChange={false}
+              storageKey="mkulima-chain-theme"
+            >
+              <MeshProviderComponent>
+                {children}
+                <Toaster />
+              </MeshProviderComponent>
+            </ThemeProvider>
+          </SessionProvider>
         </QueryProvider>
       </body>
     </html>

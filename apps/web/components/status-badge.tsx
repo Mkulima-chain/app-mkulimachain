@@ -10,27 +10,27 @@ interface StatusBadgeProps {
 const statusConfig = {
   pending: {
     label: "En attente",
-    className: "bg-[#004D73]/10 text-[#004D73] border-[#004D73]/20",
+    className: "bg-[#004D73]/10 dark:bg-[#004D73]/20 text-[#004D73] dark:text-white/80 border-[#004D73]/20 dark:border-[#004D73]/40",
   },
   certified: {
     label: "Certifié",
-    className: "bg-[#3A8F4C] text-white border-transparent",
+    className: "bg-[#3A8F4C] dark:bg-[#3A8F4C] text-white border-transparent",
   },
   sold: {
     label: "Vendu",
-    className: "bg-[#F2C94C]/10 text-[#F2C94C] border-[#F2C94C]/20",
+    className: "bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 text-[#F2C94C] dark:text-[#F2C94C] border-[#F2C94C]/20 dark:border-[#F2C94C]/40",
   },
   active: {
     label: "Actif",
-    className: "bg-[#3A8F4C]/10 text-[#3A8F4C] border-[#3A8F4C]/20",
+    className: "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 text-[#3A8F4C] dark:text-[#3A8F4C] border-[#3A8F4C]/20 dark:border-[#3A8F4C]/40",
   },
   repaid: {
     label: "Remboursé",
-    className: "bg-[#3A8F4C]/20 text-[#2E7D32] border-[#3A8F4C]/30",
+    className: "bg-[#3A8F4C]/20 dark:bg-[#3A8F4C]/30 text-[#2E7D32] dark:text-[#3A8F4C] border-[#3A8F4C]/30 dark:border-[#3A8F4C]/50",
   },
   available: {
     label: "Disponible",
-    className: "bg-[#3A8F4C]/10 text-[#3A8F4C] border-[#3A8F4C]/20",
+    className: "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 text-[#3A8F4C] dark:text-[#3A8F4C] border-[#3A8F4C]/20 dark:border-[#3A8F4C]/40",
   },
 }
 

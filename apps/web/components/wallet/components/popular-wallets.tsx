@@ -10,7 +10,7 @@ export function PopularWallets() {
         <div className="space-y-3">
             <div className="py-4 text-center">
                 <div className="flex flex-col items-center gap-2">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-muted border border-muted">
+                    <div className="flex size-12 items-center justify-center rounded-full bg-muted border border-border">
                         <WalletIcon className="size-6 text-muted-foreground" />
                     </div>
                     <div>
@@ -32,12 +32,12 @@ export function PopularWallets() {
                 {POPULAR_WALLETS.map((popularWallet) => (
                     <Card
                         key={popularWallet.name}
-                        className="border hover:border-[#3A8F4C] transition-colors"
+                        className="border-border dark:border-white/20 hover:border-[#004D73]/50 dark:hover:border-[#004D73]/50 transition-colors"
                     >
                         <CardContent className="p-3">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <div className="flex size-10 items-center justify-center rounded-lg bg-[#3A8F4C] shrink-0">
+                                    <div className="flex size-10 items-center justify-center rounded-lg bg-[#3A8F4C] dark:bg-[#3A8F4C] shrink-0">
                                         <WalletIcon className="size-5 text-white" />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -52,7 +52,7 @@ export function PopularWallets() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="shrink-0 border-[#3A8F4C] text-[#3A8F4C] hover:bg-[#3A8F4C] hover:text-white"
+                                    className="shrink-0 border-[#004D73] dark:border-white/30 text-[#004D73] dark:text-white/90 hover:bg-[#004D73] dark:hover:bg-white/20 hover:text-white dark:hover:text-white"
                                     onClick={() => window.open(popularWallet.installUrl, "_blank")}
                                 >
                                     <DownloadIcon className="size-3.5 mr-1" />

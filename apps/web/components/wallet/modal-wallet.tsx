@@ -14,7 +14,13 @@ import { ModalFooter } from "./components/modal-footer";
 import { WalletTriggerButton } from "./components/wallet-trigger-button";
 import { STORAGE_KEYS } from "./constants";
 
-export function ModalWallet() {
+interface ModalWalletProps {
+  triggerClassName?: string
+  triggerIconClassName?: string
+  triggerTextClassName?: string
+}
+
+export function ModalWallet({ triggerClassName, triggerIconClassName, triggerTextClassName }: ModalWalletProps = {}) {
   const {
     wallets,
     connect,
@@ -105,10 +111,13 @@ export function ModalWallet() {
           connected={connected} 
           walletName={walletName}
           address={displayWalletData.address}
+          className={triggerClassName}
+          iconClassName={triggerIconClassName}
+          textClassName={triggerTextClassName}
         />
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md overflow-hidden p-0">
-        <div className="p-4 space-y-4">
+      <DialogContent className="sm:max-w-md overflow-hidden p-0 [&>button]:text-foreground [&>button]:hover:text-foreground/80">
+        <div className="p-5 space-y-4">
           <ModalHeader />
 
           {connected ? (
@@ -120,7 +129,7 @@ export function ModalWallet() {
               onDisconnect={handleDisconnect}
             />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {wallets.length === 0 ? (
                 <PopularWallets />
               ) : (
@@ -135,7 +144,7 @@ export function ModalWallet() {
           )}
         </div>
 
-        <ModalFooter />
+        <ModalFooter walletsCount={wallets.length} />
       </DialogContent>
     </Dialog>
   );

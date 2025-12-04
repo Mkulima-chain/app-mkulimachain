@@ -27,24 +27,24 @@ export function WalletInfoCard({
 
     return (
         <div className="space-y-2">
-            <Card className="border border-[#3A8F4C]/20">
+            <Card className="border border-border">
                 <CardContent className="pt-3">
                     <div className="space-y-2">
                         {/* Wallet Name and Status */}
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-muted">
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
                             <div className="relative">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-[#3A8F4C]">
                                     <WalletIcon className="size-5 text-white" />
                                 </div>
-                                <div className="absolute -top-0.5 -right-0.5 flex size-3 items-center justify-center rounded-full bg-green-500 border border-white">
+                                <div className="absolute -top-0.5 -right-0.5 flex size-3 items-center justify-center rounded-full bg-[#3A8F4C] border border-background">
                                     <CheckIcon className="size-2 text-white" />
                                 </div>
                             </div>
                             <div>
-                                <p className="font-semibold text-sm text-[#5A3E36]">{walletName}</p>
+                                <p className="font-semibold text-sm text-foreground">{walletName}</p>
                                 <div className="flex items-center gap-1">
-                                    <div className="size-1 rounded-full bg-green-500" />
-                                    <p className="text-xs text-[#3A8F4C]">Connecté</p>
+                                    <div className="size-1 rounded-full bg-[#3A8F4C] dark:bg-[#3A8F4C]" />
+                                    <p className="text-xs text-[#3A8F4C] dark:text-[#3A8F4C]">Connecté</p>
                                 </div>
                             </div>
                         </div>
@@ -73,7 +73,7 @@ export function WalletInfoCard({
 
             <Button
                 variant="destructive"
-                className="w-full h-8 text-sm"
+                className="w-full h-8 text-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/30"
                 onClick={onDisconnect}
             >
                 <XIcon className="size-3 mr-1.5" />
@@ -87,22 +87,22 @@ function NetworkSection({ network }: { network: string | null }) {
     return (
         <div className={cn(
             "p-2 rounded-lg border",
-            network ? "bg-muted/50 border-muted" : "bg-muted/30 border-muted"
+            network ? "bg-muted/50 border-border" : "bg-muted/30 border-border"
         )}>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                    <Globe className={cn("size-3.5", network ? "text-blue-600" : "text-muted-foreground")} />
-                    <p className={cn("text-xs font-medium", network ? "text-[#5A3E36]" : "text-muted-foreground")}>
+                    <Globe className={cn("size-3.5", network ? "text-[#004D73] dark:text-white/80" : "text-muted-foreground")} />
+                    <p className={cn("text-xs font-medium", network ? "text-foreground" : "text-muted-foreground")}>
                         Réseau
                     </p>
                 </div>
                 {network ? (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-background border border-muted">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-background border border-border">
                         <div className={cn(
                             "size-2 rounded-full",
-                            network === "Mainnet" ? "bg-green-500" : "bg-yellow-500"
+                            network === "Mainnet" ? "bg-[#3A8F4C]" : "bg-[#F2C94C]"
                         )} />
-                        <p className="text-xs font-semibold text-blue-600">{network}</p>
+                        <p className="text-xs font-semibold text-[#004D73] dark:text-white/90">{network}</p>
                     </div>
                 ) : (
                     <p className="text-xs text-muted-foreground">Non disponible</p>
@@ -126,12 +126,12 @@ function BalanceSection({
     return (
         <div className={cn(
             "p-2 rounded-lg border",
-            balance !== null ? "bg-muted/50 border-muted" : "bg-muted/30 border-muted"
+            balance !== null ? "bg-muted/50 border-border" : "bg-muted/30 border-border"
         )}>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                    <Coins className={cn("size-3.5", balance !== null ? "text-yellow-600" : "text-muted-foreground")} />
-                    <p className={cn("text-xs font-medium", balance !== null ? "text-[#5A3E36]" : "text-muted-foreground")}>
+                    <Coins className={cn("size-3.5", balance !== null ? "text-[#F2C94C]" : "text-muted-foreground")} />
+                    <p className={cn("text-xs font-medium", balance !== null ? "text-foreground" : "text-muted-foreground")}>
                         Solde disponible
                     </p>
                 </div>
@@ -151,7 +151,7 @@ function BalanceSection({
                                             maximumFractionDigits: 6,
                                         })}
                                     </p>
-                                    <span className="text-xs text-[#5A3E36]">ADA</span>
+                                    <span className="text-xs text-foreground">ADA</span>
                                 </div>
                             ) : (
                                 <p className="text-base font-bold text-[#3A8F4C]">••••••</p>
@@ -193,14 +193,14 @@ function AddressSection({
     return (
         <div className={cn(
             "p-2 rounded-lg border",
-            address ? "bg-muted/50 border-muted" : "bg-muted/30 border-muted"
+            address ? "bg-muted/50 border-border" : "bg-muted/30 border-border"
         )}>
             <div className="space-y-1.5">
                 <p className={cn(
                     "text-xs font-medium flex items-center gap-1.5",
-                    address ? "text-[#5A3E36]" : "text-muted-foreground"
+                    address ? "text-foreground" : "text-muted-foreground"
                 )}>
-                    <CopyIcon className={cn("size-3.5", address ? "text-blue-600" : "text-muted-foreground")} />
+                    <CopyIcon className={cn("size-3.5", address ? "text-[#004D73] dark:text-white/80" : "text-muted-foreground")} />
                     Adresse du wallet
                 </p>
                 {isLoading ? (
@@ -209,8 +209,8 @@ function AddressSection({
                         <span className="text-xs text-muted-foreground">...</span>
                     </div>
                 ) : address ? (
-                    <div className="flex items-center gap-1 p-1.5 bg-muted/50 rounded border border-muted">
-                        <code className="text-[10px] flex-1 break-all font-mono text-blue-600">
+                    <div className="flex items-center gap-1 p-1.5 bg-background rounded border border-border">
+                        <code className="text-[10px] flex-1 break-all font-mono text-[#004D73] dark:text-white/80">
                             {address}
                         </code>
                         <Button
@@ -218,15 +218,15 @@ function AddressSection({
                             size="icon"
                             className={cn(
                                 "size-6 shrink-0",
-                                copied && "bg-green-100"
+                                copied && "bg-[#3A8F4C]/20 dark:bg-[#3A8F4C]/30"
                             )}
                             onClick={onCopy}
                             title="Copier l'adresse"
                         >
                             {copied ? (
-                                <CheckIcon className="size-3 text-green-600" />
+                                <CheckIcon className="size-3 text-[#3A8F4C] dark:text-[#3A8F4C]" />
                             ) : (
-                                <CopyIcon className="size-3 text-blue-600" />
+                                <CopyIcon className="size-3 text-[#004D73] dark:text-white/70" />
                             )}
                         </Button>
                     </div>

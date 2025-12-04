@@ -31,12 +31,12 @@ export function StatsCard({
   valueClassName,
 }: StatsCardProps) {
   return (
-    <Card className={cn("border-[#004D73]/10 bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 group", className)}>
+    <Card className={cn("border-[#004D73]/10 dark:border-white/10 bg-white dark:bg-[#003D5C] hover:shadow-xl transition-all duration-300 hover:scale-105 group", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-[#004D73]">{title}</CardTitle>
+          <CardTitle className="text-sm font-medium text-[#004D73] dark:text-white/90">{title}</CardTitle>
           {icon && (
-            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <div className="w-10 h-10 rounded-lg bg-muted dark:bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
               {icon}
             </div>
           )}
@@ -48,7 +48,7 @@ export function StatsCard({
           <AnimatedCounter value={value} suffix={suffix} />
         </div>
         {description && (
-          <p className="text-sm text-[#004D73] mb-2">{description}</p>
+          <p className="text-sm text-[#004D73] dark:text-white/70 mb-2">{description}</p>
         )}
         {trend && (
           <div className={cn(
