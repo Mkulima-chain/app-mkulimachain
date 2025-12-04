@@ -1,91 +1,71 @@
-feat: Add shopping cart system, complete traceability and UX improvements
+feat: Add payment method selection, shipping options, wallet auto-reconnect and seller chat
 
 ## New Features
 
-### Shopping Cart and Orders System
-- Added `useCart` hook with localStorage persistence
-- Cart page (/cart) with item management
-- Cart integration in marketplace
-- Notification badge with item count in navbar
-- Cardano wallet validation before payment
-- Payment blocked if wallet not connected with visual alert
+### Payment Method Selection
+- Added payment method selection in cart page
+- Support for ADA (Cardano) payment with wallet connection requirement
+- Support for Mobile Money (Airtel, Orange, Vodacom M-Pesa)
+- Phone number input required for Mobile Money payments
+- Payment validation before checkout
+- Visual indicators for selected payment method
 
-### Complete Product Traceability
-- `ProductTraceability` component with detailed timeline
-- Blockchain hash display with copy and CardanoScan link
-- Organic certification badge
-- Producer information and location
-- Supply chain timeline (7 steps)
+### Shipping Company Selection
+- Added shipping company selection in cart
+- Option to let seller choose the shipping company
+- Option for buyer to select preferred shipping company
+- List of transport companies (DHL, FedEx, UPS, TNT, local companies)
+- Validation ensures shipping option is selected before checkout
+- Shipping information included in order confirmation
 
-### Order Traceability in Dashboard
-- `OrderTraceability` component with visual progression
-- 7 tracking steps: Order → Preparation → Harvest → Processing → Packaging → Shipping → Delivery
-- Animated progress bar with status indicators
-- Formatted dates for each completed step
-- Progress counter (e.g., 5/7)
+### Wallet Auto-Reconnect
+- Automatic wallet reconnection after page refresh
+- Wallet connection state persisted in localStorage
+- Checks if wallet is still available before reconnecting
+- Handles errors gracefully (locked wallet, extension uninstalled)
+- Silent reconnection without user interaction required
 
-### Leaflet Location Map
-- Leaflet integration to display product locations
-- Custom marker with Terra Congo colors
-- 2km radius circle around marker
-- Enhanced popup with Google Maps and OpenStreetMap links
-- Custom zoom controls
+### Seller Chat System
+- Product chat component for buyer-seller communication
+- Chat modal accessible from product detail page
+- Real-time message interface with avatars and timestamps
+- Auto-scroll to latest messages
+- Typing indicator for seller responses
+- Intelligent auto-responses based on message content
+- Support for common questions (price, shipping, quality, stock)
 - Full dark mode support
-- Location badge and "Open" button
 
-### Enhanced Marketplace
-- Multiple images per product support with gallery
-- `ImageGallery` component with navigation and thumbnails
-- Functional quantity selector
-- "Add to cart" and "Buy now" buttons
-- Toast notifications for user actions
+## Bug Fixes
 
-### User Dashboard
-- "My NFT Collection" section with statistics
-- Display of owned NFTs with rarity badges
-- Statistics: Total NFTs, Value, Legendary, Education Fund
-- Recent NFTs preview in overview
-- Order traceability with visual progression
+### Leaflet Map Icon Error
+- Fixed "Cannot read properties of undefined (reading 'createIcon')" error
+- Improved custom icon creation with proper error handling
+- Added delay to ensure Leaflet is fully loaded before creating icons
+- Conditional rendering of Marker only when icon is ready
 
-### NFT Marketplace
-- Image animation during audio playback
-- `AudioPlayer` component for "song" type NFTs
-- Audio visualizer with animated bars
-- "Playing..." badge with indicators
-- Shimmer and bounce effects during playback
-
-### Authentication and UX
-- Unified `AuthMenu` component to manage Google/Wallet connection
-- `UserAvatar` component with user photo display
-- Improved language selector
-- Integrated dark mode toggle
-- SessionProvider for NextAuth
+### Wallet Auto-Reconnect Loop
+- Fixed infinite loop in wallet auto-reconnect component
+- Removed state dependency that caused re-renders
+- Used useRef to prevent multiple reconnection attempts
+- Improved timeout management
 
 ## Technical Improvements
 
-- SSR handling for Leaflet with dynamic loading
-- Fixed hydration errors
-- Optimized imports and exports
-- Improved error handling for async components
-- Custom CSS styles for Leaflet and dark mode
+- Enhanced cart page with payment and shipping selection
+- Improved error handling for async wallet operations
+- Better user experience with visual feedback
+- Consistent styling across all new components
+- Proper cleanup of timeouts and event listeners
 
 ## Modified/Created Files
 
 New components:
-- apps/web/components/audio-player.tsx
-- apps/web/components/auth-menu.tsx
-- apps/web/components/image-gallery.tsx
-- apps/web/components/order-traceability.tsx
-- apps/web/components/product-card.tsx
-- apps/web/components/product-location-map.tsx
-- apps/web/components/product-traceability.tsx
-- apps/web/components/user-avatar.tsx
-- apps/web/hooks/use-cart.ts
+- apps/web/components/product-chat.tsx
+- apps/web/components/providers/wallet-auto-reconnect.tsx
 
-New pages:
-- apps/web/app/cart/page.tsx
-- apps/web/app/dashboard/page.tsx
-- apps/web/app/marketplace/page.tsx
-- apps/web/app/marketplace/nft/page.tsx
-- apps/web/app/settings/page.tsx
-
+Modified files:
+- apps/web/app/cart/page.tsx (payment and shipping selection)
+- apps/web/app/marketplace/page.tsx (chat integration)
+- apps/web/app/layout.tsx (wallet auto-reconnect provider)
+- apps/web/components/product-location-map.tsx (icon error fix)
+- apps/web/components/providers/wallet-auto-reconnect.tsx (loop fix)

@@ -32,7 +32,16 @@ async function createCustomIcon() {
   
   try {
     const L = await import("leaflet")
-    if (!L || !L.divIcon) return null
+    if (!L || !L.divIcon) {
+      console.error("Leaflet or L.divIcon is not available")
+      return null
+    }
+    
+    // S'assurer que divIcon est bien disponible
+    if (typeof L.divIcon !== "function") {
+      console.error("L.divIcon is not a function")
+      return null
+    }
     
     return L.divIcon({
       className: "custom-marker",
@@ -93,6 +102,7 @@ function MapContent({
   useEffect(() => {
     const loadComponents = async () => {
       try {
+        // Charger react-leaflet d'abord
         const mod = await import("react-leaflet")
         setMapContainer(() => mod.MapContainer)
         setTileLayer(() => mod.TileLayer)
@@ -101,10 +111,15 @@ function MapContent({
         setCircle(() => mod.Circle)
         setZoomControl(() => mod.ZoomControl)
         
+        // Attendre un peu pour s'assurer que Leaflet est complètement chargé
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         // Créer l'icône personnalisée après avoir chargé Leaflet
         const icon = await createCustomIcon()
         if (icon) {
           setCustomIcon(icon)
+        } else {
+          console.warn("Failed to create custom icon, marker will use default icon")
         }
       } catch (error) {
         console.error("Error loading map components:", error)
@@ -154,11 +169,12 @@ function MapContent({
           }}
         />
       )}
-      <Marker position={position} icon={customIcon ?? undefined}>
+      {customIcon && (
+        <Marker position={position} icon={customIcon}>
         <Popup className="custom-popup">
           <div className="text-center p-2 min-w-[200px]">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center">
                 <MapPin className="w-4 h-4 text-white" />
               </div>
             </div>
@@ -186,7 +202,8 @@ function MapContent({
             </div>
           </div>
         </Popup>
-      </Marker>
+        </Marker>
+      )}
     </MapContainer>
   )
 }

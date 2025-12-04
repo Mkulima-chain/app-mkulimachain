@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import {
   Search, Filter, SlidersHorizontal, ShoppingCart, Star, MapPin, TrendingUp,
   Package, Users, Grid3x3, List, X, Heart, Share2,
-  ChevronLeft, ChevronRight, Minus, Plus
+  ChevronLeft, ChevronRight, Minus, Plus, MessageCircle
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { AuthMenu } from "@/components/auth-menu"
@@ -22,6 +22,7 @@ import { StatusBadge } from "@/components/status-badge"
 import { ImageGallery } from "@/components/image-gallery"
 import { ProductLocationMap } from "@/components/product-location-map"
 import { ProductTraceability } from "@/components/product-traceability"
+import { ProductChat } from "@/components/product-chat"
 import { useCart } from "@/hooks"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -211,6 +212,7 @@ export default function MarketplacePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
   const [quantity, setQuantity] = useState(1)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   
   // Panier
   const { addToCart, getItemCount } = useCart()
@@ -895,6 +897,17 @@ export default function MarketplacePage() {
                           </div>
 
                           <Button
+                            variant="outline"
+                            className="w-full border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white hover:bg-[#004D73]/10 dark:hover:bg-white/10 h-11 text-base font-semibold"
+                            onClick={() => {
+                              setIsChatOpen(true)
+                            }}
+                          >
+                            <MessageCircle className="w-5 h-5 mr-2" />
+                            Contacter le vendeur
+                          </Button>
+
+                          <Button
                             className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white h-11 text-base font-semibold"
                             onClick={() => {
                               if (selectedProduct) {
@@ -949,6 +962,17 @@ export default function MarketplacePage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Chat avec le vendeur */}
+      {selectedProduct && (
+        <ProductChat
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+          sellerName={selectedProduct.producer}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
     </div>
   )
 }

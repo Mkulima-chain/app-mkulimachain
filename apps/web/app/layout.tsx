@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { MeshProviderComponent } from "@/components/providers/mesh-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { WalletAutoReconnect } from "@/components/providers/wallet-auto-reconnect";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -43,6 +44,7 @@ export default function RootLayout({
               storageKey="mkulima-chain-theme"
             >
               <MeshProviderComponent>
+                <WalletAutoReconnect />
                 {children}
                 <Toaster />
               </MeshProviderComponent>
