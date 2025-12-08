@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ShoppingCart, Search, Filter, Plus, Edit, Trash2, MoreVertical } from "lucide-react"
+import { ShoppingCart, Search, Filter, Plus, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,83 +21,135 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { toast } from "sonner"
+import { useApiQuery } from "@/hooks/use-api-query"
+import { useApiMutation } from "@/hooks/use-api-mutation"
+
+enum OrderStatus {
+  PENDING = "pending",
+  PAID = "paid",
+  SHIPPED = "shipped",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
+  REFUNDED = "refunded",
+}
 
 type Order = {
   id: string
-  customer: string
-  product: string
-  quantity: string
-  amount: string
-  status: "completed" | "pending" | "processing"
-  date: string
+  buyerId: string
+  item: {
+    id: string
+    title: string
+    priceADA: number
+    farmer: {
+      id: string
+      name: string
+    }
+  }
+  quantityKg: number
+  unitPriceADA: number
+  totalADA: number
+  status: OrderStatus
+  paymentHash?: string
+  shippingAddress?: string
+  trackingNumber?: string
+  createdAt: string
+  updatedAt: string
 }
 
-const initialOrders: Order[] = [
-  {
-    id: "#1234",
-    customer: "Buyer International",
-    product: "Cacao Premium",
-    quantity: "500 kg",
-    amount: "₿ 1,250",
-    status: "completed",
-    date: "2024-01-15",
-  },
-  {
-    id: "#1235",
-    customer: "Café Export Co.",
-    product: "Café Arabica",
-    quantity: "300 kg",
-    amount: "₿ 900",
-    status: "pending",
-    date: "2024-01-16",
-  },
-  {
-    id: "#1236",
-    customer: "Bio Market",
-    product: "Manioc Bio",
-    quantity: "1,000 kg",
-    amount: "₿ 1,200",
-    status: "processing",
-    date: "2024-01-17",
-  },
-]
+type CreateOrderDto = {
+  buyerId: string
+  itemId: string
+  quantityKg: number
+  shippingAddress?: string
+}
+
+type UpdateOrderDto = {
+  status?: OrderStatus
+  paymentHash?: string
+  shippingAddress?: string
+  trackingNumber?: string
+}
 
 export default function OrdersPage() {
-  const [orders, setOrders] = React.useState<Order[]>(initialOrders)
+  const [searchQuery, setSearchQuery] = React.useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
-  const [formData, setFormData] = React.useState({
-    customer: "",
-    product: "",
-    quantity: "",
-    amount: "",
-    status: "pending" as "completed" | "pending" | "processing",
-    date: new Date().toISOString().split("T")[0],
+  const [formData, setFormData] = React.useState<CreateOrderDto>({
+    buyerId: "",
+    itemId: "",
+    quantityKg: 0,
+    shippingAddress: "",
   })
+  const [updateData, setUpdateData] = React.useState<UpdateOrderDto>({
+    status: OrderStatus.PENDING,
+  })
+
+  // Fetch orders
+  const { data: orders = [], isLoading, refetch } = useApiQuery<Order[]>(
+    ["orders", searchQuery],
+    `/orders${searchQuery ? `?status=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Create mutation
+  const createMutation = useApiMutation<Order, CreateOrderDto>(
+    "/orders",
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Commande ajoutée avec succès")
+        setIsAddDialogOpen(false)
+        refetch()
+      },
+    }
+  )
+
+  // Update mutation
+  const updateMutation = useApiMutation<Order, UpdateOrderDto>(
+    () => `/orders/${selectedOrder?.id}`,
+    "PUT",
+    {
+      onSuccess: () => {
+        toast.success("Commande modifiée avec succès")
+        setIsEditDialogOpen(false)
+        setSelectedOrder(null)
+        refetch()
+      },
+    }
+  )
+
+  // Delete mutation
+  const deleteMutation = useApiMutation<void, void>(
+    () => `/orders/${selectedOrder?.id}`,
+    "DELETE",
+    {
+      onSuccess: () => {
+        toast.success("Commande supprimée avec succès")
+        setIsDeleteDialogOpen(false)
+        setSelectedOrder(null)
+        refetch()
+      },
+    }
+  )
 
   const handleAdd = () => {
     setFormData({
-      customer: "",
-      product: "",
-      quantity: "",
-      amount: "",
-      status: "pending",
-      date: new Date().toISOString().split("T")[0],
+      buyerId: "",
+      itemId: "",
+      quantityKg: 0,
+      shippingAddress: "",
     })
     setIsAddDialogOpen(true)
   }
 
   const handleEdit = (order: Order) => {
     setSelectedOrder(order)
-    setFormData({
-      customer: order.customer,
-      product: order.product,
-      quantity: order.quantity,
-      amount: order.amount,
+    setUpdateData({
       status: order.status,
-      date: order.date,
+      paymentHash: order.paymentHash,
+      shippingAddress: order.shippingAddress,
+      trackingNumber: order.trackingNumber,
     })
     setIsEditDialogOpen(true)
   }
@@ -107,52 +159,35 @@ export default function OrdersPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const handleSubmitAdd = (e: React.FormEvent) => {
+  const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newOrder: Order = {
-      id: `#${Math.floor(Math.random() * 10000)}`,
-      customer: formData.customer,
-      product: formData.product,
-      quantity: formData.quantity,
-      amount: formData.amount,
-      status: formData.status,
-      date: formData.date,
-    }
-    setOrders([...orders, newOrder])
-    setIsAddDialogOpen(false)
-    toast.success("Commande ajoutée avec succès")
+    createMutation.mutate({
+      ...formData,
+      quantityKg: parseFloat(formData.quantityKg.toString()),
+    })
   }
 
-  const handleSubmitEdit = (e: React.FormEvent) => {
+  const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedOrder) return
-
-    setOrders(
-      orders.map((o) =>
-        o.id === selectedOrder.id
-          ? {
-              ...o,
-              customer: formData.customer,
-              product: formData.product,
-              quantity: formData.quantity,
-              amount: formData.amount,
-              status: formData.status,
-              date: formData.date,
-            }
-          : o
-      )
-    )
-    setIsEditDialogOpen(false)
-    setSelectedOrder(null)
-    toast.success("Commande modifiée avec succès")
+    updateMutation.mutate(updateData)
   }
 
   const handleConfirmDelete = () => {
     if (!selectedOrder) return
-    setOrders(orders.filter((o) => o.id !== selectedOrder.id))
-    setIsDeleteDialogOpen(false)
-    setSelectedOrder(null)
-    toast.success("Commande supprimée avec succès")
+    deleteMutation.mutate(undefined)
+  }
+
+  const getStatusBadge = (status: OrderStatus) => {
+    const variants: Record<OrderStatus, { variant: "default" | "secondary" | "outline"; className: string; label: string }> = {
+      [OrderStatus.COMPLETED]: { variant: "default", className: "bg-[#3A8F4C] text-white", label: "Complétée" },
+      [OrderStatus.SHIPPED]: { variant: "secondary", className: "bg-[#004D73] text-white", label: "Expédiée" },
+      [OrderStatus.PAID]: { variant: "secondary", className: "bg-[#5A3E36] text-white", label: "Payée" },
+      [OrderStatus.PENDING]: { variant: "outline", className: "", label: "En attente" },
+      [OrderStatus.CANCELLED]: { variant: "outline", className: "", label: "Annulée" },
+      [OrderStatus.REFUNDED]: { variant: "outline", className: "", label: "Remboursée" },
+    }
+    return variants[status] || variants[OrderStatus.PENDING]
   }
 
   return (
@@ -178,7 +213,7 @@ export default function OrdersPage() {
             <ShoppingCart className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{orders.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : orders.length}</div>
             <p className="text-xs text-muted-foreground mt-1">+15% ce mois</p>
           </CardContent>
         </Card>
@@ -189,7 +224,7 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {orders.filter((o) => o.status === "pending").length}
+              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.PENDING).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">16% du total</p>
           </CardContent>
@@ -201,7 +236,7 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {orders.filter((o) => o.status === "processing").length}
+              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.SHIPPED || o.status === OrderStatus.PAID).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">26% du total</p>
           </CardContent>
@@ -213,7 +248,7 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {orders.filter((o) => o.status === "completed").length}
+              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.COMPLETED).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">58% du total</p>
           </CardContent>
@@ -240,6 +275,8 @@ export default function OrdersPage() {
                 type="search"
                 placeholder="Rechercher une commande..."
                 className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Button variant="outline">
@@ -248,115 +285,107 @@ export default function OrdersPage() {
             </Button>
           </div>
 
-          <div className="rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Commande
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Client
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Produit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Quantité
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Montant
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium">{order.id}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {order.customer}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {order.product}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {order.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {order.amount}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge
-                          variant={
-                            order.status === "completed"
-                              ? "default"
-                              : order.status === "processing"
-                              ? "secondary"
-                              : "outline"
-                          }
-                          className={
-                            order.status === "completed"
-                              ? "bg-[#3A8F4C] text-white"
-                              : order.status === "processing"
-                              ? "bg-[#004D73] text-white"
-                              : ""
-                          }
-                        >
-                          {order.status === "completed"
-                            ? "Complétée"
-                            : order.status === "processing"
-                            ? "En traitement"
-                            : "En attente"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {order.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-48 p-2">
-                            <div className="space-y-1">
-                              <button
-                                onClick={() => handleEdit(order)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                              >
-                                <Edit className="h-4 w-4" />
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() => handleDelete(order)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Supprimer
-                              </button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Commande
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Produit
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Agriculteur
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Quantité
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Montant
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                          Aucune commande trouvée
+                        </td>
+                      </tr>
+                    ) : (
+                      orders.map((order) => {
+                        const statusBadge = getStatusBadge(order.status)
+                        return (
+                          <tr key={order.id} className="hover:bg-muted/50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium">#{order.id.slice(0, 8)}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.item?.title || "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.item?.farmer?.name || "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.quantityKg} kg
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              ₿ {order.totalADA.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                                {statusBadge.label}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-48 p-2">
+                                  <div className="space-y-1">
+                                    <button
+                                      onClick={() => handleEdit(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                      Modifier
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -372,79 +401,52 @@ export default function OrdersPage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="customer">Client</Label>
+                <Label htmlFor="buyerId">ID de l'acheteur *</Label>
                 <Input
-                  id="customer"
-                  value={formData.customer}
+                  id="buyerId"
+                  value={formData.buyerId}
                   onChange={(e) =>
-                    setFormData({ ...formData, customer: e.target.value })
+                    setFormData({ ...formData, buyerId: e.target.value })
+                  }
+                  placeholder="UUID de l'acheteur"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="itemId">ID de l'item *</Label>
+                <Input
+                  id="itemId"
+                  value={formData.itemId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, itemId: e.target.value })
+                  }
+                  placeholder="UUID de l'item marketplace"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="quantityKg">Quantité (kg) *</Label>
+                <Input
+                  id="quantityKg"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={formData.quantityKg}
+                  onChange={(e) =>
+                    setFormData({ ...formData, quantityKg: parseFloat(e.target.value) || 0 })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="product">Produit</Label>
-                <Input
-                  id="product"
-                  value={formData.product}
+                <Label htmlFor="shippingAddress">Adresse de livraison</Label>
+                <textarea
+                  id="shippingAddress"
+                  value={formData.shippingAddress}
                   onChange={(e) =>
-                    setFormData({ ...formData, product: e.target.value })
+                    setFormData({ ...formData, shippingAddress: e.target.value })
                   }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="quantity">Quantité</Label>
-                <Input
-                  id="quantity"
-                  value={formData.quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, quantity: e.target.value })
-                  }
-                  placeholder="500 kg"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="amount">Montant</Label>
-                <Input
-                  id="amount"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
-                  placeholder="₿ 1,250"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="status">Statut</Label>
-                <select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "completed" | "pending" | "processing",
-                    })
-                  }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                >
-                  <option value="pending">En attente</option>
-                  <option value="processing">En traitement</option>
-                  <option value="completed">Complétée</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  required
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
               </div>
             </div>
@@ -453,11 +455,23 @@ export default function OrdersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsAddDialogOpen(false)}
+                disabled={createMutation.isPending}
               >
                 Annuler
               </Button>
-              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-                Ajouter
+              <Button
+                type="submit"
+                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Ajout...
+                  </>
+                ) : (
+                  "Ajouter"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -476,77 +490,54 @@ export default function OrdersPage() {
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-customer">Client</Label>
-                <Input
-                  id="edit-customer"
-                  value={formData.customer}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customer: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-product">Produit</Label>
-                <Input
-                  id="edit-product"
-                  value={formData.product}
-                  onChange={(e) =>
-                    setFormData({ ...formData, product: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-quantity">Quantité</Label>
-                <Input
-                  id="edit-quantity"
-                  value={formData.quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, quantity: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-amount">Montant</Label>
-                <Input
-                  id="edit-amount"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
                 <Label htmlFor="edit-status">Statut</Label>
                 <select
                   id="edit-status"
-                  value={formData.status}
+                  value={updateData.status}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "completed" | "pending" | "processing",
-                    })
+                    setUpdateData({ ...updateData, status: e.target.value as OrderStatus })
                   }
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
-                  <option value="pending">En attente</option>
-                  <option value="processing">En traitement</option>
-                  <option value="completed">Complétée</option>
+                  <option value={OrderStatus.PENDING}>En attente</option>
+                  <option value={OrderStatus.PAID}>Payée</option>
+                  <option value={OrderStatus.SHIPPED}>Expédiée</option>
+                  <option value={OrderStatus.COMPLETED}>Complétée</option>
+                  <option value={OrderStatus.CANCELLED}>Annulée</option>
+                  <option value={OrderStatus.REFUNDED}>Remboursée</option>
                 </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-date">Date</Label>
+                <Label htmlFor="edit-paymentHash">Hash de paiement</Label>
                 <Input
-                  id="edit-date"
-                  type="date"
-                  value={formData.date}
+                  id="edit-paymentHash"
+                  value={updateData.paymentHash || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
+                    setUpdateData({ ...updateData, paymentHash: e.target.value })
                   }
-                  required
+                  placeholder="Hash de la transaction"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-shippingAddress">Adresse de livraison</Label>
+                <textarea
+                  id="edit-shippingAddress"
+                  value={updateData.shippingAddress || ""}
+                  onChange={(e) =>
+                    setUpdateData({ ...updateData, shippingAddress: e.target.value })
+                  }
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-trackingNumber">Numéro de suivi</Label>
+                <Input
+                  id="edit-trackingNumber"
+                  value={updateData.trackingNumber || ""}
+                  onChange={(e) =>
+                    setUpdateData({ ...updateData, trackingNumber: e.target.value })
+                  }
+                  placeholder="Numéro de suivi"
                 />
               </div>
             </div>
@@ -555,11 +546,23 @@ export default function OrdersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
+                disabled={updateMutation.isPending}
               >
                 Annuler
               </Button>
-              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-                Enregistrer
+              <Button
+                type="submit"
+                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  "Enregistrer"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -573,7 +576,7 @@ export default function OrdersPage() {
             <DialogTitle>Supprimer la commande</DialogTitle>
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer la commande{" "}
-              <strong>{selectedOrder?.id}</strong> ? Cette action est
+              <strong>#{selectedOrder?.id.slice(0, 8)}</strong> ? Cette action est
               irréversible.
             </DialogDescription>
           </DialogHeader>
@@ -581,14 +584,23 @@ export default function OrdersPage() {
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={deleteMutation.isPending}
             >
               Annuler
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
             >
-              Supprimer
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
