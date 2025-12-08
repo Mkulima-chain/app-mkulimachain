@@ -1,13 +1,39 @@
 "use client"
 
 import * as React from "react"
-import { Package, Plus, Search, Filter } from "lucide-react"
+import { Package, Plus, Search, Filter, Edit, Trash2, MoreVertical } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { toast } from "sonner"
 
-const products = [
+type Product = {
+  id: number
+  name: string
+  category: string
+  farmer: string
+  quantity: string
+  price: string
+  status: "available" | "sold"
+  blockchainHash: string
+}
+
+const initialProducts: Product[] = [
   {
     id: 1,
     name: "Cacao Premium",
@@ -41,6 +67,99 @@ const products = [
 ]
 
 export default function ProductsPage() {
+  const [products, setProducts] = React.useState<Product[]>(initialProducts)
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null)
+  const [formData, setFormData] = React.useState({
+    name: "",
+    category: "",
+    farmer: "",
+    quantity: "",
+    price: "",
+    status: "available" as "available" | "sold",
+  })
+
+  const handleAdd = () => {
+    setFormData({
+      name: "",
+      category: "",
+      farmer: "",
+      quantity: "",
+      price: "",
+      status: "available",
+    })
+    setIsAddDialogOpen(true)
+  }
+
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product)
+    setFormData({
+      name: product.name,
+      category: product.category,
+      farmer: product.farmer,
+      quantity: product.quantity,
+      price: product.price,
+      status: product.status,
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleDelete = (product: Product) => {
+    setSelectedProduct(product)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleSubmitAdd = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newProduct: Product = {
+      id: products.length + 1,
+      name: formData.name,
+      category: formData.category,
+      farmer: formData.farmer,
+      quantity: formData.quantity,
+      price: formData.price,
+      status: formData.status,
+      blockchainHash: `0x${Math.random().toString(16).substr(2, 8)}...${Math.random().toString(16).substr(2, 4)}`,
+    }
+    setProducts([...products, newProduct])
+    setIsAddDialogOpen(false)
+    toast.success("Produit ajouté avec succès")
+  }
+
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedProduct) return
+
+    setProducts(
+      products.map((p) =>
+        p.id === selectedProduct.id
+          ? {
+              ...p,
+              name: formData.name,
+              category: formData.category,
+              farmer: formData.farmer,
+              quantity: formData.quantity,
+              price: formData.price,
+              status: formData.status,
+            }
+          : p
+      )
+    )
+    setIsEditDialogOpen(false)
+    setSelectedProduct(null)
+    toast.success("Produit modifié avec succès")
+  }
+
+  const handleConfirmDelete = () => {
+    if (!selectedProduct) return
+    setProducts(products.filter((p) => p.id !== selectedProduct.id))
+    setIsDeleteDialogOpen(false)
+    setSelectedProduct(null)
+    toast.success("Produit supprimé avec succès")
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -50,7 +169,7 @@ export default function ProductsPage() {
             Gérez les produits agricoles de la plateforme
           </p>
         </div>
-        <Button className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
+        <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
           <Plus className="h-4 w-4 mr-2" />
           Ajouter un produit
         </Button>
@@ -64,7 +183,7 @@ export default function ProductsPage() {
             <Package className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5,678</div>
+            <div className="text-2xl font-bold">{products.length}</div>
             <p className="text-xs text-muted-foreground mt-1">+8% ce mois</p>
           </CardContent>
         </Card>
@@ -74,7 +193,9 @@ export default function ProductsPage() {
             <Package className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4,234</div>
+            <div className="text-2xl font-bold">
+              {products.filter((p) => p.status === "available").length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">75% du total</p>
           </CardContent>
         </Card>
@@ -84,7 +205,9 @@ export default function ProductsPage() {
             <Package className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
+            <div className="text-2xl font-bold">
+              {products.filter((p) => p.status === "sold").length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">22% du total</p>
           </CardContent>
         </Card>
@@ -192,9 +315,31 @@ export default function ProductsPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Button variant="ghost" size="sm">
-                          Voir
-                        </Button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-48 p-2">
+                            <div className="space-y-1">
+                              <button
+                                onClick={() => handleEdit(product)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                              >
+                                <Edit className="h-4 w-4" />
+                                Modifier
+                              </button>
+                              <button
+                                onClick={() => handleDelete(product)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Supprimer
+                              </button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </td>
                     </tr>
                   ))}
@@ -204,8 +349,247 @@ export default function ProductsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Ajouter un produit</DialogTitle>
+            <DialogDescription>
+              Remplissez les informations pour ajouter un nouveau produit
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitAdd}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nom du produit</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="category">Catégorie</Label>
+                <select
+                  id="category"
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                  required
+                >
+                  <option value="">Sélectionner une catégorie</option>
+                  <option value="Cacao">Cacao</option>
+                  <option value="Café">Café</option>
+                  <option value="Manioc">Manioc</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="farmer">Agriculteur</Label>
+                <Input
+                  id="farmer"
+                  value={formData.farmer}
+                  onChange={(e) =>
+                    setFormData({ ...formData, farmer: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="quantity">Quantité</Label>
+                <Input
+                  id="quantity"
+                  value={formData.quantity}
+                  onChange={(e) =>
+                    setFormData({ ...formData, quantity: e.target.value })
+                  }
+                  placeholder="500 kg"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="price">Prix</Label>
+                <Input
+                  id="price"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  placeholder="₿ 2.5/kg"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status">Statut</Label>
+                <select
+                  id="status"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "available" | "sold",
+                    })
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                >
+                  <option value="available">Disponible</option>
+                  <option value="sold">Vendu</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
+                Ajouter
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Modifier le produit</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations du produit
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitEdit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Nom du produit</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Catégorie</Label>
+                <select
+                  id="edit-category"
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                  required
+                >
+                  <option value="Cacao">Cacao</option>
+                  <option value="Café">Café</option>
+                  <option value="Manioc">Manioc</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-farmer">Agriculteur</Label>
+                <Input
+                  id="edit-farmer"
+                  value={formData.farmer}
+                  onChange={(e) =>
+                    setFormData({ ...formData, farmer: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-quantity">Quantité</Label>
+                <Input
+                  id="edit-quantity"
+                  value={formData.quantity}
+                  onChange={(e) =>
+                    setFormData({ ...formData, quantity: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Prix</Label>
+                <Input
+                  id="edit-price"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Statut</Label>
+                <select
+                  id="edit-status"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "available" | "sold",
+                    })
+                  }
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                >
+                  <option value="available">Disponible</option>
+                  <option value="sold">Vendu</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Supprimer le produit</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer{" "}
+              <strong>{selectedProduct?.name}</strong> ? Cette action est
+              irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-
