@@ -16,10 +16,25 @@ async function bootstrap() {
     }),
   );
 
-  // Enable CORS for frontend
+  // Enable CORS for frontend and admin
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost:5601', 'http://localhost:5602'];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5601',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Swagger configuration

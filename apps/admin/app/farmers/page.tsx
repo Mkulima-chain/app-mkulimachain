@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, Search, Plus, Filter, Edit, Trash2, MoreVertical } from "lucide-react"
+import { Users, Search, Plus, Filter, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,72 +21,112 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { toast } from "sonner"
+import { useApiQuery } from "@/hooks/use-api-query"
+import { useApiMutation } from "@/hooks/use-api-mutation"
 
 type Farmer = {
-  id: number
+  id: string
   name: string
-  email: string
-  location: string
-  products: string[]
-  status: "active" | "pending"
-  totalHarvest: string
-  revenue: string
+  phone: string
+  walletAddress?: string
+  address: string
+  city: string
+  state: string
+  latitude: number
+  longitude: number
+  cooperativeId?: string
+  createdAt: string
+  updatedAt: string
 }
 
-const initialFarmers: Farmer[] = [
-  {
-    id: 1,
-    name: "Jean Mukendi",
-    email: "jean.mukendi@example.com",
-    location: "Bas-Congo",
-    products: ["Cacao", "Café"],
-    status: "active",
-    totalHarvest: "2,450 kg",
-    revenue: "₿ 1,250",
-  },
-  {
-    id: 2,
-    name: "Marie Kabila",
-    email: "marie.kabila@example.com",
-    location: "Kivu",
-    products: ["Café"],
-    status: "active",
-    totalHarvest: "1,890 kg",
-    revenue: "₿ 980",
-  },
-  {
-    id: 3,
-    name: "Pierre Kasa",
-    email: "pierre.kasa@example.com",
-    location: "Équateur",
-    products: ["Manioc"],
-    status: "pending",
-    totalHarvest: "3,200 kg",
-    revenue: "₿ 1,650",
-  },
-]
+type CreateFarmerDto = {
+  name: string
+  phone: string
+  walletAddress?: string
+  address: string
+  city: string
+  state: string
+  latitude: number
+  longitude: number
+  cooperativeId?: string
+}
 
 export default function FarmersPage() {
-  const [farmers, setFarmers] = React.useState<Farmer[]>(initialFarmers)
+  const [searchQuery, setSearchQuery] = React.useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedFarmer, setSelectedFarmer] = React.useState<Farmer | null>(null)
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<CreateFarmerDto>({
     name: "",
-    email: "",
-    location: "",
-    products: "",
-    status: "active" as "active" | "pending",
+    phone: "",
+    walletAddress: "",
+    address: "",
+    city: "",
+    state: "",
+    latitude: -4.4419,
+    longitude: 15.2663,
+    cooperativeId: "",
   })
+
+  // Fetch farmers
+  const { data: farmers = [], isLoading, refetch } = useApiQuery<Farmer[]>(
+    ["farmers", searchQuery],
+    `/farmers${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Create mutation
+  const createMutation = useApiMutation<Farmer, CreateFarmerDto>(
+    "/farmers",
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Agriculteur ajouté avec succès")
+        setIsAddDialogOpen(false)
+        refetch()
+      },
+    }
+  )
+
+  // Update mutation
+  const updateMutation = useApiMutation<Farmer, CreateFarmerDto>(
+    (variables) => `/farmers/${selectedFarmer?.id}`,
+    "PUT",
+    {
+      onSuccess: () => {
+        toast.success("Agriculteur modifié avec succès")
+        setIsEditDialogOpen(false)
+        setSelectedFarmer(null)
+        refetch()
+      },
+    }
+  )
+
+  // Delete mutation
+  const deleteMutation = useApiMutation<void, void>(
+    () => `/farmers/${selectedFarmer?.id}`,
+    "DELETE",
+    {
+      onSuccess: () => {
+        toast.success("Agriculteur supprimé avec succès")
+        setIsDeleteDialogOpen(false)
+        setSelectedFarmer(null)
+        refetch()
+      },
+    }
+  )
 
   const handleAdd = () => {
     setFormData({
       name: "",
-      email: "",
-      location: "",
-      products: "",
-      status: "active",
+      phone: "",
+      walletAddress: "",
+      address: "",
+      city: "",
+      state: "",
+      latitude: -4.4419,
+      longitude: 15.2663,
+      cooperativeId: "",
     })
     setIsAddDialogOpen(true)
   }
@@ -95,10 +135,14 @@ export default function FarmersPage() {
     setSelectedFarmer(farmer)
     setFormData({
       name: farmer.name,
-      email: farmer.email,
-      location: farmer.location,
-      products: farmer.products.join(", "),
-      status: farmer.status,
+      phone: farmer.phone,
+      walletAddress: farmer.walletAddress || "",
+      address: farmer.address,
+      city: farmer.city,
+      state: farmer.state,
+      latitude: farmer.latitude,
+      longitude: farmer.longitude,
+      cooperativeId: farmer.cooperativeId || "",
     })
     setIsEditDialogOpen(true)
   }
@@ -108,53 +152,38 @@ export default function FarmersPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const handleSubmitAdd = (e: React.FormEvent) => {
+  const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newFarmer: Farmer = {
-      id: farmers.length + 1,
-      name: formData.name,
-      email: formData.email,
-      location: formData.location,
-      products: formData.products.split(",").map((p) => p.trim()),
-      status: formData.status,
-      totalHarvest: "0 kg",
-      revenue: "₿ 0",
+    const data = {
+      ...formData,
+      latitude: parseFloat(formData.latitude.toString()),
+      longitude: parseFloat(formData.longitude.toString()),
+      walletAddress: formData.walletAddress || undefined,
+      cooperativeId: formData.cooperativeId || undefined,
     }
-    setFarmers([...farmers, newFarmer])
-    setIsAddDialogOpen(false)
-    toast.success("Agriculteur ajouté avec succès")
+    createMutation.mutate(data)
   }
 
-  const handleSubmitEdit = (e: React.FormEvent) => {
+  const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedFarmer) return
-
-    setFarmers(
-      farmers.map((f) =>
-        f.id === selectedFarmer.id
-          ? {
-              ...f,
-              name: formData.name,
-              email: formData.email,
-              location: formData.location,
-              products: formData.products.split(",").map((p) => p.trim()),
-              status: formData.status,
-            }
-          : f
-      )
-    )
-    setIsEditDialogOpen(false)
-    setSelectedFarmer(null)
-    toast.success("Agriculteur modifié avec succès")
+    const data = {
+      ...formData,
+      latitude: parseFloat(formData.latitude.toString()),
+      longitude: parseFloat(formData.longitude.toString()),
+      walletAddress: formData.walletAddress || undefined,
+      cooperativeId: formData.cooperativeId || undefined,
+    }
+    updateMutation.mutate(data)
   }
 
   const handleConfirmDelete = () => {
     if (!selectedFarmer) return
-    setFarmers(farmers.filter((f) => f.id !== selectedFarmer.id))
-    setIsDeleteDialogOpen(false)
-    setSelectedFarmer(null)
-    toast.success("Agriculteur supprimé avec succès")
+    deleteMutation.mutate(undefined)
   }
+
+  const activeFarmers = farmers
+  const pendingCount = 0 // Vous pouvez ajouter un champ status si nécessaire
 
   return (
     <div className="space-y-6">
@@ -179,7 +208,7 @@ export default function FarmersPage() {
             <Users className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{farmers.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : activeFarmers.length}</div>
             <p className="text-xs text-muted-foreground mt-1">+12% ce mois</p>
           </CardContent>
         </Card>
@@ -189,10 +218,8 @@ export default function FarmersPage() {
             <Users className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {farmers.filter((f) => f.status === "active").length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">88% du total</p>
+            <div className="text-2xl font-bold">{isLoading ? "..." : activeFarmers.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">100% du total</p>
           </CardContent>
         </Card>
         <Card>
@@ -201,10 +228,8 @@ export default function FarmersPage() {
             <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {farmers.filter((f) => f.status === "pending").length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">12% du total</p>
+            <div className="text-2xl font-bold">{isLoading ? "..." : pendingCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">0% du total</p>
           </CardContent>
         </Card>
       </div>
@@ -229,6 +254,8 @@ export default function FarmersPage() {
                 type="search"
                 placeholder="Rechercher un agriculteur..."
                 className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Button variant="outline">
@@ -237,113 +264,103 @@ export default function FarmersPage() {
             </Button>
           </div>
 
-          {/* Table */}
-          <div className="rounded-lg border">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Nom
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Localisation
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Produits
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Récolte totale
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Revenus
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {farmers.map((farmer) => (
-                    <tr key={farmer.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium">{farmer.name}</div>
-                          <div className="text-sm text-muted-foreground">{farmer.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {farmer.location}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-1">
-                          {farmer.products.map((product, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {product}
-                            </Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {farmer.totalHarvest}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {farmer.revenue}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge
-                          variant={farmer.status === "active" ? "default" : "secondary"}
-                          className={
-                            farmer.status === "active"
-                              ? "bg-[#3A8F4C] text-white"
-                              : ""
-                          }
-                        >
-                          {farmer.status === "active" ? "Actif" : "En attente"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-48 p-2">
-                            <div className="space-y-1">
-                              <button
-                                onClick={() => handleEdit(farmer)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                              >
-                                <Edit className="h-4 w-4" />
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() => handleDelete(farmer)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Supprimer
-                              </button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Nom
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Téléphone
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Localisation
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Ville
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {activeFarmers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                          Aucun agriculteur trouvé
+                        </td>
+                      </tr>
+                    ) : (
+                      activeFarmers.map((farmer: Farmer) => (
+                        <tr key={farmer.id} className="hover:bg-muted/50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium">{farmer.name}</div>
+                              {farmer.walletAddress && (
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {farmer.walletAddress.slice(0, 20)}...
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {farmer.phone}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {farmer.address}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {farmer.city}, {farmer.state}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent align="end" className="w-48 p-2">
+                                <div className="space-y-1">
+                                  <button
+                                    onClick={() => handleEdit(farmer)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                    Modifier
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(farmer)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Supprimer
+                                  </button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ajouter un agriculteur</DialogTitle>
             <DialogDescription>
@@ -353,7 +370,7 @@ export default function FarmersPage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Nom complet</Label>
+                <Label htmlFor="name">Nom complet *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -364,55 +381,89 @@ export default function FarmersPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="phone">Téléphone *</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="+243812345678"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="walletAddress">Adresse du portefeuille Cardano</Label>
+                <Input
+                  id="walletAddress"
+                  value={formData.walletAddress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, walletAddress: e.target.value })
+                  }
+                  placeholder="addr1..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Adresse *</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="location">Localisation</Label>
+                <Label htmlFor="city">Ville *</Label>
                 <Input
-                  id="location"
-                  value={formData.location}
+                  id="city"
+                  value={formData.city}
                   onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
+                    setFormData({ ...formData, city: e.target.value })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="products">Produits (séparés par des virgules)</Label>
+                <Label htmlFor="state">Province *</Label>
                 <Input
-                  id="products"
-                  value={formData.products}
+                  id="state"
+                  value={formData.state}
                   onChange={(e) =>
-                    setFormData({ ...formData, products: e.target.value })
+                    setFormData({ ...formData, state: e.target.value })
                   }
-                  placeholder="Cacao, Café, Manioc"
+                  required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="status">Statut</Label>
-                <select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "active" | "pending",
-                    })
-                  }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                >
-                  <option value="active">Actif</option>
-                  <option value="pending">En attente</option>
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="latitude">Latitude *</Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    value={formData.latitude}
+                    onChange={(e) =>
+                      setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="longitude">Longitude *</Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    value={formData.longitude}
+                    onChange={(e) =>
+                      setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -420,11 +471,23 @@ export default function FarmersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsAddDialogOpen(false)}
+                disabled={createMutation.isPending}
               >
                 Annuler
               </Button>
-              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-                Ajouter
+              <Button
+                type="submit"
+                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Ajout...
+                  </>
+                ) : (
+                  "Ajouter"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -433,7 +496,7 @@ export default function FarmersPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier l'agriculteur</DialogTitle>
             <DialogDescription>
@@ -443,7 +506,7 @@ export default function FarmersPage() {
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-name">Nom complet</Label>
+                <Label htmlFor="edit-name">Nom complet *</Label>
                 <Input
                   id="edit-name"
                   value={formData.name}
@@ -454,55 +517,87 @@ export default function FarmersPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-email">Email</Label>
+                <Label htmlFor="edit-phone">Téléphone *</Label>
                 <Input
-                  id="edit-email"
-                  type="email"
-                  value={formData.email}
+                  id="edit-phone"
+                  type="tel"
+                  value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, phone: e.target.value })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-location">Localisation</Label>
+                <Label htmlFor="edit-walletAddress">Adresse du portefeuille Cardano</Label>
                 <Input
-                  id="edit-location"
-                  value={formData.location}
+                  id="edit-walletAddress"
+                  value={formData.walletAddress}
                   onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
+                    setFormData({ ...formData, walletAddress: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address">Adresse *</Label>
+                <Input
+                  id="edit-address"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-products">Produits (séparés par des virgules)</Label>
+                <Label htmlFor="edit-city">Ville *</Label>
                 <Input
-                  id="edit-products"
-                  value={formData.products}
+                  id="edit-city"
+                  value={formData.city}
                   onChange={(e) =>
-                    setFormData({ ...formData, products: e.target.value })
+                    setFormData({ ...formData, city: e.target.value })
                   }
-                  placeholder="Cacao, Café, Manioc"
+                  required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-status">Statut</Label>
-                <select
-                  id="edit-status"
-                  value={formData.status}
+                <Label htmlFor="edit-state">Province *</Label>
+                <Input
+                  id="edit-state"
+                  value={formData.state}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "active" | "pending",
-                    })
+                    setFormData({ ...formData, state: e.target.value })
                   }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                >
-                  <option value="active">Actif</option>
-                  <option value="pending">En attente</option>
-                </select>
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-latitude">Latitude *</Label>
+                  <Input
+                    id="edit-latitude"
+                    type="number"
+                    step="any"
+                    value={formData.latitude}
+                    onChange={(e) =>
+                      setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-longitude">Longitude *</Label>
+                  <Input
+                    id="edit-longitude"
+                    type="number"
+                    step="any"
+                    value={formData.longitude}
+                    onChange={(e) =>
+                      setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -510,11 +605,23 @@ export default function FarmersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
+                disabled={updateMutation.isPending}
               >
                 Annuler
               </Button>
-              <Button type="submit" className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-                Enregistrer
+              <Button
+                type="submit"
+                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  "Enregistrer"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -536,14 +643,23 @@ export default function FarmersPage() {
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={deleteMutation.isPending}
             >
               Annuler
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
             >
-              Supprimer
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
