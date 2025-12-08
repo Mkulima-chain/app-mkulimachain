@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Admin - MkulimaChain",
-  description: "Administration panel for MkulimaChain",
+  description: "Panneau d'administration pour MkulimaChain",
 };
 
 export default function RootLayout({
@@ -23,11 +26,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
+          storageKey="mkulima-chain-admin-theme"
+        >
+          <DashboardLayout>
+            {children}
+          </DashboardLayout>
+          <Toaster position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );
