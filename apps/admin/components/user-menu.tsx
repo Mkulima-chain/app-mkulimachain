@@ -5,14 +5,24 @@ import { useRouter } from "next/navigation"
 import { User, LogOut, Settings } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { getAuth, clearAuth } from "@/lib/auth-storage"
 
 export function UserMenu() {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
+  const [userLabel, setUserLabel] = React.useState<string>("Admin")
+  const [userEmail, setUserEmail] = React.useState<string>("admin@mkulimachain.com")
+
+  React.useEffect(() => {
+    const auth = getAuth()
+    if (auth?.user) {
+      setUserLabel(`${auth.user.firstName} ${auth.user.lastName}`)
+      setUserEmail(auth.user.email)
+    }
+  }, [])
 
   const handleLogout = () => {
-    // Ici vous pouvez ajouter la logique de déconnexion
-    // Par exemple, supprimer le token, nettoyer le localStorage, etc.
+    clearAuth()
     setOpen(false)
     router.push("/login")
   }
@@ -32,8 +42,8 @@ export function UserMenu() {
       <PopoverContent align="end" className="w-56 p-2">
         <div className="space-y-1">
           <div className="px-3 py-2 border-b">
-            <p className="text-sm font-medium">Admin</p>
-            <p className="text-xs text-muted-foreground">admin@mkulimachain.com</p>
+            <p className="text-sm font-medium">{userLabel}</p>
+            <p className="text-xs text-muted-foreground">{userEmail}</p>
           </div>
 
           <button

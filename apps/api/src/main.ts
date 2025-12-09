@@ -7,6 +7,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const globalPrefix = 'api';
+  app.setGlobalPrefix(globalPrefix);
+
   // Enable validation
   app.useGlobalPipes(
     new ValidationPipe({
@@ -72,8 +75,8 @@ API pour la plateforme de traçabilité agricole et DeFi pour les agriculteurs c
       'contact@mkulimachain.com',
     )
     .setLicense('MIT', 'https://opensource.org/licenses/MIT')
-    .addServer('http://localhost:5600', 'Development Server')
-    .addServer('https://api.mkulimachain.com', 'Production Server')
+    .addServer('http://localhost:5600/api', 'Development Server')
+    .addServer('https://api.mkulimachain.com/api', 'Production Server')
     .addBearerAuth(
       {
         type: 'http',
@@ -102,7 +105,7 @@ API pour la plateforme de traçabilité agricole et DeFi pour les agriculteurs c
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup(`${globalPrefix}/docs`, app, document, {
     customSiteTitle: 'MkulimaChain API Docs',
     customfavIcon: 'https://mkulimachain.com/favicon.ico',
     customCss: `

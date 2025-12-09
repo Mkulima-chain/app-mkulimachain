@@ -16,6 +16,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { NFTModule } from './modules/nft/nft.module';
 import { SchoolFundModule } from './modules/school-fund/school-fund.module';
+import { StatsModule } from './modules/stats/stats.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SchoolFundModule } from './modules/school-fund/school-fund.module';
     MarketplaceModule,
     NFTModule,
     SchoolFundModule,
+    StatsModule,
   ],
   controllers: [],
   providers: [

@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   CreateCooperativeDto,
+  GetCooperativeDto,
   UpdateCooperativeDto,
 } from '../dto/cooperatives.dto';
 import { CooperativeEntity } from '../entities/entities';
-import { ICooperative } from '../interfaces/icooperative';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -30,20 +30,61 @@ export class ServicesService {
       id,
       ...cooperative,
     });
+    if (!updatedCooperative) {
+      throw new NotFoundException('Coopérative introuvable');
+    }
     return this.cooperativeRepository.save(updatedCooperative);
   }
 
   async getCooperativeById(id: string): Promise<CooperativeEntity> {
-    return this.cooperativeRepository.findOne({ where: { id } });
+    const cooperative = await this.cooperativeRepository.findOne({
+      where: { id },
+    });
+    if (!cooperative) {
+      throw new NotFoundException('Coopérative introuvable');
+    }
+    return cooperative;
   }
 
   async getCooperatives(
-    cooperative: Partial<ICooperative>,
+    query: GetCooperativeDto,
   ): Promise<CooperativeEntity[]> {
-    return this.cooperativeRepository.find({ where: cooperative });
+    const qb = this.cooperativeRepository.createQueryBuilder('cooperative');
+
+    if (query.id) {
+      qb.andWhere('cooperative.id = :id', { id: query.id });
+    }
+    if (query.name) {
+      qb.andWhere('cooperative.name ILIKE :name', {
+        name: `%${query.name}%`,
+      });
+    }
+    if (query.location) {
+      qb.andWhere('cooperative.location ILIKE :location', {
+        location: `%${query.location}%`,
+      });
+    }
+    if (query.leader) {
+      qb.andWhere('cooperative.leader ILIKE :leader', {
+        leader: `%${query.leader}%`,
+      });
+    }
+    if (query.search) {
+      qb.andWhere(
+        `(cooperative.name ILIKE :search OR cooperative.location ILIKE :search OR cooperative.leader ILIKE :search)`,
+        { search: `%${query.search}%` },
+      );
+    }
+
+    qb.orderBy('cooperative.createdAt', 'DESC');
+
+    return qb.getMany();
   }
 
   async deleteCooperative(id: string): Promise<void> {
-    await this.cooperativeRepository.softDelete(id);
+    const result = await this.cooperativeRepository.softDelete(id);
+    if (!result.affected) {
+      throw new NotFoundException('Coopérative introuvable');
+    }
   }
 }

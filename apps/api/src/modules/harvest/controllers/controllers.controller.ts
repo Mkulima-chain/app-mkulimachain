@@ -16,8 +16,10 @@ import {
   UpdateHarvestDto,
 } from '../dto/harvest.dto';
 import { HarvestEntity } from '../entities/entities';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @Controller('harvests')
+@Public() // ouverture pour l'admin; à sécuriser plus tard
 export class ControllersController {
   constructor(private readonly servicesService: ServicesService) {}
 

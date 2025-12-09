@@ -6,12 +6,13 @@ dotenv.config();
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5433', 10),
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'Akim12345',
+  password: process.env.DB_PASSWORD || '12345678',
   database: process.env.DB_NAME || 'mkulimachain',
-  entities: [__dirname + '/../modules/**/entities/*.ts'],
+  entities: [__dirname + '/../modules/**/entities/*{.ts,.js}'],
   migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: true,
 });
+

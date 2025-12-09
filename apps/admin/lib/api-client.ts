@@ -2,6 +2,8 @@
  * Client API centralisé pour l'admin
  */
 
+import { getAccessToken } from "./auth-storage";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5600/api";
 
@@ -29,10 +31,14 @@ export async function apiClient<T>(
 ): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
 
+  const token =
+    typeof window !== "undefined" ? getAccessToken() : undefined;
+
   const config: RequestInit = {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   };

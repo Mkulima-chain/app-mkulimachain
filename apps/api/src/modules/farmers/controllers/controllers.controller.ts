@@ -25,9 +25,11 @@ import {
   FarmerResponseDto,
 } from '../dto/farmers.dto';
 import { FarmerEntity } from '../entities/entities';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('farmers')
 @Controller('farmers')
+@Public() // Autorise l'accès public (dev). À sécuriser avec JWT quand prêt.
 export class ControllersController {
   constructor(private readonly servicesService: ServicesService) {}
 

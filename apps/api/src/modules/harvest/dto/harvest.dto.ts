@@ -1,123 +1,56 @@
 import {
-  IsDate,
+  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
-import { IHarvest } from '../interfaces/iharvest';
-import { ApiProperty } from '@nestjs/swagger';
-import { FarmerEntity } from '@/modules/farmers/entities/entities';
-import { ProductEntity } from '@/modules/products/entities/entities';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
-export class CreateHarvestDto implements IHarvest {
+export class CreateHarvestDto {
   @ApiProperty({
-    description: 'The farmer id',
+    description: "ID de l'agriculteur",
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
+  @IsUUID()
   @IsNotEmpty()
-  farmer: FarmerEntity;
+  farmerId!: string;
 
   @ApiProperty({
-    description: 'The product id',
+    description: 'ID du produit',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
+  @IsUUID()
   @IsNotEmpty()
-  product: ProductEntity;
+  productId!: string;
 
   @ApiProperty({
-    description: 'The quantity of the harvest',
+    description: 'Quantité récoltée (kg)',
     example: 100,
   })
   @IsNumber()
   @IsNotEmpty()
-  quantity: number;
+  quantity!: number;
 
   @ApiProperty({
-    description: 'The harvest at',
-    example: new Date(),
+    description: 'Date/heure de récolte (ISO)',
+    example: '2024-01-15T10:30:00.000Z',
   })
-  @IsDate()
+  @IsDateString()
   @IsNotEmpty()
-  harvestAt: Date;
+  harvestAt!: string;
 
-  @ApiProperty({
-    description: 'The latitude of the harvest',
-    example: 12.345678,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  latitude: number;
-
-  @ApiProperty({
-    description: 'The longitude of the harvest',
-    example: 12.345678,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  longitude: number;
-
-  @ApiProperty({
-    description: 'The proof hash of the harvest',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsString()
-  @IsNotEmpty()
-  proofHash: string;
-}
-
-export class GetHarvestDto implements IHarvest {
-  @ApiProperty({
-    description: 'The id of the harvest',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsOptional()
-  id?: string;
-
-  @ApiProperty({
-    description: 'The farmer id',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsOptional()
-  farmer: FarmerEntity;
-
-  @ApiProperty({
-    description: 'The product id',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsOptional()
-  product: ProductEntity;
-
-  @ApiProperty({
-    description: 'The quantity of the harvest',
-    example: 100,
-  })
-  @IsNumber()
-  @IsOptional()
-  quantity: number;
-
-  @ApiProperty({
-    description: 'The harvest at',
-    example: new Date(),
-  })
-  @IsDate()
-  @IsOptional()
-  harvestAt?: Date;
-
-  @ApiProperty({
-    description: 'The latitude of the harvest',
+  @ApiPropertyOptional({
+    description: 'Latitude',
     example: 12.345678,
   })
   @IsNumber()
   @IsOptional()
   latitude?: number;
 
-  @ApiProperty({
-    description: 'The longitude of the harvest',
+  @ApiPropertyOptional({
+    description: 'Longitude',
     example: 12.345678,
   })
   @IsNumber()
@@ -125,60 +58,60 @@ export class GetHarvestDto implements IHarvest {
   longitude?: number;
 
   @ApiProperty({
-    description: 'The proof hash of the harvest',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Hash de preuve (on-chain ou IPFS)',
+    example: '0xabc123...',
   })
   @IsString()
-  @IsOptional()
-  proofHash: string;
+  @IsNotEmpty()
+  proofHash!: string;
 }
 
-export class UpdateHarvestDto implements IHarvest {
-  @ApiProperty({
-    description: 'The id of the harvest',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsNotEmpty()
-  id: string;
-
-  @ApiProperty({
-    description: 'The farmer id',
+export class GetHarvestDto {
+  @ApiPropertyOptional({
+    description: 'ID de la récolte',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsUUID()
   @IsOptional()
-  farmer: FarmerEntity;
+  id?: string;
 
-  @ApiProperty({
-    description: 'The product id',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+  @ApiPropertyOptional({
+    description: "ID de l'agriculteur",
   })
   @IsUUID()
   @IsOptional()
-  product: ProductEntity;
+  farmerId?: string;
 
-  @ApiProperty({
-    description: 'The quantity of the harvest',
+  @ApiPropertyOptional({
+    description: 'ID du produit',
+  })
+  @IsUUID()
+  @IsOptional()
+  productId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Quantité',
     example: 100,
   })
   @IsNumber()
   @IsOptional()
-  quantity: number;
+  quantity?: number;
 
-  @ApiProperty({
-    description: 'The harvest at',
-    example: new Date(),
-  })
-  @IsDate()
-  @IsOptional()
-  harvestAt?: Date;
-
-  @ApiProperty({
-    description: 'The proof hash of the harvest',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+  @ApiPropertyOptional({
+    description: 'Recherche texte sur proofHash',
+    example: '0xabc',
   })
   @IsString()
   @IsOptional()
-  proofHash: string;
+  search?: string;
+}
+
+export class UpdateHarvestDto extends PartialType(CreateHarvestDto) {
+  @ApiProperty({
+    description: 'ID de la récolte',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  id!: string;
 }

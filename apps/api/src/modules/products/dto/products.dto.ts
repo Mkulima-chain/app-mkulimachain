@@ -5,148 +5,61 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  IsArray,
 } from 'class-validator';
 import { IProduct } from '../interfaces/iproducts';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateProductDto implements IProduct {
   @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
+    description: 'Nom du produit',
+    example: 'Cacao premium',
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
-  @MaxLength(100)
+  @MaxLength(255)
   name: string;
 
   @ApiProperty({
-    description: 'The unit of the product',
+    description: 'Unité de mesure',
     example: 'kg',
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(2)
-  @MaxLength(100)
+  @MinLength(1)
+  @MaxLength(50)
   unit: string;
 
   @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
+    description: 'Description du produit',
+    example: 'Cacao biologique provenant du Nord Kivu',
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
-  @MaxLength(100)
+  @MaxLength(500)
   description: string;
 
-  @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
+  @ApiPropertyOptional({
+    description: 'URLs des images du produit',
+    example: ['https://exemple.com/image1.jpg'],
+    type: [String],
   })
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(2)
-  @MaxLength(100)
-  image: string[];
-}
-
-export class UpdateProductDto implements IProduct {
-  @ApiProperty({
-    description: 'The id of the product',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsNotEmpty()
-  id: string;
-
-  @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
-  })
-  @IsString()
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  name: string;
-
-  @ApiProperty({
-    description: 'The unit of the product',
-    example: 'kg',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  unit: string;
-
-  @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  description: string;
-
-  @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
   image?: string[];
 }
 
-export class GetProductDto implements IProduct {
-  @ApiProperty({
-    description: 'The id of the product',
+export class UpdateProductDto extends PartialType(CreateProductDto) {}
+
+export class GetProductDto extends PartialType(CreateProductDto) {
+  @ApiPropertyOptional({
+    description: 'ID du produit',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsUUID()
   @IsOptional()
   id?: string;
-
-  @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  name: string;
-
-  @ApiProperty({
-    description: 'The unit of the product',
-    example: 'kg',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  unit: string;
-
-  @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  description: string;
-
-  @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  image?: string[];
 }
