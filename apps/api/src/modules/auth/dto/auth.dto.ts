@@ -44,21 +44,21 @@ export class RegisterDto {
   @ApiProperty({
     description: 'Prénom',
     example: 'Jean',
-    maxLength: 100,
+    maxLength: 255,
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(255)
   firstName!: string;
 
   @ApiProperty({
     description: 'Nom de famille',
     example: 'Mukendi',
-    maxLength: 100,
+    maxLength: 255,
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(255)
   lastName!: string;
 
   @ApiPropertyOptional({
@@ -96,7 +96,7 @@ export class UpdateUserDto {
   })
   @IsString()
   @IsOptional()
-  @MaxLength(100)
+  @MaxLength(255)
   firstName?: string;
 
   @ApiPropertyOptional({
@@ -105,7 +105,7 @@ export class UpdateUserDto {
   })
   @IsString()
   @IsOptional()
-  @MaxLength(100)
+  @MaxLength(255)
   lastName?: string;
 
   @ApiPropertyOptional({

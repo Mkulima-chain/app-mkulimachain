@@ -51,7 +51,7 @@ export class WalletConnectDto {
   })
   @IsString()
   @IsOptional()
-  @MaxLength(100)
+  @MaxLength(255)
   firstName?: string;
 
   @ApiPropertyOptional({
@@ -60,7 +60,7 @@ export class WalletConnectDto {
   })
   @IsString()
   @IsOptional()
-  @MaxLength(100)
+  @MaxLength(255)
   lastName?: string;
 
   @ApiPropertyOptional({

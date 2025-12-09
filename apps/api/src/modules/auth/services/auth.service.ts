@@ -1,9 +1,9 @@
 import {
-    Injectable,
-    UnauthorizedException,
-    ConflictException,
-    NotFoundException,
-    BadRequestException,
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -11,12 +11,12 @@ import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../repositories/user.repository';
 import { UserEntity } from '../entities/user.entity';
 import {
-    RegisterDto,
-    LoginDto,
-    UpdateUserDto,
-    ChangePasswordDto,
-    LoginResponseDto,
-    UserResponseDto,
+  RegisterDto,
+  LoginDto,
+  UpdateUserDto,
+  ChangePasswordDto,
+  LoginResponseDto,
+  UserResponseDto,
 } from '../dto/auth.dto';
 import { WalletConnectDto } from '../dto/wallet-auth.dto';
 import { UserStatus } from '../interfaces/iuser';
@@ -29,7 +29,7 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<UserResponseDto> {
+  async register(dto: RegisterDto): Promise<LoginResponseDto> {
     // Vérifier si l'email existe déjà
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
@@ -45,7 +45,19 @@ export class AuthService {
     }
 
     const user = await this.userRepository.create(dto);
-    return this.mapToResponseDto(user);
+
+    // Générer les tokens pour connecter automatiquement l'utilisateur
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = this.generateRefreshToken(user);
+
+    // Sauvegarder le refresh token
+    await this.userRepository.updateRefreshToken(user.id, refreshToken);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: this.mapToResponseDto(user),
+    };
   }
 
   async login(dto: LoginDto): Promise<LoginResponseDto> {

@@ -1,11 +1,11 @@
 import {
-    Column,
-    CreateDateColumn,
-    DeleteDateColumn,
-    Entity,
-    Index,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { IUser, UserRole, UserStatus, AuthProvider } from '../interfaces/iuser';
 
@@ -25,10 +25,10 @@ export class UserEntity implements IUser {
   @Column({ type: 'varchar', length: 255, nullable: true })
   password?: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   firstName!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   lastName!: string;
 
   @Index()

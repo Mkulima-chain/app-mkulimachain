@@ -42,19 +42,20 @@ export class AuthController {
   @Post('register')
   @ApiOperation({
     summary: "S'inscrire",
-    description: 'Crée un nouveau compte utilisateur',
+    description:
+      'Crée un nouveau compte utilisateur et retourne les tokens JWT',
   })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Compte créé avec succès',
-    type: UserResponseDto,
+    type: LoginResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
     description: 'Email ou téléphone déjà utilisé',
   })
-  async register(@Body() dto: RegisterDto): Promise<UserResponseDto> {
+  async register(@Body() dto: RegisterDto): Promise<LoginResponseDto> {
     return this.authService.register(dto);
   }
 
