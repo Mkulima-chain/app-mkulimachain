@@ -26,9 +26,11 @@ import {
   RepaymentAmountDto,
 } from '../dto/micro-loan.dto';
 import { MicroLoanEntity } from '../entities/micro-loan.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('micro-loans')
 @Controller('loans')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class MicroLoanController {
   constructor(private readonly service: MicroLoanService) {}
 

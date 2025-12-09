@@ -27,9 +27,11 @@ import {
 } from '../dto/nft.dto';
 import { NFTEntity } from '../entities/nft.entity';
 import { NFTType } from '../interfaces/inft';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('nfts')
 @Controller('nfts')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class NFTController {
   constructor(private readonly service: NFTService) {}
 

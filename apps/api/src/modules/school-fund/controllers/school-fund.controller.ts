@@ -29,9 +29,11 @@ import {
   ProvinceStatsDto,
 } from '../dto/school-fund.dto';
 import { SchoolFundEntity } from '../entities/school-fund.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('school-funds')
 @Controller('school-funds')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class SchoolFundController {
   constructor(private readonly service: SchoolFundService) {}
 

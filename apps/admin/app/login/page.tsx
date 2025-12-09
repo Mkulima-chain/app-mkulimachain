@@ -23,9 +23,16 @@ export default function LoginPage() {
       api.post<{
         accessToken: string
         refreshToken: string
-        user: { id: string; email: string; firstName: string; lastName: string; role: string }
+        user: { 
+          id: string
+          email: string
+          firstName: string
+          lastName: string
+          role: string
+        }
       }>("/auth/login", payload),
     onSuccess: (data) => {
+      // Sauvegarder l'authentification et rediriger (uniquement identifiants valides)
       saveAuth(data)
       toast.success("Connexion réussie")
       setErrorMessage(null)

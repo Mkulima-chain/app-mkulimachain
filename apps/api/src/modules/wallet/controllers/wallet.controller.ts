@@ -27,9 +27,11 @@ import {
 } from '../dto/wallet.dto';
 import { WalletEntity } from '../entities/wallet.entity';
 import { OwnerType } from '../interfaces/iwallet';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('wallets')
 @Controller('wallets')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class WalletController {
   constructor(private readonly service: WalletService) {}
 

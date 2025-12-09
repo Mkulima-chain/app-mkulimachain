@@ -4,6 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
+import { AuthGuard } from "@/components/auth-guard"
 
 export function DashboardLayout({
   children,
@@ -17,19 +18,21 @@ export function DashboardLayout({
   const isAuthPage = authPages.includes(pathname)
 
   if (isAuthPage) {
-    return <>{children}</>
+    return <AuthGuard>{children}</AuthGuard>
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden lg:ml-0">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-4 lg:p-6">
-          {children}
-        </main>
+    <AuthGuard>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden lg:ml-0">
+          <Header />
+          <main className="flex-1 overflow-y-auto bg-muted/30 p-4 lg:p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   )
 }
 

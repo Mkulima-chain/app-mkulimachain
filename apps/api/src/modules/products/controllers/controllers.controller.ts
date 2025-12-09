@@ -48,7 +48,7 @@ export class ControllersController {
 
   @Get()
   async getProducts(@Query() query: GetProductDto): Promise<ProductEntity[]> {
-    return this.servicesService.getProducts(query as Partial<IProduct>);
+    return this.servicesService.getProducts(query);
   }
 
   @Delete(':id')

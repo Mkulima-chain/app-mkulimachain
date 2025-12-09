@@ -21,17 +21,33 @@ async function bootstrap() {
 
   // Enable CORS for frontend and admin
   const allowedOrigins = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL]
+    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
     : ['http://localhost:5601', 'http://localhost:5602'];
+
+  // Ajouter les origines depuis les variables d'environnement si définies
+  const adminUrl = process.env.ADMIN_URL;
+  const webUrl = process.env.WEB_URL;
+  
+  if (adminUrl && !allowedOrigins.includes(adminUrl)) {
+    allowedOrigins.push(adminUrl);
+  }
+  if (webUrl && !allowedOrigins.includes(webUrl)) {
+    allowedOrigins.push(webUrl);
+  }
 
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // Autoriser localhost et les adresses IP locales (192.168.x.x, 172.x.x.x, 10.x.x.x)
+      const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+      const isLocalIP = /^https?:\/\/(192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|10\.)/.test(origin);
+      
+      if (allowedOrigins.includes(origin) || isLocalhost || isLocalIP) {
         callback(null, true);
       } else {
+        console.warn(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },

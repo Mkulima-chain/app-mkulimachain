@@ -18,8 +18,10 @@ import {
   ShipOrderDto,
 } from '../dto/order.dto';
 import { OrderEntity } from '../entities/order.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @Controller('orders')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class OrderController {
   constructor(private readonly service: OrderService) {}
 
