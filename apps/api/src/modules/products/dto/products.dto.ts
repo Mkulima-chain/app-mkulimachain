@@ -5,148 +5,152 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  IsArray,
 } from 'class-validator';
 import { IProduct } from '../interfaces/iproducts';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateProductDto implements IProduct {
   @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
+    description: 'Référence unique (SKU)',
+    example: 'PRD-CAKAO-001',
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
-  @MaxLength(100)
+  @MaxLength(50)
+  sku: string;
+
+  @ApiProperty({
+    description: 'Nom du produit',
+    example: 'Cacao premium',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(2)
+  @MaxLength(255)
   name: string;
 
   @ApiProperty({
-    description: 'The unit of the product',
+    description: 'Unité de mesure',
     example: 'kg',
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(2)
-  @MaxLength(100)
+  @MinLength(1)
+  @MaxLength(50)
   unit: string;
 
   @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
+    description: 'Catégorie',
+    example: 'Cacao',
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
-  description: string;
+  category: string;
 
   @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
+    description: 'Description du produit',
+    example: 'Cacao biologique provenant du Nord Kivu',
   })
   @IsString()
+  @IsOptional()
+  @MinLength(2)
+  @MaxLength(500)
+  description?: string;
+
+  @ApiProperty({
+    description: 'Prix unitaire',
+    example: 12.5,
+  })
   @IsNotEmpty()
-  @MinLength(2)
-  @MaxLength(100)
-  image: string[];
-}
+  price: number;
 
-export class UpdateProductDto implements IProduct {
-  @ApiProperty({
-    description: 'The id of the product',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsNotEmpty()
-  id: string;
-
-  @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
+  @ApiPropertyOptional({
+    description: 'Devise ISO 4217',
+    example: 'USD',
   })
   @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  name: string;
+  @MaxLength(3)
+  currency?: string;
 
-  @ApiProperty({
-    description: 'The unit of the product',
-    example: 'kg',
+  @ApiPropertyOptional({
+    description: 'Stock disponible',
+    example: 150,
+  })
+  @IsOptional()
+  stock?: number;
+
+  @ApiPropertyOptional({
+    description: "Pays d'origine (ISO 3166-1 alpha-2)",
+    example: 'CD',
   })
   @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  unit: string;
+  @MaxLength(80)
+  originCountry?: string;
 
-  @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
+  @ApiPropertyOptional({
+    description: 'Produit actif',
+    example: true,
   })
-  @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  description: string;
+  isActive?: boolean;
 
-  @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
+  @ApiPropertyOptional({
+    description: 'Tags (mots-clés)',
+    example: ['bio', 'premium'],
+    type: [String],
   })
-  @IsString()
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
+  tags?: string[];
+
+  @ApiPropertyOptional({
+    description: 'URLs des images du produit',
+    example: ['https://exemple.com/image1.jpg'],
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
   image?: string[];
 }
 
-export class GetProductDto implements IProduct {
-  @ApiProperty({
-    description: 'The id of the product',
+export class UpdateProductDto extends PartialType(CreateProductDto) {}
+
+export class GetProductDto extends PartialType(CreateProductDto) {
+  @ApiPropertyOptional({
+    description: 'ID du produit',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsUUID()
   @IsOptional()
   id?: string;
 
-  @ApiProperty({
-    description: 'The name of the product',
-    example: 'Product Name',
+  @ApiPropertyOptional({
+    description: 'Recherche plein texte sur nom/description/sku',
+    example: 'cacao',
   })
   @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  name: string;
+  search?: string;
 
-  @ApiProperty({
-    description: 'The unit of the product',
-    example: 'kg',
+  @ApiPropertyOptional({
+    description: 'Prix min',
+    example: 5,
   })
-  @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  unit: string;
+  minPrice?: number;
 
-  @ApiProperty({
-    description: 'The description of the product',
-    example: 'Product Description',
+  @ApiPropertyOptional({
+    description: 'Prix max',
+    example: 20,
   })
-  @IsString()
   @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  description: string;
-
-  @ApiProperty({
-    description: 'The image of the product',
-    example: 'Product Image',
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2)
-  @MaxLength(100)
-  image?: string[];
+  maxPrice?: number;
 }

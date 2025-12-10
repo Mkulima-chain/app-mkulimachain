@@ -25,9 +25,11 @@ import {
   SupplyChainStepResponseDto,
 } from '../dto/supply-chain-step.dto';
 import { SupplyChainStepEntity } from '../entities/supply-chain-step.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('supply-chain')
 @Controller('supply-chain-steps')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class SupplyChainStepController {
   constructor(private readonly service: SupplyChainStepService) {}
 

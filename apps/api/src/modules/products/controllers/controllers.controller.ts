@@ -17,7 +17,9 @@ import {
 } from '../dto/products.dto';
 import { ProductEntity } from '../entities/entities';
 import { IProduct } from '../interfaces/iproducts';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
+@Public() // À sécuriser quand l’admin enverra le JWT
 @Controller('products')
 export class ControllersController {
   constructor(private readonly servicesService: ServicesService) {}
@@ -46,7 +48,7 @@ export class ControllersController {
 
   @Get()
   async getProducts(@Query() query: GetProductDto): Promise<ProductEntity[]> {
-    return this.servicesService.getProducts(query as Partial<IProduct>);
+    return this.servicesService.getProducts(query);
   }
 
   @Delete(':id')

@@ -3,20 +3,25 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { UserPlus, Mail, Lock, User, BookOpen } from "lucide-react"
+import { useMutation } from "@tanstack/react-query"
+import { UserPlus, Mail, Lock, User, BookOpen, Phone } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { api } from "@/lib/api-client"
+import { saveAuth } from "@/lib/auth-storage"
+import { toast } from "sonner"
 
 export default function RegisterPage() {
   const router = useRouter()
   const [formData, setFormData] = React.useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   })
-  const [isLoading, setIsLoading] = React.useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -25,22 +30,38 @@ export default function RegisterPage() {
     })
   }
 
+  const registerMutation = useMutation({
+    mutationFn: () =>
+      api.post<{
+        accessToken: string
+        refreshToken: string
+        user: { id: string; email: string; firstName: string; lastName: string; role: string }
+      }>("/auth/register", {
+        email: formData.email,
+        phone: formData.phone || undefined,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      }),
+    onSuccess: (data) => {
+      saveAuth(data)
+      toast.success("Compte créé avec succès")
+      router.push("/")
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Inscription impossible")
+    },
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas")
+      toast.error("Les mots de passe ne correspondent pas")
       return
     }
 
-    setIsLoading(true)
-
-    // Simuler une inscription
-    setTimeout(() => {
-      setIsLoading(false)
-      // Rediriger vers le dashboard après inscription
-      router.push("/")
-    }, 1000)
+    registerMutation.mutate()
   }
 
   return (
@@ -72,17 +93,36 @@ export default function RegisterPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Nom complet
+                <label htmlFor="firstName" className="text-sm font-medium">
+                  Prénom
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="name"
-                    name="name"
+                    id="firstName"
+                    name="firstName"
                     type="text"
-                    placeholder="Jean Dupont"
-                    value={formData.name}
+                    placeholder="Jean"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="pl-9"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="lastName" className="text-sm font-medium">
+                  Nom de famille
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    placeholder="Mukendi"
+                    value={formData.lastName}
                     onChange={handleChange}
                     className="pl-9"
                     required
@@ -105,6 +145,24 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     className="pl-9"
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="phone" className="text-sm font-medium">
+                  Téléphone (optionnel)
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+243812345678"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="pl-9"
                   />
                 </div>
               </div>
@@ -167,9 +225,9 @@ export default function RegisterPage() {
               <Button
                 type="submit"
                 className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
-                disabled={isLoading}
+                disabled={registerMutation.isPending}
               >
-                {isLoading ? "Création du compte..." : "Créer un compte"}
+                {registerMutation.isPending ? "Création du compte..." : "Créer un compte"}
               </Button>
             </form>
 

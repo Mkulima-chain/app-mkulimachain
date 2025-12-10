@@ -3,27 +3,52 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useMutation } from "@tanstack/react-query"
 import { LogIn, Mail, Lock, BookOpen } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { api } from "@/lib/api-client"
+import { saveAuth } from "@/lib/auth-storage"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = React.useState("")
+  const [identifier, setIdentifier] = React.useState("")
   const [password, setPassword] = React.useState("")
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+
+  const loginMutation = useMutation({
+    mutationFn: (payload: { identifier: string; password: string }) =>
+      api.post<{
+        accessToken: string
+        refreshToken: string
+        user: { 
+          id: string
+          email: string
+          firstName: string
+          lastName: string
+          role: string
+        }
+      }>("/auth/login", payload),
+    onSuccess: (data) => {
+      // Sauvegarder l'authentification et rediriger (uniquement identifiants valides)
+      saveAuth(data)
+      toast.success("Connexion réussie")
+      setErrorMessage(null)
+      router.push("/")
+    },
+    onError: (error: any) => {
+      const message = error?.message || "Identifiants invalides"
+      setErrorMessage(message)
+      toast.error(message)
+    },
+    retry: false,
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
-    // Simuler une authentification
-    setTimeout(() => {
-      setIsLoading(false)
-      // Rediriger vers le dashboard après connexion
-      router.push("/")
-    }, 1000)
+    loginMutation.mutate({ identifier, password })
   }
 
   return (
@@ -55,17 +80,17 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
+                <label htmlFor="identifier" className="text-sm font-medium">
+                  Email ou téléphone
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@mkulimachain.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="identifier"
+                    type="text"
+                    placeholder="admin@mkulimachain.com ou +243..."
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="pl-9"
                     required
                   />
@@ -109,12 +134,16 @@ export default function LoginPage() {
                 </Link>
               </div>
 
+            {errorMessage && (
+              <p className="text-sm text-red-600 text-center">{errorMessage}</p>
+            )}
+
               <Button
                 type="submit"
                 className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
-                disabled={isLoading}
+                disabled={loginMutation.isPending}
               >
-                {isLoading ? "Connexion..." : "Se connecter"}
+                {loginMutation.isPending ? "Connexion..." : "Se connecter"}
               </Button>
             </form>
 

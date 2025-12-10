@@ -8,44 +8,20 @@ import {
   Coins,
   TrendingUp,
   Activity,
+  User as UserIcon,
 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { getAuth, StoredUser } from "@/lib/auth-storage"
+import { api } from "@/lib/api-client"
 
-const stats = [
-  {
-    title: "Agriculteurs",
-    value: "1,234",
-    change: "+12.5%",
-    icon: Users,
-    color: "text-[#3A8F4C]",
-    bgColor: "bg-[#E8F5E9] dark:bg-[#3A8F4C]/20",
-  },
-  {
-    title: "Produits",
-    value: "5,678",
-    change: "+8.2%",
-    icon: Package,
-    color: "text-[#5A3E36]",
-    bgColor: "bg-[#F5F0ED] dark:bg-[#5A3E36]/20",
-  },
-  {
-    title: "Commandes",
-    value: "892",
-    change: "+15.3%",
-    icon: ShoppingCart,
-    color: "text-[#004D73]",
-    bgColor: "bg-[#E3F2FD] dark:bg-[#004D73]/20",
-  },
-  {
-    title: "Revenus",
-    value: "₿ 12,450",
-    change: "+23.1%",
-    icon: Coins,
-    color: "text-[#F2C94C]",
-    bgColor: "bg-[#FFF8E1] dark:bg-[#F2C94C]/20",
-  },
-]
+type StatsSummary = {
+  farmers: number
+  products: number
+  orders: number
+  revenueAda: number
+}
 
 const recentActivities = [
   {
@@ -83,19 +59,99 @@ const recentActivities = [
 ]
 
 export default function DashboardPage() {
+  const [user, setUser] = React.useState<StoredUser | undefined>()
+  const { data: stats } = useQuery<StatsSummary>({
+    queryKey: ["stats", "summary"],
+    queryFn: () => api.get<StatsSummary>("/stats/summary"),
+  })
+
+  React.useEffect(() => {
+    // Lecture locale uniquement côté client
+    const auth = getAuth()
+    if (auth?.user) {
+      setUser(auth.user)
+    }
+  }, [])
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Tableau de bord</h1>
-        <p className="text-muted-foreground mt-1">
-          Vue d'ensemble de votre plateforme Mkulima Chain
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Tableau de bord</h1>
+          <p className="text-muted-foreground mt-1">
+            Vue d'ensemble de votre plateforme Mkulima Chain
+          </p>
+        </div>
+        <Card className="min-w-[260px]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Utilisateur connecté
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-[#E8F5E9] flex items-center justify-center">
+              <UserIcon className="h-5 w-5 text-[#3A8F4C]" />
+            </div>
+            {user ? (
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+                {user.role && (
+                  <Badge variant="secondary" className="text-[11px]">
+                    {user.role}
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold">Non connecté</p>
+                <p className="text-xs text-muted-foreground">
+                  Connectez-vous pour voir vos infos
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
+        {[
+          {
+            title: "Agriculteurs",
+            value: stats?.farmers ?? "...",
+            icon: Users,
+            color: "text-[#3A8F4C]",
+            bgColor: "bg-[#E8F5E9] dark:bg-[#3A8F4C]/20",
+          },
+          {
+            title: "Produits",
+            value: stats?.products ?? "...",
+            icon: Package,
+            color: "text-[#5A3E36]",
+            bgColor: "bg-[#F5F0ED] dark:bg-[#5A3E36]/20",
+          },
+          {
+            title: "Commandes",
+            value: stats?.orders ?? "...",
+            icon: ShoppingCart,
+            color: "text-[#004D73]",
+            bgColor: "bg-[#E3F2FD] dark:bg-[#004D73]/20",
+          },
+          {
+            title: "Revenus (ADA)",
+            value:
+              stats?.revenueAda !== undefined
+                ? `${stats.revenueAda.toFixed(2)} ADA`
+                : "...",
+            icon: Coins,
+            color: "text-[#F2C94C]",
+            bgColor: "bg-[#FFF8E1] dark:bg-[#F2C94C]/20",
+          },
+        ].map((stat) => {
           const Icon = stat.icon
           return (
             <Card key={stat.title} className="hover:shadow-lg transition-shadow">
@@ -111,8 +167,7 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">{stat.value}</div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                   <TrendingUp className="h-3 w-3 text-[#3A8F4C]" />
-                  <span className="text-[#3A8F4C]">{stat.change}</span>
-                  <span>vs mois dernier</span>
+                  <span className="text-[#3A8F4C]">Live</span>
                 </div>
               </CardContent>
             </Card>

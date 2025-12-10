@@ -26,9 +26,11 @@ import {
 } from '../dto/cooperatives.dto';
 import { CooperativeEntity } from '../entities/entities';
 import { ICooperative } from '../interfaces/icooperative';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('cooperatives')
 @Controller('cooperatives')
+@Public() // À sécuriser quand l'auth sera activée côté admin
 export class ControllersController {
   constructor(private readonly servicesService: ServicesService) {}
 
@@ -118,7 +120,7 @@ export class ControllersController {
   async getCooperatives(
     @Query() query: GetCooperativeDto,
   ): Promise<CooperativeEntity[]> {
-    return this.servicesService.getCooperatives(query as Partial<ICooperative>);
+    return this.servicesService.getCooperatives(query);
   }
 
   @Delete(':id')

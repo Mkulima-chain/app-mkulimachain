@@ -26,18 +26,34 @@ import { useApiMutation } from "@/hooks/use-api-mutation"
 
 type Product = {
   id: string
+  sku: string
   name: string
   unit: string
-  description: string
+  category: string
+  description?: string
+  price: number
+  currency: string
+  stock: number
+  originCountry?: string
+  isActive: boolean
+  tags?: string[]
   image?: string[]
   createdAt: string
   updatedAt: string
 }
 
 type CreateProductDto = {
+  sku: string
   name: string
   unit: string
-  description: string
+  category: string
+  description?: string
+  price: number
+  currency?: string
+  stock?: number
+  originCountry?: string
+  isActive?: boolean
+  tags?: string[]
   image?: string[]
 }
 
@@ -48,16 +64,24 @@ export default function ProductsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null)
   const [formData, setFormData] = React.useState<CreateProductDto>({
+    sku: "",
     name: "",
     unit: "kg",
+    category: "",
     description: "",
+    price: 0,
+    currency: "USD",
+    stock: 0,
+    originCountry: "",
+    isActive: true,
+    tags: [],
     image: [],
   })
 
   // Fetch products
   const { data: products = [], isLoading, refetch } = useApiQuery<Product[]>(
     ["products", searchQuery],
-    `/products${searchQuery ? `?name=${encodeURIComponent(searchQuery)}` : ""}`
+    `/products${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
   )
 
   // Create mutation
@@ -103,9 +127,17 @@ export default function ProductsPage() {
 
   const handleAdd = () => {
     setFormData({
+      sku: "",
       name: "",
       unit: "kg",
+      category: "",
       description: "",
+      price: 0,
+      currency: "USD",
+      stock: 0,
+      originCountry: "",
+      isActive: true,
+      tags: [],
       image: [],
     })
     setIsAddDialogOpen(true)
@@ -114,9 +146,17 @@ export default function ProductsPage() {
   const handleEdit = (product: Product) => {
     setSelectedProduct(product)
     setFormData({
+      sku: product.sku,
       name: product.name,
       unit: product.unit,
-      description: product.description,
+      category: product.category,
+      description: product.description || "",
+      price: Number(product.price),
+      currency: product.currency,
+      stock: Number(product.stock),
+      originCountry: product.originCountry || "",
+      isActive: product.isActive,
+      tags: product.tags || [],
       image: product.image || [],
     })
     setIsEditDialogOpen(true)
@@ -167,27 +207,21 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? "..." : products.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">+8% ce mois</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoading ? "..." : products.filter(p => p.isActive).length} actifs
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Disponibles</CardTitle>
+            <CardTitle className="text-sm font-medium">Stock total</CardTitle>
             <Package className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : products.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">100% du total</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Vendus</CardTitle>
-            <Package className="h-5 w-5 text-[#5A3E36]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground mt-1">0% du total</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : products.reduce((sum, p) => sum + p.stock, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Unités disponibles</p>
           </CardContent>
         </Card>
         <Card>
@@ -196,8 +230,26 @@ export default function ProductsPage() {
             <Package className="h-5 w-5 text-[#F2C94C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₿ 0</div>
-            <p className="text-xs text-muted-foreground mt-1">+15% ce mois</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : products.reduce((sum, p) => sum + (Number(p.price) * Number(p.stock)), 0).toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoading ? "..." : products[0]?.currency || "USD"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Produits actifs</CardTitle>
+            <Package className="h-5 w-5 text-[#5A3E36]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : products.filter(p => p.isActive).length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoading ? "..." : `${Math.round((products.filter(p => p.isActive).length / products.length) * 100) || 0}% du total`}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -243,13 +295,22 @@ export default function ProductsPage() {
                   <thead className="bg-muted">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        SKU
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Produit
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Unité
+                        Catégorie
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Description
+                        Prix
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Stock
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Statut
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Actions
@@ -259,7 +320,7 @@ export default function ProductsPage() {
                   <tbody className="divide-y">
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
+                        <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                           Aucun produit trouvé
                         </td>
                       </tr>
@@ -267,13 +328,27 @@ export default function ProductsPage() {
                       products.map((product) => (
                         <tr key={product.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-mono">{product.sku}</div>
+                          </td>
+                          <td className="px-6 py-4">
                             <div className="text-sm font-medium">{product.name}</div>
+                            <div className="text-xs text-muted-foreground">{product.unit}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {product.unit}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant="outline">{product.category}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-sm">
-                            <div className="max-w-md truncate">{product.description}</div>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium">
+                              {Number(product.price).toFixed(2)} {product.currency}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm">{product.stock}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={product.isActive ? "default" : "secondary"}>
+                              {product.isActive ? "Actif" : "Inactif"}
+                            </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <Popover>
@@ -315,7 +390,7 @@ export default function ProductsPage() {
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ajouter un produit</DialogTitle>
             <DialogDescription>
@@ -324,6 +399,18 @@ export default function ProductsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="sku">SKU (Référence unique) *</Label>
+                <Input
+                  id="sku"
+                  value={formData.sku}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sku: e.target.value.toUpperCase() })
+                  }
+                  placeholder="PRD-CAKAO-001"
+                  required
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="name">Nom du produit *</Label>
                 <Input
@@ -335,20 +422,87 @@ export default function ProductsPage() {
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="unit">Unité *</Label>
-                <Input
-                  id="unit"
-                  value={formData.unit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                  placeholder="kg, g, L, etc."
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Catégorie *</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    placeholder="Cacao, Café, etc."
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="unit">Unité *</Label>
+                  <Input
+                    id="unit"
+                    value={formData.unit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, unit: e.target.value })
+                    }
+                    placeholder="kg, g, L, etc."
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="price">Prix unitaire *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="currency">Devise</Label>
+                  <Input
+                    id="currency"
+                    value={formData.currency}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value.toUpperCase() })
+                    }
+                    placeholder="USD"
+                    maxLength={3}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="stock">Stock initial</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    value={formData.stock}
+                    onChange={(e) =>
+                      setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="originCountry">Pays d'origine</Label>
+                  <Input
+                    id="originCountry"
+                    value={formData.originCountry}
+                    onChange={(e) =>
+                      setFormData({ ...formData, originCountry: e.target.value })
+                    }
+                    placeholder="CD, FR, etc."
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">Description</Label>
                 <textarea
                   id="description"
                   value={formData.description}
@@ -356,8 +510,21 @@ export default function ProductsPage() {
                     setFormData({ ...formData, description: e.target.value })
                   }
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                  required
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={formData.isActive}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="isActive" className="text-sm font-normal cursor-pointer">
+                  Produit actif
+                </Label>
               </div>
             </div>
             <DialogFooter>
@@ -390,7 +557,7 @@ export default function ProductsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier le produit</DialogTitle>
             <DialogDescription>
@@ -399,6 +566,17 @@ export default function ProductsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-sku">SKU (Référence unique) *</Label>
+                <Input
+                  id="edit-sku"
+                  value={formData.sku}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sku: e.target.value.toUpperCase() })
+                  }
+                  required
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-name">Nom du produit *</Label>
                 <Input
@@ -410,19 +588,83 @@ export default function ProductsPage() {
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-unit">Unité *</Label>
-                <Input
-                  id="edit-unit"
-                  value={formData.unit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-category">Catégorie *</Label>
+                  <Input
+                    id="edit-category"
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-unit">Unité *</Label>
+                  <Input
+                    id="edit-unit"
+                    value={formData.unit}
+                    onChange={(e) =>
+                      setFormData({ ...formData, unit: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-price">Prix unitaire *</Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-currency">Devise</Label>
+                  <Input
+                    id="edit-currency"
+                    value={formData.currency}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value.toUpperCase() })
+                    }
+                    maxLength={3}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-stock">Stock</Label>
+                  <Input
+                    id="edit-stock"
+                    type="number"
+                    min="0"
+                    value={formData.stock}
+                    onChange={(e) =>
+                      setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-originCountry">Pays d'origine</Label>
+                  <Input
+                    id="edit-originCountry"
+                    value={formData.originCountry}
+                    onChange={(e) =>
+                      setFormData({ ...formData, originCountry: e.target.value })
+                    }
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description *</Label>
+                <Label htmlFor="edit-description">Description</Label>
                 <textarea
                   id="edit-description"
                   value={formData.description}
@@ -430,8 +672,21 @@ export default function ProductsPage() {
                     setFormData({ ...formData, description: e.target.value })
                   }
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                  required
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit-isActive"
+                  checked={formData.isActive}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="edit-isActive" className="text-sm font-normal cursor-pointer">
+                  Produit actif
+                </Label>
               </div>
             </div>
             <DialogFooter>
