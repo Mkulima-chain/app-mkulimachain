@@ -78,6 +78,28 @@ export default function ProductsPage() {
     image: [],
   })
 
+  // Fonction pour générer le SKU automatiquement
+  const generateSKU = (productName: string): string => {
+    if (!productName || productName.trim() === "") {
+      return ""
+    }
+
+    // Normaliser le nom: enlever les accents, mettre en majuscules, remplacer les espaces par des tirets
+    const normalizedName = productName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Enlever les accents
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "-") // Remplacer les caractères non alphanumériques par des tirets
+      .replace(/-+/g, "-") // Remplacer les tirets multiples par un seul
+      .replace(/^-|-$/g, "") // Enlever les tirets en début et fin
+
+    // Générer un nombre unique basé sur le timestamp (3 derniers chiffres)
+    const uniqueNumber = Date.now().toString().slice(-3)
+
+    // Concaténer: SKU-NOMDUPRODUIT-NOMBREUNIQUE
+    return `SKU-${normalizedName}-${uniqueNumber}`
+  }
+
   // Fetch products
   const { data: products = [], isLoading, refetch } = useApiQuery<Product[]>(
     ["products", searchQuery],
@@ -404,21 +426,25 @@ export default function ProductsPage() {
                 <Input
                   id="sku"
                   value={formData.sku}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sku: e.target.value.toUpperCase() })
-                  }
-                  placeholder="PRD-CAKAO-001"
-                  required
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
+                  placeholder="Généré automatiquement"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Le SKU est généré automatiquement à partir du nom du produit
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="name">Nom du produit *</Label>
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newName = e.target.value
+                    const newSKU = generateSKU(newName)
+                    setFormData({ ...formData, name: newName, sku: newSKU })
+                  }}
                   required
                 />
               </div>
