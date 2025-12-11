@@ -17,6 +17,7 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { NFTModule } from './modules/nft/nft.module';
 import { SchoolFundModule } from './modules/school-fund/school-fund.module';
 import { StatsModule } from './modules/stats/stats.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { StatsModule } from './modules/stats/stats.module';
     NFTModule,
     SchoolFundModule,
     StatsModule,
+    SettingsModule,
   ],
   controllers: [],
   providers: [
@@ -60,6 +62,7 @@ import { StatsModule } from './modules/stats/stats.module';
     MarketplaceModule,
     NFTModule,
     SchoolFundModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

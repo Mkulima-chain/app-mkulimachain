@@ -20,6 +20,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
@@ -66,11 +73,11 @@ export default function ProductsPage() {
   const [formData, setFormData] = React.useState<CreateProductDto>({
     sku: "",
     name: "",
-    unit: "kg",
+    unit: "",
     category: "",
     description: "",
     price: 0,
-    currency: "USD",
+    currency: "",
     stock: 0,
     originCountry: "",
     isActive: true,
@@ -104,6 +111,20 @@ export default function ProductsPage() {
   const { data: products = [], isLoading, refetch } = useApiQuery<Product[]>(
     ["products", searchQuery],
     `/products${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Fetch categories, units, and currencies
+  const { data: categories = [] } = useApiQuery<any[]>(
+    ["categories"],
+    "/categories?activeOnly=true"
+  )
+  const { data: units = [] } = useApiQuery<any[]>(
+    ["units"],
+    "/units?activeOnly=true"
+  )
+  const { data: currencies = [] } = useApiQuery<any[]>(
+    ["currencies"],
+    "/currencies?activeOnly=true"
   )
 
   // Create mutation
@@ -151,11 +172,11 @@ export default function ProductsPage() {
     setFormData({
       sku: "",
       name: "",
-      unit: "kg",
+      unit: "",
       category: "",
       description: "",
       price: 0,
-      currency: "USD",
+      currency: "",
       stock: 0,
       originCountry: "",
       isActive: true,
@@ -451,27 +472,39 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="category">Catégorie *</Label>
-                  <Input
-                    id="category"
+                  <Select
                     value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                    placeholder="Cacao, Café, etc."
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="unit">Unité *</Label>
-                  <Input
-                    id="unit"
+                  <Select
                     value={formData.unit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, unit: e.target.value })
-                    }
-                    placeholder="kg, g, L, etc."
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une unité" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.symbol}>
+                          {unit.name} ({unit.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -491,15 +524,21 @@ export default function ProductsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="currency">Devise</Label>
-                  <Input
-                    id="currency"
+                  <Select
                     value={formData.currency}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currency: e.target.value.toUpperCase() })
-                    }
-                    placeholder="USD"
-                    maxLength={3}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une devise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.id} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -617,25 +656,39 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-category">Catégorie *</Label>
-                  <Input
-                    id="edit-category"
+                  <Select
                     value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-unit">Unité *</Label>
-                  <Input
-                    id="edit-unit"
+                  <Select
                     value={formData.unit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, unit: e.target.value })
-                    }
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une unité" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.symbol}>
+                          {unit.name} ({unit.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -655,14 +708,21 @@ export default function ProductsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-currency">Devise</Label>
-                  <Input
-                    id="edit-currency"
+                  <Select
                     value={formData.currency}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currency: e.target.value.toUpperCase() })
-                    }
-                    maxLength={3}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une devise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.id} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
