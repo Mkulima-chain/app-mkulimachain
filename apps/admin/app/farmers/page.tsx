@@ -1,62 +1,78 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Users, Search, Plus, Filter, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+  Users,
+  Search,
+  Plus,
+  Filter,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import { EditFarmerDialog } from "@/components/farmers/edit-farmer-dialog";
+import { AddFarmerDialog } from "@/components/farmers/add-farmer-dialog";
+import { DeleteFarmerDialog } from "@/components/farmers/delete-farmer-dialog";
+import { useWalletAtom } from "@/hooks/useWalletAtom";
+import { registrationStepAtom } from "@/lib/atoms/registration";
+import { useAtom } from "jotai";
 
 type Farmer = {
-  id: string
-  name: string
-  phone: string
-  walletAddress?: string
-  address: string
-  city: string
-  state: string
-  latitude: number
-  longitude: number
-  cooperativeId?: string
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  name: string;
+  phone: string;
+  walletAddress?: string;
+  address: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  cooperativeId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type CreateFarmerDto = {
-  name: string
-  phone: string
-  walletAddress?: string
-  address: string
-  city: string
-  state: string
-  latitude: number
-  longitude: number
-  cooperativeId?: string
-}
+  name: string;
+  phone: string;
+  walletAddress?: string;
+  address: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  cooperativeId?: string;
+};
 
 export default function FarmersPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedFarmer, setSelectedFarmer] = React.useState<Farmer | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const { connected, address, wallet } = useWalletAtom();
+  const [currentStep, setCurrentStep] = useAtom(registrationStepAtom);
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedFarmer, setSelectedFarmer] = React.useState<Farmer | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateFarmerDto>({
     name: "",
     phone: "",
@@ -67,13 +83,17 @@ export default function FarmersPage() {
     latitude: -4.4419,
     longitude: 15.2663,
     cooperativeId: "",
-  })
+  });
 
   // Fetch farmers
-  const { data: farmers = [], isLoading, refetch } = useApiQuery<Farmer[]>(
+  const {
+    data: farmers = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<Farmer[]>(
     ["farmers", searchQuery],
     `/farmers${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
   // Create mutation
   const createMutation = useApiMutation<Farmer, CreateFarmerDto>(
@@ -81,26 +101,26 @@ export default function FarmersPage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("Agriculteur ajouté avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Agriculteur ajouté avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<Farmer, CreateFarmerDto>(
-    (variables) => `/farmers/${selectedFarmer?.id}`,
+    () => `/farmers/${selectedFarmer?.id}`,
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Agriculteur modifié avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedFarmer(null)
-        refetch()
+        toast.success("Agriculteur modifié avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedFarmer(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -108,13 +128,13 @@ export default function FarmersPage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Agriculteur supprimé avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedFarmer(null)
-        refetch()
+        toast.success("Agriculteur supprimé avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedFarmer(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -127,12 +147,12 @@ export default function FarmersPage() {
       latitude: -4.4419,
       longitude: 15.2663,
       cooperativeId: "",
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (farmer: Farmer) => {
-    setSelectedFarmer(farmer)
+    setSelectedFarmer(farmer);
     setFormData({
       name: farmer.name,
       phone: farmer.phone,
@@ -143,47 +163,47 @@ export default function FarmersPage() {
       latitude: farmer.latitude,
       longitude: farmer.longitude,
       cooperativeId: farmer.cooperativeId || "",
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (farmer: Farmer) => {
-    setSelectedFarmer(farmer)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedFarmer(farmer);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     const data = {
       ...formData,
       latitude: parseFloat(formData.latitude.toString()),
       longitude: parseFloat(formData.longitude.toString()),
       walletAddress: formData.walletAddress || undefined,
       cooperativeId: formData.cooperativeId || undefined,
-    }
-    createMutation.mutate(data)
-  }
+    };
+    createMutation.mutate(data);
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedFarmer) return
+    e.preventDefault();
+    if (!selectedFarmer) return;
     const data = {
       ...formData,
       latitude: parseFloat(formData.latitude.toString()),
       longitude: parseFloat(formData.longitude.toString()),
       walletAddress: formData.walletAddress || undefined,
       cooperativeId: formData.cooperativeId || undefined,
-    }
-    updateMutation.mutate(data)
-  }
+    };
+    updateMutation.mutate(data);
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedFarmer) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedFarmer) return;
+    deleteMutation.mutate(undefined);
+  };
 
-  const activeFarmers = farmers
-  const pendingCount = 0 // Vous pouvez ajouter un champ status si nécessaire
+  const activeFarmers = farmers;
+  const pendingCount = 0; // Vous pouvez ajouter un champ status si nécessaire
 
   return (
     <div className="space-y-6">
@@ -204,11 +224,15 @@ export default function FarmersPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total agriculteurs</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total agriculteurs
+            </CardTitle>
             <Users className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : activeFarmers.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : activeFarmers.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">+12% ce mois</p>
           </CardContent>
         </Card>
@@ -218,7 +242,9 @@ export default function FarmersPage() {
             <Users className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : activeFarmers.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : activeFarmers.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">100% du total</p>
           </CardContent>
         </Card>
@@ -228,7 +254,9 @@ export default function FarmersPage() {
             <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : pendingCount}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : pendingCount}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">0% du total</p>
           </CardContent>
         </Card>
@@ -294,7 +322,10 @@ export default function FarmersPage() {
                   <tbody className="divide-y">
                     {activeFarmers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={5}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucun agriculteur trouvé
                         </td>
                       </tr>
@@ -303,7 +334,9 @@ export default function FarmersPage() {
                         <tr key={farmer.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium">{farmer.name}</div>
+                              <div className="text-sm font-medium">
+                                {farmer.name}
+                              </div>
                               {farmer.walletAddress && (
                                 <div className="text-xs text-muted-foreground font-mono">
                                   {farmer.walletAddress.slice(0, 20)}...
@@ -359,311 +392,33 @@ export default function FarmersPage() {
       </Card>
 
       {/* Add Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Ajouter un agriculteur</DialogTitle>
-            <DialogDescription>
-              Remplissez les informations pour ajouter un nouvel agriculteur
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitAdd}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nom complet *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Téléphone *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+243812345678"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="walletAddress">Adresse du portefeuille Cardano</Label>
-                <Input
-                  id="walletAddress"
-                  value={formData.walletAddress}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walletAddress: e.target.value })
-                  }
-                  placeholder="addr1..."
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="address">Adresse *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="city">Ville *</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="state">Province *</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="latitude">Latitude *</Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude}
-                    onChange={(e) =>
-                      setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })
-                    }
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="longitude">Longitude *</Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude}
-                    onChange={(e) =>
-                      setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
-                  </>
-                ) : (
-                  "Ajouter"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddFarmerDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onSubmit={handleSubmitAdd}
+        isPending={createMutation.isPending}
+      />
 
       {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifier l'agriculteur</DialogTitle>
-            <DialogDescription>
-              Modifiez les informations de l'agriculteur
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitEdit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">Nom complet *</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-phone">Téléphone *</Label>
-                <Input
-                  id="edit-phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-walletAddress">Adresse du portefeuille Cardano</Label>
-                <Input
-                  id="edit-walletAddress"
-                  value={formData.walletAddress}
-                  onChange={(e) =>
-                    setFormData({ ...formData, walletAddress: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-address">Adresse *</Label>
-                <Input
-                  id="edit-address"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-city">Ville *</Label>
-                <Input
-                  id="edit-city"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-state">Province *</Label>
-                <Input
-                  id="edit-state"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-latitude">Latitude *</Label>
-                  <Input
-                    id="edit-latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude}
-                    onChange={(e) =>
-                      setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })
-                    }
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-longitude">Longitude *</Label>
-                  <Input
-                    id="edit-longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude}
-                    onChange={(e) =>
-                      setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={updateMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  "Enregistrer"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditFarmerDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onSubmit={handleSubmitEdit}
+        isPending={updateMutation.isPending}
+      />
 
       {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Supprimer l'agriculteur</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer{" "}
-              <strong>{selectedFarmer?.name}</strong> ? Cette action est
-              irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={deleteMutation.isPending}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteFarmerDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        farmerName={selectedFarmer?.name || null}
+        onConfirm={handleConfirmDelete}
+        isPending={deleteMutation.isPending}
+      />
     </div>
-  )
+  );
 }

@@ -1,80 +1,84 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Wallet, Search, Plus, Edit, Trash2, MoreVertical, Loader2, TrendingUp, Activity } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+  Wallet,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+  TrendingUp,
+  Activity,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import {
+  AddWalletDialog,
+  OwnerType,
+  type CreateWalletDto,
+} from "@/components/wallet/add-wallet-dialog";
+import {
+  EditWalletDialog,
+  type UpdateWalletDto,
+} from "@/components/wallet/edit-wallet-dialog";
+import { DeleteWalletDialog } from "@/components/wallet/delete-wallet-dialog";
 
-enum OwnerType {
-  FARMER = "farmer",
-  BUYER = "buyer",
-  COOPERATIVE = "cooperative",
-}
+export { OwnerType };
 
 type WalletType = {
-  id: string
-  ownerType: OwnerType
-  ownerId: string
-  adaAddress: string
-  mobileMoneyNumber?: string
-  balanceADA: number
-  createdAt: string
-  updatedAt: string
-}
-
-type CreateWalletDto = {
-  ownerType: OwnerType
-  ownerId: string
-  adaAddress: string
-  mobileMoneyNumber?: string
-  balanceADA?: number
-}
-
-type UpdateWalletDto = {
-  adaAddress?: string
-  mobileMoneyNumber?: string
-  balanceADA?: number
-}
+  id: string;
+  ownerType: OwnerType;
+  ownerId: string;
+  adaAddress: string;
+  mobileMoneyNumber?: string;
+  balanceADA: number;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default function WalletPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedWallet, setSelectedWallet] = React.useState<WalletType | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedWallet, setSelectedWallet] = React.useState<WalletType | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateWalletDto>({
     ownerType: OwnerType.FARMER,
     ownerId: "",
     adaAddress: "",
     mobileMoneyNumber: "",
     balanceADA: 0,
-  })
-  const [updateData, setUpdateData] = React.useState<UpdateWalletDto>({})
+  });
+  const [updateData, setUpdateData] = React.useState<UpdateWalletDto>({});
 
   // Fetch wallets
-  const { data: wallets = [], isLoading, refetch } = useApiQuery<WalletType[]>(
+  const {
+    data: wallets = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<WalletType[]>(
     ["wallets", searchQuery],
     `/wallets${searchQuery ? `?adaAddress=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
   // Create mutation
   const createMutation = useApiMutation<WalletType, CreateWalletDto>(
@@ -82,12 +86,12 @@ export default function WalletPage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("Portefeuille ajouté avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Portefeuille ajouté avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<WalletType, UpdateWalletDto>(
@@ -95,13 +99,13 @@ export default function WalletPage() {
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Portefeuille modifié avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedWallet(null)
-        refetch()
+        toast.success("Portefeuille modifié avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedWallet(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -109,13 +113,13 @@ export default function WalletPage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Portefeuille supprimé avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedWallet(null)
-        refetch()
+        toast.success("Portefeuille supprimé avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedWallet(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -124,58 +128,60 @@ export default function WalletPage() {
       adaAddress: "",
       mobileMoneyNumber: "",
       balanceADA: 0,
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (wallet: WalletType) => {
-    setSelectedWallet(wallet)
+    setSelectedWallet(wallet);
     setUpdateData({
       adaAddress: wallet.adaAddress,
       mobileMoneyNumber: wallet.mobileMoneyNumber,
       balanceADA: wallet.balanceADA,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (wallet: WalletType) => {
-    setSelectedWallet(wallet)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedWallet(wallet);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     createMutation.mutate({
       ...formData,
       balanceADA: formData.balanceADA || 0,
-    })
-  }
+    });
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedWallet) return
+    e.preventDefault();
+    if (!selectedWallet) return;
     updateMutation.mutate({
       ...updateData,
-      balanceADA: updateData.balanceADA ? parseFloat(updateData.balanceADA.toString()) : undefined,
-    })
-  }
+      balanceADA: updateData.balanceADA
+        ? parseFloat(updateData.balanceADA.toString())
+        : undefined,
+    });
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedWallet) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedWallet) return;
+    deleteMutation.mutate(undefined);
+  };
 
   const getOwnerTypeLabel = (type: OwnerType) => {
     const labels: Record<OwnerType, string> = {
       [OwnerType.FARMER]: "Agriculteur",
       [OwnerType.BUYER]: "Acheteur",
       [OwnerType.COOPERATIVE]: "Coopérative",
-    }
-    return labels[type] || type
-  }
+    };
+    return labels[type] || type;
+  };
 
-  const totalBalance = wallets.reduce((sum, w) => sum + w.balanceADA, 0)
-  const activeWallets = wallets.filter((w) => w.balanceADA > 0)
+  const totalBalance = wallets.reduce((sum, w) => sum + w.balanceADA, 0);
+  const activeWallets = wallets.filter((w) => w.balanceADA > 0);
 
   return (
     <div className="space-y-6">
@@ -196,12 +202,18 @@ export default function WalletPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Portefeuilles actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Portefeuilles actifs
+            </CardTitle>
             <Wallet className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : activeWallets.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Sur {wallets.length} total</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : activeWallets.length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Sur {wallets.length} total
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -210,17 +222,23 @@ export default function WalletPage() {
             <TrendingUp className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₿ {isLoading ? "..." : totalBalance.toFixed(2)}</div>
+            <div className="text-2xl font-bold">
+              ₿ {isLoading ? "..." : totalBalance.toFixed(2)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">En circulation</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total portefeuilles</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total portefeuilles
+            </CardTitle>
             <Activity className="h-5 w-5 text-[#004D73]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : wallets.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : wallets.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Enregistrés</p>
           </CardContent>
         </Card>
@@ -282,7 +300,10 @@ export default function WalletPage() {
                   <tbody className="divide-y">
                     {wallets.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={5}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucun portefeuille trouvé
                         </td>
                       </tr>
@@ -290,7 +311,9 @@ export default function WalletPage() {
                       wallets.map((wallet) => (
                         <tr key={wallet.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium">{getOwnerTypeLabel(wallet.ownerType)}</div>
+                            <div className="text-sm font-medium">
+                              {getOwnerTypeLabel(wallet.ownerType)}
+                            </div>
                             <div className="text-xs text-muted-foreground font-mono">
                               {wallet.ownerId.slice(0, 8)}...
                             </div>
@@ -343,217 +366,33 @@ export default function WalletPage() {
       </Card>
 
       {/* Add Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Ajouter un portefeuille</DialogTitle>
-            <DialogDescription>
-              Remplissez les informations pour ajouter un nouveau portefeuille
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitAdd}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="ownerType">Type de propriétaire *</Label>
-                <select
-                  id="ownerType"
-                  value={formData.ownerType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ownerType: e.target.value as OwnerType })
-                  }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                  required
-                >
-                  <option value={OwnerType.FARMER}>Agriculteur</option>
-                  <option value={OwnerType.BUYER}>Acheteur</option>
-                  <option value={OwnerType.COOPERATIVE}>Coopérative</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="ownerId">ID du propriétaire *</Label>
-                <Input
-                  id="ownerId"
-                  value={formData.ownerId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ownerId: e.target.value })
-                  }
-                  placeholder="UUID du propriétaire"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="adaAddress">Adresse Cardano *</Label>
-                <Input
-                  id="adaAddress"
-                  value={formData.adaAddress}
-                  onChange={(e) =>
-                    setFormData({ ...formData, adaAddress: e.target.value })
-                  }
-                  placeholder="addr1..."
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="mobileMoneyNumber">Numéro Mobile Money</Label>
-                <Input
-                  id="mobileMoneyNumber"
-                  value={formData.mobileMoneyNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mobileMoneyNumber: e.target.value })
-                  }
-                  placeholder="+243812345678"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="balanceADA">Solde initial (ADA)</Label>
-                <Input
-                  id="balanceADA"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.balanceADA}
-                  onChange={(e) =>
-                    setFormData({ ...formData, balanceADA: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
-                  </>
-                ) : (
-                  "Ajouter"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddWalletDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onSubmit={handleSubmitAdd}
+        isPending={createMutation.isPending}
+      />
 
       {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Modifier le portefeuille</DialogTitle>
-            <DialogDescription>
-              Modifiez les informations du portefeuille
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitEdit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-adaAddress">Adresse Cardano</Label>
-                <Input
-                  id="edit-adaAddress"
-                  value={updateData.adaAddress || ""}
-                  onChange={(e) =>
-                    setUpdateData({ ...updateData, adaAddress: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-mobileMoneyNumber">Numéro Mobile Money</Label>
-                <Input
-                  id="edit-mobileMoneyNumber"
-                  value={updateData.mobileMoneyNumber || ""}
-                  onChange={(e) =>
-                    setUpdateData({ ...updateData, mobileMoneyNumber: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-balanceADA">Solde (ADA)</Label>
-                <Input
-                  id="edit-balanceADA"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={updateData.balanceADA || ""}
-                  onChange={(e) =>
-                    setUpdateData({ ...updateData, balanceADA: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={updateMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  "Enregistrer"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditWalletDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        formData={updateData}
+        onFormDataChange={setUpdateData}
+        onSubmit={handleSubmitEdit}
+        isPending={updateMutation.isPending}
+      />
 
       {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Supprimer le portefeuille</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce portefeuille ? Cette action est
-              irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={deleteMutation.isPending}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteWalletDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        walletAddress={selectedWallet?.adaAddress || null}
+        onConfirm={handleConfirmDelete}
+        isPending={deleteMutation.isPending}
+      />
     </div>
-  )
+  );
 }

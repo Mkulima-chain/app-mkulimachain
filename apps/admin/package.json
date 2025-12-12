@@ -10,6 +10,8 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@cardano-sdk/core": "^0.46.11",
+    "@meshsdk/core": "1.9.0-beta.87",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
@@ -21,8 +23,9 @@
     "@tanstack/react-query": "^5.90.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jotai": "^2.16.0",
     "lucide-react": "^0.555.0",
-    "next": "16.0.3",
+    "next": "16.0.10",
     "next-themes": "^0.4.6",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -36,9 +39,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.3",
+    "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
 }
-
