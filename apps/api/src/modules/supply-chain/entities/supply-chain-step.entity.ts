@@ -16,6 +16,9 @@ export class SupplyChainStepEntity implements ISupplyChainStep {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'uuid' })
+  batchId!: string;
+
   @ManyToOne(() => BatchEntity, (batch) => batch.supplyChainSteps)
   @JoinColumn({ name: 'batchId' })
   batch!: BatchEntity;

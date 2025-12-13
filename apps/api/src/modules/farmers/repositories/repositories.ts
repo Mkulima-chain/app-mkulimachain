@@ -30,7 +30,38 @@ export class RepositoriesService {
     return this.farmerRepository.findOne({ where: { id } });
   }
   async getFarmers(farmer: Partial<IFarmer>): Promise<FarmerEntity[]> {
-    return this.farmerRepository.find({ where: farmer });
+    // Filtrer les propriétés qui ne sont pas des champs simples de la table
+    // (exclure les relations et les tableaux)
+    const whereClause: any = {};
+    const simpleFields = [
+      'id',
+      'name',
+      'email',
+      'phone',
+      'location',
+      'status',
+      'gender',
+      'dateOfBirth',
+      'photoUrl',
+      'walletAddress',
+      'cooperativeId',
+      'verified',
+      'verifiedAt',
+      'verifiedBy',
+      'registrationNumber',
+      'foundedDate',
+      'notes',
+      'latitude',
+      'longitude',
+    ];
+    
+    for (const key of simpleFields) {
+      if (key in farmer && farmer[key as keyof IFarmer] !== undefined) {
+        whereClause[key] = farmer[key as keyof IFarmer];
+      }
+    }
+    
+    return this.farmerRepository.find({ where: whereClause });
   }
 
   async deleteFarmer(id: string): Promise<void> {

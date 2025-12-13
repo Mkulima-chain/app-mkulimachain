@@ -10,19 +10,27 @@ import {
 } from 'typeorm';
 import { INFTPurchase } from '../interfaces/inft-purchase';
 import { NFTEntity } from './nft.entity';
+import { UserEntity } from '@/modules/auth/entities/user.entity';
 
 @Entity('nft_purchases')
 export class NFTPurchaseEntity implements INFTPurchase {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => NFTEntity, (nft) => nft.purchases)
-  @JoinColumn({ name: 'nftId' })
-  nft!: NFTEntity;
+  @Column({ type: 'uuid' })
+  nftId!: string;
 
   @Index()
   @Column({ type: 'uuid' })
   buyerId!: string;
+
+  @ManyToOne(() => NFTEntity, (nft) => nft.purchases)
+  @JoinColumn({ name: 'nftId' })
+  nft!: NFTEntity;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'buyerId' })
+  buyer?: UserEntity;
 
   @Column({ type: 'decimal', precision: 18, scale: 6 })
   amountPaid!: number;

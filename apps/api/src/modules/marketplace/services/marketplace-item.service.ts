@@ -30,7 +30,7 @@ export class MarketplaceItemService {
 
   async findAll(
     query: GetMarketplaceItemDto,
-  ): Promise<MarketplaceItemEntity[]> {
+  ): Promise<{ data: MarketplaceItemEntity[]; total: number; page: number; limit: number; totalPages: number }> {
     return this.repository.findAll(query);
   }
 
@@ -116,5 +116,75 @@ export class MarketplaceItemService {
   async delete(id: string): Promise<void> {
     await this.findById(id);
     await this.repository.delete(id);
+  }
+
+  async getGlobalStats(): Promise<{
+    total: number;
+    active: number;
+    draft: number;
+    soldOut: number;
+    archived: number;
+    totalStock: number;
+    totalValue: number;
+    averageRating: number;
+    featured: number;
+  }> {
+    const [
+      total,
+      active,
+      draft,
+      soldOut,
+      archived,
+      featured,
+    ] = await Promise.all([
+      this.repository.count(),
+      this.repository.countByStatus(MarketplaceItemStatus.ACTIVE),
+      this.repository.countByStatus(MarketplaceItemStatus.DRAFT),
+      this.repository.countByStatus(MarketplaceItemStatus.SOLD_OUT),
+      this.repository.countByStatus(MarketplaceItemStatus.ARCHIVED),
+      this.repository.count({ featured: true }),
+    ]);
+
+    // Calculer le stock total et la valeur totale - utiliser une requête directe
+    const items = await this.repository.findAllForStats();
+    const totalStock = items.reduce((sum, item) => sum + Number(item.stockKg || 0), 0);
+    const totalValue = items.reduce((sum, item) => sum + Number(item.priceADA || 0) * Number(item.stockKg || 0), 0);
+    
+    // Calculer la note moyenne
+    const ratedItems = items.filter(item => item.rating !== null && item.rating !== undefined);
+    const averageRating = ratedItems.length > 0
+      ? ratedItems.reduce((sum, item) => sum + Number(item.rating || 0), 0) / ratedItems.length
+      : 0;
+
+    return {
+      total,
+      active,
+      draft,
+      soldOut,
+      archived,
+      totalStock: parseFloat(totalStock.toFixed(2)),
+      totalValue: parseFloat(totalValue.toFixed(6)),
+      averageRating: parseFloat(averageRating.toFixed(2)),
+      featured,
+    };
+  }
+
+  async getStatsByFarmer(farmerId: string): Promise<{
+    total: number;
+    active: number;
+    totalStock: number;
+    totalValue: number;
+  }> {
+    const items = await this.repository.findByFarmerId(farmerId);
+    const active = items.filter(item => item.status === MarketplaceItemStatus.ACTIVE);
+    const totalStock = items.reduce((sum, item) => sum + Number(item.stockKg || 0), 0);
+    const totalValue = items.reduce((sum, item) => sum + Number(item.priceADA || 0) * Number(item.stockKg || 0), 0);
+
+    return {
+      total: items.length,
+      active: active.length,
+      totalStock: parseFloat(totalStock.toFixed(2)),
+      totalValue: parseFloat(totalValue.toFixed(6)),
+    };
   }
 }

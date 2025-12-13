@@ -10,6 +10,7 @@ import { OrderService } from './services/order.service';
 import { OrderController } from './controllers/order.controller';
 import { BatchEntity } from '@/modules/batch/entities/batch.entity';
 import { FarmerEntity } from '@/modules/farmers/entities/entities';
+import { CooperativeEntity } from '@/modules/cooperatives/entities/entities';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { FarmerEntity } from '@/modules/farmers/entities/entities';
       OrderEntity,
       BatchEntity,
       FarmerEntity,
+      CooperativeEntity,
     ]),
   ],
   controllers: [MarketplaceItemController, OrderController],

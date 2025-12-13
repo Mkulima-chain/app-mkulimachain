@@ -17,6 +17,10 @@ export class CreditScoreEntity implements ICreditScore {
   id!: string;
 
   @Index({ unique: true })
+  @Column({ type: 'uuid', unique: true })
+  farmerId!: string;
+
+  @Index({ unique: true })
   @OneToOne(() => FarmerEntity, (farmer) => farmer.creditScore)
   @JoinColumn({ name: 'farmerId' })
   farmer!: FarmerEntity;

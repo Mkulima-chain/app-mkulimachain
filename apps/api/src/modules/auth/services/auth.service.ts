@@ -102,6 +102,11 @@ export class AuthService {
     };
   }
 
+  async findAll(): Promise<UserResponseDto[]> {
+    const users = await this.userRepository.findAll();
+    return users.map((user) => this.mapToResponseDto(user));
+  }
+
   async getProfile(userId: string): Promise<UserResponseDto> {
     const user = await this.userRepository.findById(userId);
     if (!user) {

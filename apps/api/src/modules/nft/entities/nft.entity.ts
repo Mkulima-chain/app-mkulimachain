@@ -4,6 +4,8 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -15,6 +17,7 @@ import {
   IRevenueDistribution,
 } from '../interfaces/inft';
 import { NFTPurchaseEntity } from './nft-purchase.entity';
+import { UserEntity } from '@/modules/auth/entities/user.entity';
 
 @Entity('nfts')
 export class NFTEntity implements INFT {
@@ -24,6 +27,10 @@ export class NFTEntity implements INFT {
   @Index()
   @Column({ type: 'uuid' })
   creatorId!: string;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'creatorId' })
+  creator?: UserEntity;
 
   @Index()
   @Column({ type: 'enum', enum: NFTType })

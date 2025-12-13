@@ -9,6 +9,8 @@ import {
   Put,
   Query,
   HttpStatus,
+  HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,13 +26,19 @@ import {
   UpdateCooperativeDto,
   CooperativeResponseDto,
 } from '../dto/cooperatives.dto';
-import { CooperativeEntity } from '../entities/entities';
-import { ICooperative } from '../interfaces/icooperative';
+import {
+  CooperativeEntity,
+  CooperativeStatus,
+} from '../entities/entities';
 import { Public } from '@/modules/auth/decorators/public.decorator';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
+import { UserEntity } from '@/modules/auth/entities/user.entity';
 
 @ApiTags('cooperatives')
 @Controller('cooperatives')
-@Public() // À sécuriser quand l'auth sera activée côté admin
+@Public() // Autorise l'accès public (dev). À sécuriser avec JWT quand prêt.
 export class ControllersController {
   constructor(private readonly servicesService: ServicesService) {}
 
@@ -110,20 +118,53 @@ export class ControllersController {
   @Get()
   @ApiOperation({
     summary: 'Lister les coopératives',
-    description: 'Récupère la liste des coopératives avec filtres optionnels',
+    description: 'Récupère la liste des coopératives avec filtres optionnels et pagination',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liste des coopératives',
-    type: [CooperativeResponseDto],
+    description: 'Liste des coopératives avec pagination',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/CooperativeResponseDto' },
+        },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+        totalPages: { type: 'number' },
+      },
+    },
   })
-  async getCooperatives(
-    @Query() query: GetCooperativeDto,
-  ): Promise<CooperativeEntity[]> {
+  async getCooperatives(@Query() query: GetCooperativeDto) {
     return this.servicesService.getCooperatives(query);
   }
 
+  @Get(':id/stats')
+  @ApiOperation({
+    summary: 'Obtenir les statistiques d\'une coopérative',
+    description: 'Récupère les statistiques détaillées d\'une coopérative',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID de la coopérative',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques de la coopérative',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Coopérative non trouvée',
+  })
+  async getCooperativeStats(@Param('id', ParseUUIDPipe) id: string) {
+    return this.servicesService.getCooperativeStats(id);
+  }
+
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Supprimer une coopérative',
     description: 'Supprime une coopérative (soft delete)',
@@ -134,7 +175,7 @@ export class ControllersController {
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: HttpStatus.NO_CONTENT,
     description: 'Coopérative supprimée',
   })
   @ApiResponse({
@@ -145,5 +186,91 @@ export class ControllersController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<void> {
     return this.servicesService.deleteCooperative(id);
+  }
+
+  @Post(':id/verify')
+  // @UseGuards(JwtAuthGuard) // Temporairement désactivé pour le développement
+  @Public() // Temporairement public pour le développement
+  @ApiOperation({
+    summary: 'Vérifier une coopérative',
+    description: 'Marque une coopérative comme vérifiée par un administrateur',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID de la coopérative',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Coopérative vérifiée',
+    type: CooperativeResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Coopérative non trouvée',
+  })
+  async verifyCooperative(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: UserEntity,
+  ) {
+    // Pour le développement : utiliser null si aucun utilisateur n'est fourni
+    // En production, décommentez @UseGuards(JwtAuthGuard) et retirez @Public()
+    const verifiedBy = user?.id || null;
+
+    if (!user) {
+      this.servicesService['logger']?.warn?.(
+        'Vérification effectuée sans authentification (mode développement)',
+      );
+    }
+
+    return this.servicesService.verifyCooperative(id, verifiedBy);
+  }
+
+  @Put(':id/status')
+  // @UseGuards(JwtAuthGuard) // Temporairement désactivé pour le développement
+  @Public() // Temporairement public pour le développement
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mettre à jour le statut d\'une coopérative',
+    description: 'Change le statut d\'une coopérative (active, inactive, suspended, etc.)',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID de la coopérative',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: Object.values(CooperativeStatus),
+          example: CooperativeStatus.ACTIVE,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statut mis à jour',
+    type: CooperativeResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Coopérative non trouvée',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Statut invalide',
+  })
+  async updateCooperativeStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status') status: CooperativeStatus,
+  ) {
+    if (!status) {
+      throw new BadRequestException('Le statut est requis');
+    }
+    return this.servicesService.updateCooperativeStatus(id, status);
   }
 }

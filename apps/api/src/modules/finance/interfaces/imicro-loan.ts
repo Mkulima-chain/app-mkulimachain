@@ -9,6 +9,7 @@ export enum LoanStatus {
 
 export interface IMicroLoan {
   id: string;
+  farmerId: string;
   farmer: IFarmer;
   amountADA: number;
   interestRate: number;

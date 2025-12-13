@@ -27,6 +27,8 @@ export interface IMobileMoneyTransaction {
   type: TransactionType;
   transactionRef?: string;
   failureReason?: string;
+  processedAt?: Date;
+  externalTransactionId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

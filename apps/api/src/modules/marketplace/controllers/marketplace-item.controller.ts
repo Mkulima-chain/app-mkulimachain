@@ -9,6 +9,7 @@ import {
   Query,
   ParseUUIDPipe,
   HttpStatus,
+  ValidationPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,9 +27,11 @@ import {
   MarketplaceItemResponseDto,
 } from '../dto/marketplace-item.dto';
 import { MarketplaceItemEntity } from '../entities/marketplace-item.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('marketplace')
 @Controller('marketplace')
+@Public() // Autorise l'accès public (dev). À sécuriser avec JWT quand prêt.
 export class MarketplaceItemController {
   constructor(private readonly service: MarketplaceItemService) {}
 
@@ -52,16 +55,33 @@ export class MarketplaceItemController {
   @Get()
   @ApiOperation({
     summary: 'Lister les articles',
-    description: 'Récupère la liste des articles avec filtres',
+    description: 'Récupère la liste des articles avec filtres et pagination',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liste des articles',
-    type: [MarketplaceItemResponseDto],
+    description: 'Liste paginée des articles',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/MarketplaceItemResponseDto' } },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+        totalPages: { type: 'number' },
+      },
+    },
   })
   async findAll(
-    @Query() query: GetMarketplaceItemDto,
-  ): Promise<MarketplaceItemEntity[]> {
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+        forbidNonWhitelisted: false,
+        skipMissingProperties: true,
+      }),
+    )
+    query: GetMarketplaceItemDto,
+  ): Promise<{ data: MarketplaceItemEntity[]; total: number; page: number; limit: number; totalPages: number }> {
     return this.service.findAll(query);
   }
 
@@ -219,5 +239,60 @@ export class MarketplaceItemController {
   })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Get('stats/global')
+  @ApiOperation({
+    summary: 'Statistiques globales',
+    description: 'Récupère les statistiques globales du marketplace',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques globales',
+    schema: {
+      type: 'object',
+      properties: {
+        total: { type: 'number' },
+        active: { type: 'number' },
+        draft: { type: 'number' },
+        soldOut: { type: 'number' },
+        archived: { type: 'number' },
+        totalStock: { type: 'number' },
+        totalValue: { type: 'number' },
+        averageRating: { type: 'number' },
+        featured: { type: 'number' },
+      },
+    },
+  })
+  async getGlobalStats() {
+    return this.service.getGlobalStats();
+  }
+
+  @Get('stats/farmer/:farmerId')
+  @ApiOperation({
+    summary: 'Statistiques par vendeur',
+    description: 'Récupère les statistiques des articles d\'un vendeur',
+  })
+  @ApiParam({
+    name: 'farmerId',
+    description: "ID de l'agriculteur",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques du vendeur',
+    schema: {
+      type: 'object',
+      properties: {
+        total: { type: 'number' },
+        active: { type: 'number' },
+        totalStock: { type: 'number' },
+        totalValue: { type: 'number' },
+      },
+    },
+  })
+  async getStatsByFarmer(
+    @Param('farmerId', ParseUUIDPipe) farmerId: string,
+  ) {
+    return this.service.getStatsByFarmer(farmerId);
   }
 }

@@ -17,6 +17,9 @@ export class MicroLoanEntity implements IMicroLoan {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'uuid' })
+  farmerId!: string;
+
   @ManyToOne(() => FarmerEntity, (farmer) => farmer.loans)
   @JoinColumn({ name: 'farmerId' })
   farmer!: FarmerEntity;

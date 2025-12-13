@@ -52,6 +52,12 @@ export class MobileMoneyTransactionEntity implements IMobileMoneyTransaction {
   @Column({ type: 'text', nullable: true })
   failureReason?: string;
 
+  @Column({ type: 'timestamp', nullable: true })
+  processedAt?: Date;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  externalTransactionId?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

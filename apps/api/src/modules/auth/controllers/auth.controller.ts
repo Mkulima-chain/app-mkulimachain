@@ -240,4 +240,19 @@ export class AuthController {
       `${frontendUrl}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`,
     );
   }
+
+  @Public()
+  @Get('users')
+  @ApiOperation({
+    summary: 'Lister les utilisateurs',
+    description: 'Récupère la liste de tous les utilisateurs (pour développement/admin)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Liste des utilisateurs',
+    type: [UserResponseDto],
+  })
+  async getUsers(): Promise<UserResponseDto[]> {
+    return this.authService.findAll();
+  }
 }

@@ -9,6 +9,7 @@ export enum StepType {
 
 export interface ISupplyChainStep {
   id: string;
+  batchId: string;
   batch: IBatch;
   stepType: StepType;
   timestamp: Date;
