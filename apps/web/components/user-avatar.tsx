@@ -1,29 +1,37 @@
-"use client"
+"use client";
 
-import { useSession, signOut } from "next-auth/react"
-import { User, Settings, LogOut, ChevronDown, LayoutDashboard } from "lucide-react"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
+import { useSession, signOut } from "next-auth/react";
+import {
+  User,
+  Settings,
+  LogOut,
+  ChevronDown,
+  LayoutDashboard,
+} from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export function UserAvatar() {
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession();
 
   if (status === "loading") {
-    return (
-      <div className="size-9 rounded-full bg-muted animate-pulse" />
-    )
+    return <div className="size-9 rounded-full bg-muted animate-pulse" />;
   }
 
   if (!session?.user) {
-    return null
+    return null;
   }
 
-  const user = session.user
-  const hasImage = user.image && user.image.trim() !== ""
+  const user = session.user;
+  const hasImage = user.image && user.image.trim() !== "";
   const initials = user.name
     ? user.name
         .split(" ")
@@ -31,7 +39,7 @@ export function UserAvatar() {
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : user.email?.[0].toUpperCase() || "U"
+    : user.email?.[0].toUpperCase() || "U";
 
   return (
     <Popover>
@@ -47,8 +55,8 @@ export function UserAvatar() {
         >
           <Avatar className="size-7 border-2 border-[#3A8F4C]/20 dark:border-white/20">
             {hasImage && (
-              <AvatarImage 
-                src={user.image!} 
+              <AvatarImage
+                src={user.image!}
                 alt={user.name || "User"}
                 className="object-cover"
               />
@@ -58,9 +66,13 @@ export function UserAvatar() {
             </AvatarFallback>
           </Avatar>
           <div className="hidden sm:flex flex-col items-start min-w-0">
-            <span className="text-xs font-semibold text-[#5A3E36] dark:text-white/90 truncate max-w-[120px]">
+            <Link
+              href="/profile"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs font-semibold text-[#5A3E36] dark:text-white/90 truncate max-w-[120px] hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors"
+            >
               {user.name || "Utilisateur"}
-            </span>
+            </Link>
             <span className="text-[10px] text-[#004D73]/60 dark:text-white/60 truncate max-w-[120px]">
               {user.email}
             </span>
@@ -75,8 +87,8 @@ export function UserAvatar() {
             <div className="flex items-center gap-3">
               <Avatar className="size-10 border-2 border-[#3A8F4C]/20 dark:border-white/20">
                 {hasImage && (
-                  <AvatarImage 
-                    src={user.image!} 
+                  <AvatarImage
+                    src={user.image!}
                     alt={user.name || "User"}
                     className="object-cover"
                   />
@@ -86,9 +98,12 @@ export function UserAvatar() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#5A3E36] dark:text-white truncate">
+                <Link
+                  href="/profile"
+                  className="text-sm font-semibold text-[#5A3E36] dark:text-white truncate hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors block"
+                >
                   {user.name || "Utilisateur"}
-                </p>
+                </Link>
                 <p className="text-xs text-[#004D73]/70 dark:text-white/60 truncate">
                   {user.email}
                 </p>
@@ -142,6 +157,5 @@ export function UserAvatar() {
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-

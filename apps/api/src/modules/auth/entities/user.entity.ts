@@ -19,7 +19,7 @@ export class UserEntity implements IUser {
   email!: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   phone?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -66,13 +66,13 @@ export class UserEntity implements IUser {
   googleId?: string;
 
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 150, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   walletAddress?: string;
 
   @Column({ type: 'timestamp', nullable: true })
   lastLogin?: Date;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   refreshToken?: string;
 
   @CreateDateColumn()

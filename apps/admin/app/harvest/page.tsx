@@ -1,67 +1,73 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
+import { CalendarClock, Loader2, Plus, Search } from "lucide-react";
 import {
-  CalendarClock,
-  Edit,
-  Leaf,
-  Loader2,
-  MoreVertical,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import { AddHarvestDialog } from "./add-harvest-dialog";
+import { EditHarvestDialog } from "./edit-harvest-dialog";
+import { DeleteHarvestDialog } from "./delete-harvest-dialog";
+import { HarvestActionsMenu } from "./harvest-actions-menu";
 
 type Harvest = {
-  id: string
-  farmerId?: string
-  productId?: string
-  farmer?: { id: string }
-  product?: { id: string }
-  quantity: number
-  harvestAt: string
-  latitude?: number
-  longitude?: number
-  proofHash: string
-  createdAt: string
-}
+  id: string;
+  farmerId?: string;
+  productId?: string;
+  farmer?: { id: string };
+  product?: { id: string };
+  quantity: number;
+  harvestAt: string;
+  latitude?: number;
+  longitude?: number;
+  proofHash: string;
+  createdAt: string;
+};
 
 type CreateHarvestDto = {
-  farmerId: string
-  productId: string
-  quantity: number
-  harvestAt: string
-  latitude?: number
-  longitude?: number
-  proofHash: string
-}
+  farmerId: string;
+  productId: string;
+  quantity: number;
+  harvestAt: string;
+  latitude?: number;
+  longitude?: number;
+  proofHash: string;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  price: number;
+  stock: number;
+};
+
+type Farmer = {
+  id: string;
+  name: string;
+  phone: string;
+  city: string;
+  state: string;
+};
 
 export default function HarvestPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedHarvest, setSelectedHarvest] = React.useState<Harvest | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedHarvest, setSelectedHarvest] = React.useState<Harvest | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateHarvestDto>({
     farmerId: "",
     productId: "",
@@ -70,50 +76,64 @@ export default function HarvestPage() {
     latitude: undefined,
     longitude: undefined,
     proofHash: "",
-  })
+  });
 
-  const { data: harvests = [], isLoading, refetch } = useApiQuery<Harvest[]>(
+  const {
+    data: harvests = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<Harvest[]>(
     ["harvests", searchQuery],
     `/harvests${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
+
+  // Récupérer la liste des produits
+  const { data: products = [] } = useApiQuery<Product[]>(
+    ["products"],
+    "/products"
+  );
+
+  const { data: farmers = [] } = useApiQuery<Farmer[]>(["farmers"], "/farmers");
+
+  console.log(farmers);
 
   const createMutation = useApiMutation<Harvest, CreateHarvestDto>(
     "/harvests",
     "POST",
     {
       onSuccess: () => {
-        toast.success("Récolte ajoutée avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Récolte ajoutée avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   const updateMutation = useApiMutation<Harvest, CreateHarvestDto>(
     () => `/harvests/${selectedHarvest?.id}`,
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Récolte mise à jour avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedHarvest(null)
-        refetch()
+        toast.success("Récolte mise à jour avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedHarvest(null);
+        refetch();
       },
     }
-  )
+  );
 
   const deleteMutation = useApiMutation<void, void>(
     () => `/harvests/${selectedHarvest?.id}`,
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Récolte supprimée avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedHarvest(null)
-        refetch()
+        toast.success("Récolte supprimée avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedHarvest(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -124,12 +144,12 @@ export default function HarvestPage() {
       latitude: undefined,
       longitude: undefined,
       proofHash: "",
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (harvest: Harvest) => {
-    setSelectedHarvest(harvest)
+    setSelectedHarvest(harvest);
     setFormData({
       farmerId: harvest.farmerId || "",
       productId: harvest.productId || "",
@@ -138,40 +158,40 @@ export default function HarvestPage() {
       latitude: harvest.latitude,
       longitude: harvest.longitude,
       proofHash: harvest.proofHash,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (harvest: Harvest) => {
-    setSelectedHarvest(harvest)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedHarvest(harvest);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     createMutation.mutate({
       ...formData,
       quantity: Number(formData.quantity),
       latitude: formData.latitude ? Number(formData.latitude) : undefined,
       longitude: formData.longitude ? Number(formData.longitude) : undefined,
-    })
-  }
+    });
+  };
 
   const handleSubmitEdit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedHarvest) return
+    e.preventDefault();
+    if (!selectedHarvest) return;
     updateMutation.mutate({
       ...formData,
       quantity: Number(formData.quantity),
       latitude: formData.latitude ? Number(formData.latitude) : undefined,
       longitude: formData.longitude ? Number(formData.longitude) : undefined,
-    })
-  }
+    });
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedHarvest) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedHarvest) return;
+    deleteMutation.mutate(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -244,7 +264,10 @@ export default function HarvestPage() {
                   <tbody className="divide-y">
                     {harvests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={5}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucune récolte trouvée
                         </td>
                       </tr>
@@ -252,10 +275,18 @@ export default function HarvestPage() {
                       harvests.map((harvest) => (
                         <tr key={harvest.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {harvest.farmerId || harvest.farmer?.id || "-"}
+                            {farmers.find((f) => f.id === harvest.farmerId)
+                              ?.name ||
+                              harvest.farmerId ||
+                              harvest.farmer?.id ||
+                              "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {harvest.productId || harvest.product?.id || "-"}
+                            {products.find((p) => p.id === harvest.productId)
+                              ?.name ||
+                              harvest.productId ||
+                              harvest.product?.id ||
+                              "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {harvest.quantity}
@@ -264,31 +295,10 @@ export default function HarvestPage() {
                             {new Date(harvest.harvestAt).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-48 p-2">
-                                <div className="space-y-1">
-                                  <button
-                                    onClick={() => handleEdit(harvest)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                    Modifier
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(harvest)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    Supprimer
-                                  </button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                            <HarvestActionsMenu
+                              onEdit={() => handleEdit(harvest)}
+                              onDelete={() => handleDelete(harvest)}
+                            />
                           </td>
                         </tr>
                       ))
@@ -301,277 +311,34 @@ export default function HarvestPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Ajouter une récolte</DialogTitle>
-            <DialogDescription>
-              Renseignez les informations de la récolte
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitAdd}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="farmerId">Farmer ID *</Label>
-                <Input
-                  id="farmerId"
-                  value={formData.farmerId}
-                  onChange={(e) => setFormData({ ...formData, farmerId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="productId">Product ID *</Label>
-                <Input
-                  id="productId"
-                  value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="quantity">Quantité (kg) *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="0.01"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="harvestAt">Date/heure *</Label>
-                <Input
-                  id="harvestAt"
-                  type="datetime-local"
-                  value={formData.harvestAt}
-                  onChange={(e) => setFormData({ ...formData, harvestAt: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="latitude">Latitude</Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude ?? ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        latitude: e.target.value === "" ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="longitude">Longitude</Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude ?? ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        longitude: e.target.value === "" ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="proofHash">Proof hash *</Label>
-                <Input
-                  id="proofHash"
-                  value={formData.proofHash}
-                  onChange={(e) => setFormData({ ...formData, proofHash: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
-                  </>
-                ) : (
-                  "Ajouter"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddHarvestDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onSubmit={handleSubmitAdd}
+        isLoading={createMutation.isPending}
+        farmers={farmers}
+        products={products}
+      />
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Modifier la récolte</DialogTitle>
-            <DialogDescription>
-              Mettez à jour les informations de la récolte
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitEdit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-farmerId">Farmer ID *</Label>
-                <Input
-                  id="edit-farmerId"
-                  value={formData.farmerId}
-                  onChange={(e) => setFormData({ ...formData, farmerId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-productId">Product ID *</Label>
-                <Input
-                  id="edit-productId"
-                  value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-quantity">Quantité (kg) *</Label>
-                <Input
-                  id="edit-quantity"
-                  type="number"
-                  step="0.01"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-harvestAt">Date/heure *</Label>
-                <Input
-                  id="edit-harvestAt"
-                  type="datetime-local"
-                  value={formData.harvestAt}
-                  onChange={(e) => setFormData({ ...formData, harvestAt: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-latitude">Latitude</Label>
-                  <Input
-                    id="edit-latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude ?? ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        latitude: e.target.value === "" ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-longitude">Longitude</Label>
-                  <Input
-                    id="edit-longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude ?? ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        longitude: e.target.value === "" ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-proofHash">Proof hash *</Label>
-                <Input
-                  id="edit-proofHash"
-                  value={formData.proofHash}
-                  onChange={(e) => setFormData({ ...formData, proofHash: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={updateMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  "Enregistrer"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditHarvestDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onSubmit={handleSubmitEdit}
+        isLoading={updateMutation.isPending}
+        farmers={farmers}
+        products={products}
+      />
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Supprimer la récolte</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer cette récolte ? Cette action est irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={deleteMutation.isPending}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteHarvestDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
-  )
+  );
 }

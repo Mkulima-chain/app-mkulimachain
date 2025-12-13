@@ -23,7 +23,7 @@ export interface IUser {
   id: string;
   email: string;
   phone?: string;
-  password?: string; // Optionnel pour wallet/Google
+  password?: string;
   firstName: string;
   lastName: string;
   role: UserRole;

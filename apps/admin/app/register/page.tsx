@@ -1,19 +1,25 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useMutation } from "@tanstack/react-query"
-import { UserPlus, Mail, Lock, User, BookOpen, Phone } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { api } from "@/lib/api-client"
-import { saveAuth } from "@/lib/auth-storage"
-import { toast } from "sonner"
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { UserPlus, Mail, Lock, User, BookOpen, Phone } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { api, ApiError } from "@/lib/api-client";
+import { saveAuth } from "@/lib/auth-storage";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = React.useState({
     firstName: "",
     lastName: "",
@@ -21,21 +27,27 @@ export default function RegisterPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-  })
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
 
   const registerMutation = useMutation({
     mutationFn: () =>
       api.post<{
-        accessToken: string
-        refreshToken: string
-        user: { id: string; email: string; firstName: string; lastName: string; role: string }
+        accessToken: string;
+        refreshToken: string;
+        user: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          role: string;
+        };
       }>("/auth/register", {
         email: formData.email,
         phone: formData.phone || undefined,
@@ -44,25 +56,25 @@ export default function RegisterPage() {
         lastName: formData.lastName,
       }),
     onSuccess: (data) => {
-      saveAuth(data)
-      toast.success("Compte créé avec succès")
-      router.push("/")
+      saveAuth(data);
+      toast.success("Compte créé avec succès");
+      router.push("/");
     },
-    onError: (error: any) => {
-      toast.error(error?.message || "Inscription impossible")
+    onError: (error: ApiError) => {
+      toast.error(error?.message || "Inscription impossible");
     },
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas")
-      return
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
     }
 
-    registerMutation.mutate()
-  }
+    registerMutation.mutate();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8F5E9] via-white to-[#E3F2FD] dark:from-[#003D5C] dark:via-[#004D73] dark:to-[#003D5C] p-4">
@@ -85,10 +97,10 @@ export default function RegisterPage() {
                 <UserPlus className="h-8 w-8 text-[#3A8F4C]" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Créer un compte</CardTitle>
-            <CardDescription>
-              Créez votre compte administrateur
-            </CardDescription>
+            <CardTitle className="text-2xl font-bold">
+              Créer un compte
+            </CardTitle>
+            <CardDescription>Créez votre compte administrateur</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -188,7 +200,10 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium">
+                <label
+                  htmlFor="confirmPassword"
+                  className="text-sm font-medium"
+                >
                   Confirmer le mot de passe
                 </label>
                 <div className="relative">
@@ -214,10 +229,16 @@ export default function RegisterPage() {
                   className="h-4 w-4 rounded border-gray-300"
                   required
                 />
-                <label htmlFor="terms" className="text-sm text-muted-foreground">
-                  J'accepte les{" "}
-                  <Link href="/terms" className="text-[#3A8F4C] hover:underline">
-                    conditions d'utilisation
+                <label
+                  htmlFor="terms"
+                  className="text-sm text-muted-foreground"
+                >
+                  J&apos;accepte les{" "}
+                  <Link
+                    href="/terms"
+                    className="text-[#3A8F4C] hover:underline"
+                  >
+                    conditions d&apos;utilisation
                   </Link>
                 </label>
               </div>
@@ -227,7 +248,9 @@ export default function RegisterPage() {
                 className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
                 disabled={registerMutation.isPending}
               >
-                {registerMutation.isPending ? "Création du compte..." : "Créer un compte"}
+                {registerMutation.isPending
+                  ? "Création du compte..."
+                  : "Créer un compte"}
               </Button>
             </form>
 
@@ -250,6 +273,5 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }
-

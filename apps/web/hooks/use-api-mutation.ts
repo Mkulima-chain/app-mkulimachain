@@ -1,13 +1,13 @@
 import {
-    useMutation,
-    UseMutationOptions,
-    UseMutationResult,
+  useMutation,
+  UseMutationOptions,
+  UseMutationResult,
 } from "@tanstack/react-query";
 import { api, ApiClientError } from "@/lib/api-client";
 
 /**
  * Hook personnalisé pour les mutations (POST, PUT, PATCH, DELETE) avec React Query
- * 
+ *
  * @example
  * ```tsx
  * const mutation = useApiMutation({
@@ -87,10 +87,7 @@ export function useApiPatch<TData = unknown, TVariables = unknown>(
  */
 export function useApiDelete<TData = unknown>(
   endpoint: string,
-  options?: Omit<
-    UseMutationOptions<TData, ApiClientError, void>,
-    "mutationFn"
-  >
+  options?: Omit<UseMutationOptions<TData, ApiClientError, void>, "mutationFn">
 ) {
   return useApiMutation<TData, void>({
     ...options,
@@ -99,4 +96,3 @@ export function useApiDelete<TData = unknown>(
     },
   });
 }
-

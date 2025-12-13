@@ -2,6 +2,9 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5600/api";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -15,11 +18,10 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
-          const response = await fetch(`${apiUrl}/auth/login`, {
-            method: 'POST',
+          const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify(credentials),
           });
@@ -66,51 +68,79 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         try {
-          const apiUrl =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5601";
+          console.log(
+            "Google Auth data:",
+            {
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              providerId: account.providerAccountId,
+            },
+            "Google Auth data here",
+            {
+              user,
+              account,
+              profile,
+            }
+          );
 
-          console.log("Google Auth data:", {
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            providerId: account.providerAccountId,
-          }, 'Google Auth data here',{
-            user, account, profile,
-          } );
+          console.log("API URL:", API_BASE_URL);
 
-          console.log("API URL:", apiUrl);
-          
           // Use direct fetch instead of apiClient to avoid SSR issues
-          const response = await fetch(`${apiUrl}/auth/google`, {
-            method: 'POST',
+          // Déterminer si l'inscription vient de la page register (BUYER)
+          // On utilise sessionStorage pour stocker l'origine de la connexion
+          let role: string | undefined;
+          if (typeof window !== "undefined") {
+            const fromRegister = sessionStorage.getItem(
+              "googleSignUpFromRegister"
+            );
+            if (fromRegister === "true") {
+              role = "BUYER";
+              sessionStorage.removeItem("googleSignUpFromRegister");
+            }
+          }
+
+          const response = await fetch(`${API_BASE_URL}/auth/google`, {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               name: user.name,
               email: user.email,
               image: user.image,
               providerId: account.providerAccountId,
+              role: role,
             }),
           });
 
           if (response.ok) {
             const data = await response.json();
             console.log("Google Auth response:", data);
-            
+
             if (data) {
               user.id = data.user.id;
               user.accessToken = data.accessToken;
               return true;
             }
           } else {
-            console.error("Google Auth API error:", response.status, response.statusText);
+            console.error(
+              "Google Auth API error:",
+              response.status,
+              response.statusText
+            );
           }
         } catch (error) {
           console.error("Erreur Google Auth:", error);
         }
       }
       return true;
+    },
+    async redirect({ url, baseUrl }) {
+      // Si l'URL de callback est fournie et valide, l'utiliser
+      if (url.startsWith(baseUrl)) return url;
+      // Sinon, rediriger vers le dashboard par défaut
+      return `${baseUrl}/dashboard`;
     },
   },
   pages: {

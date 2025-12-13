@@ -16,18 +16,21 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      skipMissingProperties: false,
+      skipNullProperties: false,
+      skipUndefinedProperties: false,
     }),
   );
 
   // Enable CORS for frontend and admin
   const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+    ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
     : ['http://localhost:5601', 'http://localhost:5602'];
 
   // Ajouter les origines depuis les variables d'environnement si définies
   const adminUrl = process.env.ADMIN_URL;
   const webUrl = process.env.WEB_URL;
-  
+
   if (adminUrl && !allowedOrigins.includes(adminUrl)) {
     allowedOrigins.push(adminUrl);
   }
@@ -41,9 +44,13 @@ async function bootstrap() {
       if (!origin) return callback(null, true);
 
       // Autoriser localhost et les adresses IP locales (192.168.x.x, 172.x.x.x, 10.x.x.x)
-      const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-      const isLocalIP = /^https?:\/\/(192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|10\.)/.test(origin);
-      
+      const isLocalhost =
+        origin.includes('localhost') || origin.includes('127.0.0.1');
+      const isLocalIP =
+        /^https?:\/\/(192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|10\.)/.test(
+          origin,
+        );
+
       if (allowedOrigins.includes(origin) || isLocalhost || isLocalIP) {
         callback(null, true);
       } else {
@@ -53,7 +60,12 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+    ],
   });
 
   // Swagger configuration
@@ -118,6 +130,7 @@ API pour la plateforme de traçabilité agricole et DeFi pour les agriculteurs c
     .addTag('nfts', 'NFTs culturels')
     .addTag('nft-purchases', 'Achats NFT')
     .addTag('school-funds', 'Fonds scolaires')
+    .addTag('Upload', "Upload d'images")
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

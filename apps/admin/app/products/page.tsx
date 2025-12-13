@@ -1,11 +1,26 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Package, Plus, Search, Filter, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
+import {
+  Package,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -13,63 +28,66 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 type Product = {
-  id: string
-  sku: string
-  name: string
-  unit: string
-  category: string
-  description?: string
-  price: number
-  currency: string
-  stock: number
-  originCountry?: string
-  isActive: boolean
-  tags?: string[]
-  image?: string[]
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  sku: string;
+  name: string;
+  unit: string;
+  category: string;
+  description?: string;
+  price: number;
+  currency: string;
+  stock: number;
+  originCountry?: string;
+  isActive: boolean;
+  tags?: string[];
+  image?: string[];
+  createdAt: string;
+  updatedAt: string;
+};
 
 type CreateProductDto = {
-  sku: string
-  name: string
-  unit: string
-  category: string
-  description?: string
-  price: number
-  currency?: string
-  stock?: number
-  originCountry?: string
-  isActive?: boolean
-  tags?: string[]
-  image?: string[]
-}
+  sku: string;
+  name: string;
+  unit: string;
+  category: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  stock?: number;
+  originCountry?: string;
+  isActive?: boolean;
+  tags?: string[];
+  image?: string[];
+};
 
 export default function ProductsPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateProductDto>({
     sku: "",
     name: "",
@@ -83,12 +101,12 @@ export default function ProductsPage() {
     isActive: true,
     tags: [],
     image: [],
-  })
+  });
 
   // Fonction pour générer le SKU automatiquement
   const generateSKU = (productName: string): string => {
     if (!productName || productName.trim() === "") {
-      return ""
+      return "";
     }
 
     // Normaliser le nom: enlever les accents, mettre en majuscules, remplacer les espaces par des tirets
@@ -98,34 +116,42 @@ export default function ProductsPage() {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "-") // Remplacer les caractères non alphanumériques par des tirets
       .replace(/-+/g, "-") // Remplacer les tirets multiples par un seul
-      .replace(/^-|-$/g, "") // Enlever les tirets en début et fin
+      .replace(/^-|-$/g, ""); // Enlever les tirets en début et fin
 
     // Générer un nombre unique basé sur le timestamp (3 derniers chiffres)
-    const uniqueNumber = Date.now().toString().slice(-3)
+    const uniqueNumber = Date.now().toString().slice(-3);
 
     // Concaténer: SKU-NOMDUPRODUIT-NOMBREUNIQUE
-    return `SKU-${normalizedName}-${uniqueNumber}`
-  }
+    return `SKU-${normalizedName}-${uniqueNumber}`;
+  };
 
   // Fetch products
-  const { data: products = [], isLoading, refetch } = useApiQuery<Product[]>(
+  const {
+    data: products = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<Product[]>(
     ["products", searchQuery],
     `/products${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
   // Fetch categories, units, and currencies
-  const { data: categories = [] } = useApiQuery<any[]>(
+  type Category = { id: string; name: string };
+  type Unit = { id: string; name: string; symbol: string };
+  type Currency = { id: string; code: string; name: string };
+
+  const { data: categories = [] } = useApiQuery<Category[]>(
     ["categories"],
     "/categories?activeOnly=true"
-  )
-  const { data: units = [] } = useApiQuery<any[]>(
+  );
+  const { data: units = [] } = useApiQuery<Unit[]>(
     ["units"],
     "/units?activeOnly=true"
-  )
-  const { data: currencies = [] } = useApiQuery<any[]>(
+  );
+  const { data: currencies = [] } = useApiQuery<Currency[]>(
     ["currencies"],
     "/currencies?activeOnly=true"
-  )
+  );
 
   // Create mutation
   const createMutation = useApiMutation<Product, CreateProductDto>(
@@ -133,12 +159,12 @@ export default function ProductsPage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("Produit ajouté avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Produit ajouté avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<Product, CreateProductDto>(
@@ -146,13 +172,13 @@ export default function ProductsPage() {
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Produit modifié avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedProduct(null)
-        refetch()
+        toast.success("Produit modifié avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedProduct(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -160,13 +186,13 @@ export default function ProductsPage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Produit supprimé avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedProduct(null)
-        refetch()
+        toast.success("Produit supprimé avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedProduct(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -182,12 +208,12 @@ export default function ProductsPage() {
       isActive: true,
       tags: [],
       image: [],
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (product: Product) => {
-    setSelectedProduct(product)
+    setSelectedProduct(product);
     setFormData({
       sku: product.sku,
       name: product.name,
@@ -201,30 +227,30 @@ export default function ProductsPage() {
       isActive: product.isActive,
       tags: product.tags || [],
       image: product.image || [],
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (product: Product) => {
-    setSelectedProduct(product)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedProduct(product);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
-    createMutation.mutate(formData)
-  }
+    e.preventDefault();
+    createMutation.mutate(formData);
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedProduct) return
-    updateMutation.mutate(formData)
-  }
+    e.preventDefault();
+    if (!selectedProduct) return;
+    updateMutation.mutate(formData);
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedProduct) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedProduct) return;
+    deleteMutation.mutate(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -245,13 +271,18 @@ export default function ProductsPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total produits</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total produits
+            </CardTitle>
             <Package className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : products.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : products.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {isLoading ? "..." : products.filter(p => p.isActive).length} actifs
+              {isLoading ? "..." : products.filter((p) => p.isActive).length}{" "}
+              actifs
             </p>
           </CardContent>
         </Card>
@@ -262,9 +293,13 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : products.reduce((sum, p) => sum + p.stock, 0)}
+              {isLoading
+                ? "..."
+                : products.reduce((sum, p) => sum + p.stock, 0)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Unités disponibles</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Unités disponibles
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -274,7 +309,14 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : products.reduce((sum, p) => sum + (Number(p.price) * Number(p.stock)), 0).toFixed(2)}
+              {isLoading
+                ? "..."
+                : products
+                    .reduce(
+                      (sum, p) => sum + Number(p.price) * Number(p.stock),
+                      0
+                    )
+                    .toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {isLoading ? "..." : products[0]?.currency || "USD"}
@@ -283,15 +325,19 @@ export default function ProductsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Produits actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Produits actifs
+            </CardTitle>
             <Package className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : products.filter(p => p.isActive).length}
+              {isLoading ? "..." : products.filter((p) => p.isActive).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {isLoading ? "..." : `${Math.round((products.filter(p => p.isActive).length / products.length) * 100) || 0}% du total`}
+              {isLoading
+                ? "..."
+                : `${Math.round((products.filter((p) => p.isActive).length / products.length) * 100) || 0}% du total`}
             </p>
           </CardContent>
         </Card>
@@ -363,7 +409,10 @@ export default function ProductsPage() {
                   <tbody className="divide-y">
                     {products.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucun produit trouvé
                         </td>
                       </tr>
@@ -371,25 +420,36 @@ export default function ProductsPage() {
                       products.map((product) => (
                         <tr key={product.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-mono">{product.sku}</div>
+                            <div className="text-sm font-mono">
+                              {product.sku}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium">{product.name}</div>
-                            <div className="text-xs text-muted-foreground">{product.unit}</div>
+                            <div className="text-sm font-medium">
+                              {product.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {product.unit}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge variant="outline">{product.category}</Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium">
-                              {Number(product.price).toFixed(2)} {product.currency}
+                              {Number(product.price).toFixed(2)}{" "}
+                              {product.currency}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm">{product.stock}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={product.isActive ? "default" : "secondary"}>
+                            <Badge
+                              variant={
+                                product.isActive ? "default" : "secondary"
+                              }
+                            >
                               {product.isActive ? "Actif" : "Inactif"}
                             </Badge>
                           </td>
@@ -462,9 +522,9 @@ export default function ProductsPage() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => {
-                    const newName = e.target.value
-                    const newSKU = generateSKU(newName)
-                    setFormData({ ...formData, name: newName, sku: newSKU })
+                    const newName = e.target.value;
+                    const newSKU = generateSKU(newName);
+                    setFormData({ ...formData, name: newName, sku: newSKU });
                   }}
                   required
                 />
@@ -474,7 +534,9 @@ export default function ProductsPage() {
                   <Label htmlFor="category">Catégorie *</Label>
                   <Select
                     value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, category: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une catégorie" />
@@ -492,7 +554,9 @@ export default function ProductsPage() {
                   <Label htmlFor="unit">Unité *</Label>
                   <Select
                     value={formData.unit}
-                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, unit: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une unité" />
@@ -517,7 +581,10 @@ export default function ProductsPage() {
                     min="0"
                     value={formData.price}
                     onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                      setFormData({
+                        ...formData,
+                        price: parseFloat(e.target.value) || 0,
+                      })
                     }
                     required
                   />
@@ -526,7 +593,9 @@ export default function ProductsPage() {
                   <Label htmlFor="currency">Devise</Label>
                   <Select
                     value={formData.currency}
-                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, currency: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une devise" />
@@ -550,17 +619,23 @@ export default function ProductsPage() {
                     min="0"
                     value={formData.stock}
                     onChange={(e) =>
-                      setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
+                      setFormData({
+                        ...formData,
+                        stock: parseInt(e.target.value) || 0,
+                      })
                     }
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="originCountry">Pays d'origine</Label>
+                  <Label htmlFor="originCountry">Pays d&apos;origine</Label>
                   <Input
                     id="originCountry"
                     value={formData.originCountry}
                     onChange={(e) =>
-                      setFormData({ ...formData, originCountry: e.target.value })
+                      setFormData({
+                        ...formData,
+                        originCountry: e.target.value,
+                      })
                     }
                     placeholder="CD, FR, etc."
                   />
@@ -577,6 +652,15 @@ export default function ProductsPage() {
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
               </div>
+              <div className="grid gap-2">
+                <ImageUpload
+                  images={formData.image || []}
+                  onImagesChange={(images) =>
+                    setFormData({ ...formData, image: images })
+                  }
+                  maxImages={5}
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -587,7 +671,10 @@ export default function ProductsPage() {
                   }
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="isActive" className="text-sm font-normal cursor-pointer">
+                <Label
+                  htmlFor="isActive"
+                  className="text-sm font-normal cursor-pointer"
+                >
                   Produit actif
                 </Label>
               </div>
@@ -637,7 +724,10 @@ export default function ProductsPage() {
                   id="edit-sku"
                   value={formData.sku}
                   onChange={(e) =>
-                    setFormData({ ...formData, sku: e.target.value.toUpperCase() })
+                    setFormData({
+                      ...formData,
+                      sku: e.target.value.toUpperCase(),
+                    })
                   }
                   required
                 />
@@ -658,7 +748,9 @@ export default function ProductsPage() {
                   <Label htmlFor="edit-category">Catégorie *</Label>
                   <Select
                     value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, category: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une catégorie" />
@@ -676,7 +768,9 @@ export default function ProductsPage() {
                   <Label htmlFor="edit-unit">Unité *</Label>
                   <Select
                     value={formData.unit}
-                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, unit: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une unité" />
@@ -701,7 +795,10 @@ export default function ProductsPage() {
                     min="0"
                     value={formData.price}
                     onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                      setFormData({
+                        ...formData,
+                        price: parseFloat(e.target.value) || 0,
+                      })
                     }
                     required
                   />
@@ -710,7 +807,9 @@ export default function ProductsPage() {
                   <Label htmlFor="edit-currency">Devise</Label>
                   <Select
                     value={formData.currency}
-                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, currency: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner une devise" />
@@ -734,17 +833,25 @@ export default function ProductsPage() {
                     min="0"
                     value={formData.stock}
                     onChange={(e) =>
-                      setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })
+                      setFormData({
+                        ...formData,
+                        stock: parseInt(e.target.value) || 0,
+                      })
                     }
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-originCountry">Pays d'origine</Label>
+                  <Label htmlFor="edit-originCountry">
+                    Pays d&apos;origine
+                  </Label>
                   <Input
                     id="edit-originCountry"
                     value={formData.originCountry}
                     onChange={(e) =>
-                      setFormData({ ...formData, originCountry: e.target.value })
+                      setFormData({
+                        ...formData,
+                        originCountry: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -760,6 +867,15 @@ export default function ProductsPage() {
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
               </div>
+              <div className="grid gap-2">
+                <ImageUpload
+                  images={formData.image || []}
+                  onImagesChange={(images) =>
+                    setFormData({ ...formData, image: images })
+                  }
+                  maxImages={5}
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -770,7 +886,10 @@ export default function ProductsPage() {
                   }
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="edit-isActive" className="text-sm font-normal cursor-pointer">
+                <Label
+                  htmlFor="edit-isActive"
+                  className="text-sm font-normal cursor-pointer"
+                >
                   Produit actif
                 </Label>
               </div>
@@ -840,5 +959,5 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

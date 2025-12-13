@@ -204,10 +204,63 @@ export class AuthController {
   }
 
   @Public()
+  @Post('google')
+  @ApiOperation({
+    summary: 'Inscription/Connexion avec Google',
+    description: 'Crée ou connecte un utilisateur avec Google OAuth',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Jean Mukendi' },
+        email: { type: 'string', example: 'jean.mukendi@gmail.com' },
+        image: { type: 'string', example: 'https://...' },
+        providerId: { type: 'string', example: '123456789' },
+        role: {
+          type: 'string',
+          enum: ['FARMER', 'BUYER', 'COOPERATIVE', 'SCHOOL'],
+          example: 'BUYER',
+        },
+      },
+      required: ['email', 'providerId'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Connexion Google réussie',
+    type: LoginResponseDto,
+  })
+  async googleAuthPost(
+    @Body()
+    body: {
+      name?: string;
+      email: string;
+      image?: string;
+      providerId: string;
+      role?: string;
+    },
+  ): Promise<LoginResponseDto> {
+    // Extraire le prénom et nom depuis le nom complet
+    const nameParts = body.name?.split(' ') || [];
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || firstName;
+
+    return this.authService.googleAuth({
+      googleId: body.providerId,
+      email: body.email,
+      firstName,
+      lastName,
+      picture: body.image,
+      role: body.role as any,
+    });
+  }
+
+  @Public()
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({
-    summary: 'Connexion Google',
+    summary: 'Connexion Google OAuth',
     description: 'Redirige vers Google OAuth',
   })
   async googleAuth() {

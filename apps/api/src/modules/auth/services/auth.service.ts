@@ -19,7 +19,7 @@ import {
   UserResponseDto,
 } from '../dto/auth.dto';
 import { WalletConnectDto } from '../dto/wallet-auth.dto';
-import { UserStatus } from '../interfaces/iuser';
+import { UserStatus, UserRole } from '../interfaces/iuser';
 
 @Injectable()
 export class AuthService {
@@ -241,6 +241,7 @@ export class AuthService {
     firstName: string;
     lastName: string;
     picture?: string;
+    role?: UserRole;
   }): Promise<LoginResponseDto> {
     let user = await this.userRepository.findByGoogleId(googleUser.googleId);
 
@@ -261,6 +262,7 @@ export class AuthService {
         email: googleUser.email,
         firstName: googleUser.firstName,
         lastName: googleUser.lastName,
+        role: googleUser.role,
       });
     }
 

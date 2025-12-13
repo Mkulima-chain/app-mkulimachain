@@ -69,6 +69,16 @@ export class RegisterDto {
   @IsEnum(UserRole)
   @IsOptional()
   role?: UserRole;
+
+  @ApiPropertyOptional({
+    description: 'Adresse du portefeuille Cardano',
+    example:
+      'addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(150)
+  walletAddress?: string;
 }
 
 export class LoginDto {

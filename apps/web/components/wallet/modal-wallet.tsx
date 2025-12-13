@@ -15,12 +15,16 @@ import { WalletTriggerButton } from "./components/wallet-trigger-button";
 import { STORAGE_KEYS } from "./constants";
 
 interface ModalWalletProps {
-  triggerClassName?: string
-  triggerIconClassName?: string
-  triggerTextClassName?: string
+  triggerClassName?: string;
+  triggerIconClassName?: string;
+  triggerTextClassName?: string;
 }
 
-export function ModalWallet({ triggerClassName, triggerIconClassName, triggerTextClassName }: ModalWalletProps = {}) {
+export function ModalWallet({
+  triggerClassName,
+  triggerIconClassName,
+  triggerTextClassName,
+}: ModalWalletProps = {}) {
   const {
     wallets,
     connect,
@@ -106,9 +110,9 @@ export function ModalWallet({ triggerClassName, triggerIconClassName, triggerTex
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <WalletTriggerButton 
-          onClick={() => setIsOpen(true)} 
-          connected={connected} 
+        <WalletTriggerButton
+          onClick={() => setIsOpen(true)}
+          connected={connected}
           walletName={walletName}
           address={displayWalletData.address}
           className={triggerClassName}

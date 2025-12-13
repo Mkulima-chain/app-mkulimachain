@@ -31,9 +31,6 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { EditFarmerDialog } from "@/components/farmers/edit-farmer-dialog";
 import { AddFarmerDialog } from "@/components/farmers/add-farmer-dialog";
 import { DeleteFarmerDialog } from "@/components/farmers/delete-farmer-dialog";
-import { useWalletAtom } from "@/hooks/useWalletAtom";
-import { registrationStepAtom } from "@/lib/atoms/registration";
-import { useAtom } from "jotai";
 
 type Farmer = {
   id: string;
@@ -64,8 +61,6 @@ type CreateFarmerDto = {
 
 export default function FarmersPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const { connected, address, wallet } = useWalletAtom();
-  const [currentStep, setCurrentStep] = useAtom(registrationStepAtom);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);

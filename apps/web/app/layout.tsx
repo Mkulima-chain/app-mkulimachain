@@ -7,6 +7,7 @@ import { MeshProviderComponent } from "@/components/providers/mesh-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { WalletAutoReconnect } from "@/components/providers/wallet-auto-reconnect";
 import { Toaster } from "@/components/ui/sonner";
+import { WalletProvider } from "@/wallet/wallet-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mkulima Chain  - Marketplace décentralisée pour agriculteurs congolais",
+  title:
+    "Mkulima Chain  - Marketplace décentralisée pour agriculteurs congolais",
   description:
     "Plateforme Cardano connectant directement les producteurs de cacao, café et manioc aux acheteurs internationaux. Traçabilité blockchain, paiements décentralisés, impact social.",
 };
@@ -35,21 +37,23 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-          <SessionProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem={false}
-              disableTransitionOnChange={false}
-              storageKey="mkulima-chain-theme"
-            >
-              <MeshProviderComponent>
-                <WalletAutoReconnect />
-                {children}
-                <Toaster />
-              </MeshProviderComponent>
-            </ThemeProvider>
-          </SessionProvider>
+          <WalletProvider>
+            <SessionProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="light"
+                enableSystem={false}
+                disableTransitionOnChange={false}
+                storageKey="mkulima-chain-theme"
+              >
+                <MeshProviderComponent>
+                  <WalletAutoReconnect />
+                  {children}
+                  <Toaster />
+                </MeshProviderComponent>
+              </ThemeProvider>
+            </SessionProvider>
+          </WalletProvider>
         </QueryProvider>
       </body>
     </html>
