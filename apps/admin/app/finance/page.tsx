@@ -23,6 +23,13 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 enum LoanStatus {
   PENDING = "pending",
@@ -81,6 +88,12 @@ export default function FinancePage() {
   const { data: microLoans = [], isLoading, refetch } = useApiQuery<MicroLoan[]>(
     ["loans"],
     "/loans"
+  )
+
+  // Fetch farmers for select
+  const { data: farmers = [] } = useApiQuery<{ id: string; name: string }[]>(
+    ["farmers"],
+    "/farmers"
   )
 
   // Create mutation
@@ -371,16 +384,23 @@ export default function FinancePage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="farmerId">ID de l'agriculteur *</Label>
-                <Input
-                  id="farmerId"
+                <Label htmlFor="farmerId">Agriculteur *</Label>
+                <Select
                   value={formData.farmerId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, farmerId: e.target.value })
-                  }
-                  placeholder="UUID de l'agriculteur"
+                  onValueChange={(value) => setFormData({ ...formData, farmerId: value })}
                   required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un agriculteur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {farmers.map((farmer) => (
+                      <SelectItem key={farmer.id} value={farmer.id}>
+                        {farmer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="amountADA">Montant (ADA) *</Label>

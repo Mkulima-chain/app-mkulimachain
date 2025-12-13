@@ -23,6 +23,13 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 enum NFTType {
   RECIPE = "recipe",
@@ -113,6 +120,12 @@ export default function NFTPage() {
   const { data: nfts = [], isLoading, refetch } = useApiQuery<NFT[]>(
     ["nfts", searchQuery],
     `/nfts${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Fetch users for creator select
+  const { data: users = [] } = useApiQuery<{ id: string; firstName: string; lastName: string; email: string }[]>(
+    ["users"],
+    "/auth/users"
   )
 
   // Create mutation
@@ -422,16 +435,23 @@ export default function NFTPage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="creatorId">ID du créateur *</Label>
-                <Input
-                  id="creatorId"
+                <Label htmlFor="creatorId">Créateur *</Label>
+                <Select
                   value={formData.creatorId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, creatorId: e.target.value })
-                  }
-                  placeholder="UUID du créateur"
+                  onValueChange={(value) => setFormData({ ...formData, creatorId: value })}
                   required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un créateur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="type">Type *</Label>

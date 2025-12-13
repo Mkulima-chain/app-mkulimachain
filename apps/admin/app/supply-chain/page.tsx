@@ -23,6 +23,13 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 enum StepType {
   HARVEST = "harvest",
@@ -73,6 +80,12 @@ export default function SupplyChainPage() {
   const { data: steps = [], isLoading, refetch } = useApiQuery<SupplyChainStep[]>(
     ["supply-chain-steps", searchQuery],
     `/supply-chain-steps${searchQuery ? `?batchId=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Fetch batches for select
+  const { data: batches = [] } = useApiQuery<{ id: string; qrCode: string }[]>(
+    ["batches"],
+    "/batches"
   )
 
   // Create mutation
@@ -314,16 +327,23 @@ export default function SupplyChainPage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="batchId">ID du lot *</Label>
-                <Input
-                  id="batchId"
+                <Label htmlFor="batchId">Lot *</Label>
+                <Select
                   value={formData.batchId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, batchId: e.target.value })
-                  }
-                  placeholder="UUID du lot"
+                  onValueChange={(value) => setFormData({ ...formData, batchId: value })}
                   required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un lot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.map((batch) => (
+                      <SelectItem key={batch.id} value={batch.id}>
+                        {batch.qrCode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="stepType">Type d'étape *</Label>
@@ -406,14 +426,22 @@ export default function SupplyChainPage() {
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-batchId">ID du lot</Label>
-                <Input
-                  id="edit-batchId"
+                <Label htmlFor="edit-batchId">Lot</Label>
+                <Select
                   value={updateData.batchId || ""}
-                  onChange={(e) =>
-                    setUpdateData({ ...updateData, batchId: e.target.value })
-                  }
-                />
+                  onValueChange={(value) => setUpdateData({ ...updateData, batchId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un lot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.map((batch) => (
+                      <SelectItem key={batch.id} value={batch.id}>
+                        {batch.qrCode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-stepType">Type d'étape</Label>

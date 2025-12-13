@@ -50,13 +50,53 @@ export async function apiClient<T>(
       return undefined as T;
     }
 
-    const data = await response.json().catch(() => ({}));
+    let data: any = {};
+    let responseText = '';
+    try {
+      // Cloner la réponse pour pouvoir la lire plusieurs fois si nécessaire
+      const clonedResponse = response.clone();
+      responseText = await clonedResponse.text();
+      
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          // Si ce n'est pas du JSON, utiliser le texte comme message
+          data = { message: responseText || `Erreur ${response.status}` };
+        }
+      } else {
+        // Réponse vide
+        data = { message: `Réponse vide du serveur (${response.status})` };
+      }
+    } catch (e) {
+      // Si la lecture échoue, utiliser un message par défaut
+      console.error('Erreur lors de la lecture de la réponse:', e);
+      data = { message: `Erreur ${response.status}: ${response.statusText}` };
+    }
 
     if (!response.ok) {
+      // Logger l'erreur pour déboguer avec plus de détails
+      console.error('API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        data,
+        responseText: responseText.substring(0, 500), // Limiter la longueur pour l'affichage
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+      
+      // Extraire le message d'erreur de manière plus robuste
+      const errorMessage = 
+        data?.message || 
+        data?.error?.message || 
+        data?.error || 
+        (typeof data?.error === 'string' ? data.error : null) ||
+        `Erreur ${response.status}: ${response.statusText}`;
+      
       throw new ApiClientError(
-        data.message || `Erreur ${response.status}`,
+        errorMessage,
         response.status,
-        data.errors
+        data?.errors || data?.error?.details || data?.error
       );
     }
 

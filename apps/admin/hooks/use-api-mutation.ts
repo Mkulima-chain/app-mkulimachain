@@ -39,7 +39,18 @@ export function useApiMutation<TData = unknown, TVariables = unknown>(
       onSuccess?.(data, variables, context)
     },
     onError: (error, variables, context) => {
-      toast.error(error.message || "Une erreur est survenue")
+      // Afficher les erreurs de validation de manière détaillée
+      if (error.errors && Object.keys(error.errors).length > 0) {
+        const errorMessages = Object.entries(error.errors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n')
+        toast.error(`Erreurs de validation:\n${errorMessages}`, {
+          duration: 5000,
+        })
+      } else {
+        toast.error(error.message || "Une erreur est survenue")
+      }
+      console.error('API Error:', error)
       onError?.(error, variables, context)
     },
     ...restOptions,

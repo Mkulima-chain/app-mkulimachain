@@ -75,8 +75,12 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
 )
 SelectTrigger.displayName = "SelectTrigger"
 
-const SelectValue = ({ placeholder }: { placeholder?: string }) => {
+const SelectValue = ({ placeholder, children }: { placeholder?: string; children?: React.ReactNode }) => {
   const { value } = React.useContext(SelectContext)
+  // Si des enfants sont fournis, les utiliser (pour afficher le nom de la coopérative)
+  if (children) {
+    return <span>{children}</span>
+  }
   return <span>{value || placeholder}</span>
 }
 
