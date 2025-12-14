@@ -1,48 +1,53 @@
-"use client"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import { useEffect, useState } from "react"
-import { ExternalLink, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react";
+import { ExternalLink, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Composant pour charger les styles Leaflet
 function LeafletStyles() {
   useEffect(() => {
-    import("leaflet/dist/leaflet.css")
-    
+    // @ts-expect-error - CSS import is valid at runtime but TypeScript doesn't recognize it
+    import("leaflet/dist/leaflet.css");
+
     // Fix pour les icônes par défaut de Leaflet
     if (typeof window !== "undefined") {
       import("leaflet").then((L) => {
-        delete (L.Icon.Default.prototype as any)._getIconUrl
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-        })
-      })
+          iconRetinaUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        });
+      });
     }
-  }, [])
-  
-  return null
+  }, []);
+
+  return null;
 }
 
 // Créer un marqueur personnalisé avec les couleurs de l'application
 async function createCustomIcon() {
-  if (typeof window === "undefined") return null
-  
+  if (typeof window === "undefined") return null;
+
   try {
-    const L = await import("leaflet")
+    const L = await import("leaflet");
     if (!L || !L.divIcon) {
-      console.error("Leaflet or L.divIcon is not available")
-      return null
+      console.error("Leaflet or L.divIcon is not available");
+      return null;
     }
-    
+
     // S'assurer que divIcon est bien disponible
     if (typeof L.divIcon !== "function") {
-      console.error("L.divIcon is not a function")
-      return null
+      console.error("L.divIcon is not a function");
+      return null;
     }
-    
+
     return L.divIcon({
       className: "custom-marker",
       html: `
@@ -70,74 +75,78 @@ async function createCustomIcon() {
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40],
-    })
+    });
   } catch (error) {
-    console.error("Error creating custom icon:", error)
-    return null
+    console.error("Error creating custom icon:", error);
+    return null;
   }
 }
 
 // Composant de carte interne
-function MapContent({ 
-  position, 
-  productName, 
+function MapContent({
+  position,
+  productName,
   location,
   latitude,
-  longitude 
-}: { 
-  position: [number, number]
-  productName: string
-  location: string
-  latitude: number
-  longitude: number
+  longitude,
+}: {
+  position: [number, number];
+  productName: string;
+  location: string;
+  latitude: number;
+  longitude: number;
 }) {
-  const [MapContainer, setMapContainer] = useState<any>(null)
-  const [TileLayer, setTileLayer] = useState<any>(null)
-  const [Marker, setMarker] = useState<any>(null)
-  const [Popup, setPopup] = useState<any>(null)
-  const [Circle, setCircle] = useState<any>(null)
-  const [ZoomControl, setZoomControl] = useState<any>(null)
-  const [customIcon, setCustomIcon] = useState<any>(null)
+  const [MapContainer, setMapContainer] = useState<any>(null);
+  const [TileLayer, setTileLayer] = useState<any>(null);
+  const [Marker, setMarker] = useState<any>(null);
+  const [Popup, setPopup] = useState<any>(null);
+  const [Circle, setCircle] = useState<any>(null);
+  const [ZoomControl, setZoomControl] = useState<any>(null);
+  const [customIcon, setCustomIcon] = useState<any>(null);
 
   useEffect(() => {
     const loadComponents = async () => {
       try {
         // Charger react-leaflet d'abord
-        const mod = await import("react-leaflet")
-        setMapContainer(() => mod.MapContainer)
-        setTileLayer(() => mod.TileLayer)
-        setMarker(() => mod.Marker)
-        setPopup(() => mod.Popup)
-        setCircle(() => mod.Circle)
-        setZoomControl(() => mod.ZoomControl)
-        
+        const mod = await import("react-leaflet");
+        setMapContainer(() => mod.MapContainer);
+        setTileLayer(() => mod.TileLayer);
+        setMarker(() => mod.Marker);
+        setPopup(() => mod.Popup);
+        setCircle(() => mod.Circle);
+        setZoomControl(() => mod.ZoomControl);
+
         // Attendre un peu pour s'assurer que Leaflet est complètement chargé
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         // Créer l'icône personnalisée après avoir chargé Leaflet
-        const icon = await createCustomIcon()
+        const icon = await createCustomIcon();
         if (icon) {
-          setCustomIcon(icon)
+          setCustomIcon(icon);
         } else {
-          console.warn("Failed to create custom icon, marker will use default icon")
+          console.warn(
+            "Failed to create custom icon, marker will use default icon"
+          );
         }
       } catch (error) {
-        console.error("Error loading map components:", error)
+        console.error("Error loading map components:", error);
       }
-    }
-    
-    loadComponents()
-  }, [])
+    };
+
+    loadComponents();
+  }, []);
 
   if (!MapContainer || !TileLayer || !Marker || !Popup) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3A8F4C] mx-auto mb-2"></div>
-          <p className="text-sm text-[#004D73] dark:text-white/70">Chargement de la carte...</p>
+          <p className="text-sm text-[#004D73] dark:text-white/70">
+            Chargement de la carte...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -171,50 +180,54 @@ function MapContent({
       )}
       {customIcon && (
         <Marker position={position} icon={customIcon}>
-        <Popup className="custom-popup">
-          <div className="text-center p-2 min-w-[200px]">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center">
-                <MapPin className="w-4 h-4 text-white" />
+          <Popup className="custom-popup">
+            <div className="text-center p-2 min-w-[200px]">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center">
+                  <MapPin className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <p className="font-semibold text-[#5A3E36] dark:text-white mb-1 text-sm">
+                {productName}
+              </p>
+              <p className="text-xs text-[#004D73] dark:text-white/70 mb-3">
+                {location}
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-3 py-1.5 bg-[#3A8F4C] hover:bg-[#2E7D32] text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Google Maps
+                </a>
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=13`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-3 py-1.5 bg-[#004D73] hover:bg-[#003D5C] text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  OSM
+                </a>
               </div>
             </div>
-            <p className="font-semibold text-[#5A3E36] dark:text-white mb-1 text-sm">{productName}</p>
-            <p className="text-xs text-[#004D73] dark:text-white/70 mb-3">{location}</p>
-            <div className="flex gap-2">
-              <a
-                href={`https://www.google.com/maps?q=${latitude},${longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 px-3 py-1.5 bg-[#3A8F4C] hover:bg-[#2E7D32] text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Google Maps
-              </a>
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=13`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 px-3 py-1.5 bg-[#004D73] hover:bg-[#003D5C] text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink className="w-3 h-3" />
-                OSM
-              </a>
-            </div>
-          </div>
-        </Popup>
+          </Popup>
         </Marker>
       )}
     </MapContainer>
-  )
+  );
 }
 
 interface ProductLocationMapProps {
-  latitude: number
-  longitude: number
-  productName: string
-  location: string
-  className?: string
-  height?: string
+  latitude: number;
+  longitude: number;
+  productName: string;
+  location: string;
+  className?: string;
+  height?: string;
 }
 
 export function ProductLocationMap({
@@ -225,35 +238,45 @@ export function ProductLocationMap({
   className,
   height = "h-64",
 }: ProductLocationMapProps) {
-  const [isMounted, setIsMounted] = useState(false)
-  const position: [number, number] = [latitude, longitude]
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+  const [isMounted] = useState(() => typeof window !== "undefined");
+  const position: [number, number] = [latitude, longitude];
 
   if (!isMounted) {
     return (
-      <div className={cn("relative rounded-xl overflow-hidden border border-[#004D73]/20 dark:border-white/20 bg-muted/30 dark:bg-white/5", className, height)}>
+      <div
+        className={cn(
+          "relative rounded-xl overflow-hidden border border-[#004D73]/20 dark:border-white/20 bg-muted/30 dark:bg-white/5",
+          className,
+          height
+        )}
+      >
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm text-[#004D73] dark:text-white/70">Chargement de la carte...</p>
+          <p className="text-sm text-[#004D73] dark:text-white/70">
+            Chargement de la carte...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   const openInMaps = () => {
-    const url = `https://www.google.com/maps?q=${latitude},${longitude}`
-    window.open(url, "_blank", "noopener,noreferrer")
-  }
+    const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <>
       <LeafletStyles />
-      <div className={cn("relative rounded-xl overflow-hidden border-2 border-[#004D73]/20 dark:border-white/20 shadow-lg", className, height)}>
-        <MapContent 
-          position={position} 
-          productName={productName} 
+      <div
+        className={cn(
+          "relative rounded-xl overflow-hidden border-2 border-[#004D73]/20 dark:border-white/20 shadow-lg",
+          className,
+          height
+        )}
+      >
+        <MapContent
+          position={position}
+          productName={productName}
           location={location}
           latitude={latitude}
           longitude={longitude}
@@ -281,6 +304,5 @@ export function ProductLocationMap({
         </div>
       </div>
     </>
-  )
+  );
 }
-

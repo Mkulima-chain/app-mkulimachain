@@ -12,13 +12,51 @@ import {
   MintNFTDto,
 } from '../dto/nft.dto';
 import { NFTStatus, NFTType, IRevenueDistribution } from '../interfaces/inft';
+import { IPFSService, NFTMetadata } from '@/shared/ipfs/ipfs.service';
 
 @Injectable()
 export class NFTService {
-  constructor(private readonly repository: NFTRepository) {}
+  constructor(
+    private readonly repository: NFTRepository,
+    private readonly ipfsService: IPFSService,
+  ) {}
 
-  async create(dto: CreateNFTDto): Promise<NFTEntity> {
+  async create(
+    dto: CreateNFTDto,
+    imageFile?: Express.Multer.File,
+    audioFile?: Express.Multer.File,
+  ): Promise<NFTEntity> {
     this.validateRevenueDistribution(dto.revenueDistribution);
+
+    // Si metadataURI n'est pas fournie, créer les métadonnées et uploader sur IPFS
+    if (!dto.metadataURI) {
+      if (!imageFile && !audioFile) {
+        throw new BadRequestException(
+          'Either metadataURI or at least one file (image/audio) must be provided',
+        );
+      }
+
+      // Créer les métadonnées NFT selon le standard CIP-25
+      const metadata: NFTMetadata = {
+        name: dto.title,
+        description: dto.description || '',
+        type: dto.type,
+        attributes: [
+          { trait_type: 'Type', value: dto.type },
+          { trait_type: 'Creator ID', value: dto.creatorId },
+        ],
+      };
+
+      // Upload sur IPFS
+      const uploadResult = await this.ipfsService.uploadNFT(
+        metadata,
+        imageFile,
+        audioFile,
+      );
+
+      dto.metadataURI = uploadResult.metadataURI;
+    }
+
     return this.repository.create(dto);
   }
 

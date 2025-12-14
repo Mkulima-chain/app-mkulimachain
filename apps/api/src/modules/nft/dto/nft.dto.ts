@@ -87,15 +87,15 @@ export class CreateNFTDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({
-    description: 'URI des métadonnées CIP-25',
+  @ApiPropertyOptional({
+    description: 'URI des métadonnées CIP-25 (optionnel si fichiers fournis)',
     example: 'ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco',
     maxLength: 500,
   })
   @IsUrl()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(500)
-  metadataURI!: string;
+  metadataURI?: string;
 
   @ApiProperty({
     description: 'Prix en ADA',

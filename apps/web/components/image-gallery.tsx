@@ -1,53 +1,83 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ImageGalleryProps {
-  images: string[]
-  className?: string
-  showThumbnails?: boolean
-  isPlaying?: boolean // Pour animer l'image pendant la lecture audio
+  images: string[];
+  className?: string;
+  showThumbnails?: boolean;
+  isPlaying?: boolean; // Pour animer l'image pendant la lecture audio
 }
 
-export function ImageGallery({ images, className, showThumbnails = true, isPlaying = false }: ImageGalleryProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
+export function ImageGallery({
+  images,
+  className,
+  showThumbnails = true,
+  isPlaying = false,
+}: ImageGalleryProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) {
-    return null
+    return null;
   }
 
-  const currentImage = images[currentIndex]
+  const currentImage = images[currentIndex];
 
   const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
-  }
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
 
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))
-  }
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
 
   const goToImage = (index: number) => {
-    setCurrentIndex(index)
-  }
+    setCurrentIndex(index);
+  };
 
   return (
     <div className={cn("space-y-4", className)}>
       {/* Main Image */}
       <div className="relative group">
-        <div className={cn(
-          "relative h-64 md:h-96 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 rounded-xl flex items-center justify-center overflow-hidden",
-          isPlaying && "animate-pulse-slow"
-        )}>
-          <span className={cn(
-            "text-9xl transition-all duration-300",
-            isPlaying && "animate-bounce-slow scale-110"
-          )}>
-            {currentImage}
-          </span>
-          
+        <div
+          className={cn(
+            "relative h-64 md:h-96 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 rounded-xl flex items-center justify-center overflow-hidden",
+            isPlaying && "animate-pulse-slow"
+          )}
+        >
+          {currentImage ? (
+            <>
+              <img
+                src={currentImage}
+                alt="NFT Image"
+                className={cn(
+                  "w-full h-full object-cover transition-all duration-300",
+                  isPlaying && "animate-bounce-slow scale-110"
+                )}
+                onError={(e) => {
+                  // Fallback si l'image ne charge pas
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = "none";
+                  const fallback = target.parentElement?.querySelector(
+                    ".image-fallback"
+                  ) as HTMLElement;
+                  if (fallback) {
+                    fallback.classList.remove("hidden");
+                    fallback.classList.add("flex");
+                  }
+                }}
+              />
+              <span className="image-fallback text-9xl transition-all duration-300 absolute inset-0 items-center justify-center hidden">
+                🖼️
+              </span>
+            </>
+          ) : (
+            <span className="text-9xl transition-all duration-300">🖼️</span>
+          )}
+
           {/* Visualizer effect when playing */}
           {isPlaying && (
             <>
@@ -55,8 +85,14 @@ export function ImageGallery({ images, className, showThumbnails = true, isPlayi
               <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#3A8F4C]/80 dark:bg-[#3A8F4C]/80 backdrop-blur-sm text-white text-xs font-medium z-20">
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" style={{ animationDelay: "0.2s" }} />
-                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" style={{ animationDelay: "0.4s" }} />
+                  <div
+                    className="w-1.5 h-1.5 bg-white rounded-full animate-ping"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 bg-white rounded-full animate-ping"
+                    style={{ animationDelay: "0.4s" }}
+                  />
                 </div>
                 <span>En lecture...</span>
               </div>
@@ -69,14 +105,14 @@ export function ImageGallery({ images, className, showThumbnails = true, isPlayi
                     style={{
                       height: `${height}%`,
                       animationDelay: `${i * 0.15}s`,
-                      animationDuration: `${0.6 + i * 0.1}s`
+                      animationDuration: `${0.6 + i * 0.1}s`,
                     }}
                   />
                 ))}
               </div>
             </>
           )}
-          
+
           {/* Navigation Buttons */}
           {images.length > 1 && (
             <>
@@ -125,9 +161,34 @@ export function ImageGallery({ images, className, showThumbnails = true, isPlayi
               )}
               aria-label={`Voir l'image ${index + 1}`}
             >
-              <div className="w-full h-full bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center">
-                <span className="text-3xl">{image}</span>
-              </div>
+              {image ? (
+                <>
+                  <img
+                    src={image}
+                    alt={`Thumbnail ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback si l'image ne charge pas
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const fallback = target.parentElement?.querySelector(
+                        ".thumbnail-fallback"
+                      ) as HTMLElement;
+                      if (fallback) {
+                        fallback.classList.remove("hidden");
+                        fallback.classList.add("flex");
+                      }
+                    }}
+                  />
+                  <div className="thumbnail-fallback w-full h-full bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center absolute inset-0 hidden">
+                    <span className="text-3xl">🖼️</span>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center">
+                  <span className="text-3xl">🖼️</span>
+                </div>
+              )}
               {currentIndex === index && (
                 <div className="absolute inset-0 bg-[#3A8F4C]/20 dark:bg-[#3A8F4C]/30" />
               )}
@@ -136,6 +197,5 @@ export function ImageGallery({ images, className, showThumbnails = true, isPlayi
         </div>
       )}
     </div>
-  )
+  );
 }
-

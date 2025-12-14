@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NFTEntity } from '../entities/nft.entity';
+import { UserEntity } from '@/modules/auth/entities/user.entity';
 import {
   CreateNFTDto,
   UpdateNFTDto,
@@ -26,7 +27,16 @@ export class NFTRepository {
   }
 
   async findById(id: string): Promise<NFTEntity | null> {
-    return this.repository.findOne({ where: { id } });
+    return this.repository
+      .createQueryBuilder('nft')
+      .leftJoinAndMapOne(
+        'nft.creator',
+        UserEntity,
+        'creator',
+        'creator.id = nft.creatorId',
+      )
+      .where('nft.id = :id', { id })
+      .getOne();
   }
 
   async findByOnChainHash(onChainHash: string): Promise<NFTEntity | null> {
@@ -34,7 +44,14 @@ export class NFTRepository {
   }
 
   async findAll(query: GetNFTDto): Promise<NFTEntity[]> {
-    const qb = this.repository.createQueryBuilder('nft');
+    const qb = this.repository
+      .createQueryBuilder('nft')
+      .leftJoinAndMapOne(
+        'nft.creator',
+        UserEntity,
+        'creator',
+        'creator.id = nft.creatorId',
+      );
 
     if (query.id) qb.andWhere('nft.id = :id', { id: query.id });
     if (query.creatorId)

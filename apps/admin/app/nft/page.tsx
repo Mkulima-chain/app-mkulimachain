@@ -1,11 +1,42 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Image, Search, Plus, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react";
+import { Search, Plus, Loader2, Sparkles, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import { useAuth } from "@/hooks/use-auth";
+import { useWalletAtom } from "@/hooks/useWalletAtom";
+import { NFTMintService } from "./services/nft-mint.service";
+import { Wallet } from "lucide-react";
+
+// Types et constantes
+import {
+  NFT,
+  CreateNFTDto,
+  UpdateNFTDto,
+  MintNFTDto,
+  NFTStatus,
+} from "./types";
+import { NFTStats } from "./components/nft-stats";
+import { NFTTable } from "./components/nft-table";
+import { NFTForm } from "./components/nft-form";
+import { useNFTImages } from "./hooks/use-nft-images";
+import { Badge } from "@/components/ui/badge";
+import { useNFTForm } from "./hooks/use-nft-form";
+import { nftApi } from "./services/nft-api";
+import { isValidUUID } from "./utils";
+
+// Composants de dialogue pour édition et suppression
 import {
   Dialog,
   DialogContent,
@@ -13,233 +44,308 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
-
-enum NFTType {
-  RECIPE = "recipe",
-  TALE = "tale",
-  SONG = "song",
-  ART = "art",
-  TRADITION = "tradition",
-}
-
-enum NFTStatus {
-  DRAFT = "draft",
-  MINTING = "minting",
-  MINTED = "minted",
-  LISTED = "listed",
-  SOLD = "sold",
-}
-
-type NFT = {
-  id: string
-  creatorId: string
-  type: NFTType
-  title: string
-  description?: string
-  metadataURI: string
-  priceADA: number
-  revenueDistribution: {
-    creatorPercent: number
-    schoolFundPercent: number
-    platformPercent: number
-  }
-  status: NFTStatus
-  onChainHash?: string
-  policyId?: string
-  assetName?: string
-  createdAt: string
-  updatedAt: string
-}
-
-type CreateNFTDto = {
-  creatorId: string
-  type: NFTType
-  title: string
-  description?: string
-  metadataURI: string
-  priceADA: number
-  revenueDistribution: {
-    creatorPercent: number
-    schoolFundPercent: number
-    platformPercent: number
-  }
-}
-
-type UpdateNFTDto = {
-  title?: string
-  description?: string
-  metadataURI?: string
-  priceADA?: number
-  status?: NFTStatus
-  revenueDistribution?: {
-    creatorPercent: number
-    schoolFundPercent: number
-    platformPercent: number
-  }
-}
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export default function NFTPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedNFT, setSelectedNFT] = React.useState<NFT | null>(null)
-  const [formData, setFormData] = React.useState<CreateNFTDto>({
-    creatorId: "",
-    type: NFTType.RECIPE,
-    title: "",
-    description: "",
-    metadataURI: "",
-    priceADA: 0,
-    revenueDistribution: {
-      creatorPercent: 70,
-      schoolFundPercent: 20,
-      platformPercent: 10,
-    },
-  })
-  const [updateData, setUpdateData] = React.useState<UpdateNFTDto>({})
+  const { user } = useAuth();
+  const { connected, wallet, connect, disconnect, walletName } =
+    useWalletAtom();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMintDialogOpen, setIsMintDialogOpen] = useState(false);
+  const [isListDialogOpen, setIsListDialogOpen] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
+  const [updateData, setUpdateData] = useState<UpdateNFTDto>({});
+  const [mintData, setMintData] = useState<MintNFTDto>({
+    onChainHash: "",
+    policyId: "",
+    assetName: "",
+  });
+
+  // Hook personnalisé pour le formulaire
+  const {
+    formData,
+    imageFile,
+    audioFile,
+    imagePreview,
+    audioPreview,
+    updateFormData,
+    handleImageSelect,
+    handleAudioSelect,
+    removeImage,
+    removeAudio,
+    resetForm,
+  } = useNFTForm({
+    initialCreatorId: user?.id || "",
+  });
 
   // Fetch NFTs
-  const { data: nfts = [], isLoading, refetch } = useApiQuery<NFT[]>(
+  const {
+    data: nfts = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<NFT[]>(
     ["nfts", searchQuery],
     `/nfts${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
-  // Create mutation
-  const createMutation = useApiMutation<NFT, CreateNFTDto>(
-    "/nfts",
-    "POST",
-    {
-      onSuccess: () => {
-        toast.success("NFT ajouté avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
-      },
-    }
-  )
+  // Hook pour récupérer les images
+  const { nftImages, imageStates } = useNFTImages(nfts);
 
-  // Update mutation
+  // Mutations
+  const createMutation = useApiMutation<NFT, CreateNFTDto>("/nfts", "POST", {
+    onSuccess: () => {
+      toast.success("NFT ajouté avec succès");
+      setIsAddDialogOpen(false);
+      resetForm();
+      refetch();
+    },
+  });
+
   const updateMutation = useApiMutation<NFT, UpdateNFTDto>(
     () => `/nfts/${selectedNFT?.id}`,
     "PUT",
     {
       onSuccess: () => {
-        toast.success("NFT modifié avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedNFT(null)
-        refetch()
+        toast.success("NFT modifié avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedNFT(null);
+        refetch();
       },
     }
-  )
+  );
 
-  // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
     () => `/nfts/${selectedNFT?.id}`,
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("NFT supprimé avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedNFT(null)
-        refetch()
+        toast.success("NFT supprimé avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedNFT(null);
+        refetch();
       },
     }
-  )
+  );
 
-  const handleAdd = () => {
-    setFormData({
-      creatorId: "",
-      type: NFTType.RECIPE,
-      title: "",
-      description: "",
-      metadataURI: "",
-      priceADA: 0,
-      revenueDistribution: {
-        creatorPercent: 70,
-        schoolFundPercent: 20,
-        platformPercent: 10,
+  const mintMutation = useApiMutation<NFT, MintNFTDto>(
+    () => `/nfts/${selectedNFT?.id}/mint`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("NFT minté avec succès");
+        setIsMintDialogOpen(false);
+        setSelectedNFT(null);
+        setMintData({ onChainHash: "", policyId: "", assetName: "" });
+        setIsMinting(false);
+        refetch();
       },
-    })
-    setIsAddDialogOpen(true)
-  }
+      onError: (error) => {
+        setIsMinting(false);
+        toast.error(`Erreur lors de l'enregistrement: ${error.message}`);
+      },
+    }
+  );
+
+  const listMutation = useApiMutation<NFT>(
+    () => `/nfts/${selectedNFT?.id}/list`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("NFT mis en vente avec succès");
+        setIsListDialogOpen(false);
+        setSelectedNFT(null);
+        refetch();
+      },
+      onError: (error) => {
+        toast.error(`Erreur lors de la mise en vente: ${error.message}`);
+      },
+    }
+  );
+
+  // Handlers
+  const handleAdd = () => {
+    updateFormData({ creatorId: user?.id || "" });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (nft: NFT) => {
-    setSelectedNFT(nft)
+    setSelectedNFT(nft);
     setUpdateData({
       title: nft.title,
       description: nft.description,
       metadataURI: nft.metadataURI,
-      priceADA: nft.priceADA,
+      priceADA: Number(nft.priceADA || 0),
       status: nft.status,
       revenueDistribution: nft.revenueDistribution,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (nft: NFT) => {
-    setSelectedNFT(nft)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedNFT(nft);
+    setIsDeleteDialogOpen(true);
+  };
 
-  const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
-    createMutation.mutate({
-      ...formData,
-      priceADA: parseFloat(formData.priceADA.toString()),
-    })
-  }
+  const handleMint = (nft: NFT) => {
+    setSelectedNFT(nft);
+    setMintData({
+      onChainHash: nft.onChainHash || "",
+      policyId: nft.policyId || "",
+      assetName: nft.assetName || "",
+    });
+    setIsMintDialogOpen(true);
+  };
+
+  const handleList = (nft: NFT) => {
+    // Vérifier d'abord les statuts qui empêchent la mise en vente
+    if (nft.status === NFTStatus.LISTED) {
+      toast.info("Ce NFT est déjà en vente");
+      return;
+    }
+
+    if (nft.status === NFTStatus.SOLD) {
+      toast.error("Ce NFT a déjà été vendu");
+      return;
+    }
+
+    // Vérifier que le NFT est minté (après avoir exclu LISTED et SOLD)
+    if (nft.status !== NFTStatus.MINTED) {
+      toast.error("Le NFT doit être minté avant d'être mis en vente");
+      return;
+    }
+
+    setSelectedNFT(nft);
+    setIsListDialogOpen(true);
+  };
+
+  const handleConfirmList = () => {
+    if (!selectedNFT) return;
+    listMutation.mutate(undefined);
+  };
+
+  const handleMintWithMesh = async () => {
+    if (!selectedNFT) return;
+
+    if (!connected || !wallet) {
+      toast.error("Veuillez connecter votre wallet Cardano d'abord");
+      return;
+    }
+
+    // Vérifier la configuration Blockfrost avant de commencer
+    const blockfrostKey =
+      typeof window !== "undefined"
+        ? process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
+        : undefined;
+
+    if (!blockfrostKey) {
+      toast.error(
+        "Configuration manquante: Veuillez définir NEXT_PUBLIC_BLOCKFROST_API_KEY dans votre fichier .env.local et redémarrer le serveur.",
+        { duration: 10000 }
+      );
+      return;
+    }
+
+    try {
+      setIsMinting(true);
+      toast.loading("Mint en cours sur la blockchain...", { id: "minting" });
+
+      // Mint le NFT avec Mesh SDK
+      const result = await NFTMintService.mintNFT(
+        wallet,
+        selectedNFT,
+        mintData.policyId || undefined,
+        mintData.assetName || undefined,
+        undefined // blockfrostApiKey (depuis env)
+      );
+
+      toast.success("NFT minté avec succès sur la blockchain!", {
+        id: "minting",
+      });
+
+      // Enregistrer les informations dans l'API
+      mintMutation.mutate({
+        onChainHash: result.txHash,
+        policyId: result.policyId,
+        assetName: result.assetName,
+      });
+    } catch (error) {
+      setIsMinting(false);
+      const errorMessage =
+        error instanceof Error ? error.message : "Erreur inconnue";
+      toast.error(`Erreur lors du mint: ${errorMessage}`, {
+        id: "minting",
+        duration: 10000,
+      });
+      console.error("Mint error details:", error);
+    }
+  };
+
+  const handleSubmitAdd = async (
+    data: CreateNFTDto,
+    image?: File,
+    audio?: File
+  ) => {
+    try {
+      // Validation
+      if (!isValidUUID(data.creatorId)) {
+        toast.error("Format UUID invalide pour le créateur");
+        return;
+      }
+
+      setIsSubmitting(true);
+      await nftApi.create(data, image, audio);
+      toast.success("NFT ajouté avec succès", {
+        description: `NFT "${data.title}" créé avec succès`,
+      });
+      setIsAddDialogOpen(false);
+      resetForm();
+      refetch();
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { message?: string; errors?: string[] })?.message ||
+        (error as { errors?: string[] })?.errors ||
+        "Une erreur est survenue lors de la création du NFT";
+
+      console.error("Erreur lors de la création du NFT:", error);
+
+      toast.error("Erreur lors de la création du NFT", {
+        description:
+          typeof errorMessage === "string"
+            ? errorMessage
+            : JSON.stringify(errorMessage),
+        duration: 8000,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedNFT) return
+    e.preventDefault();
+    if (!selectedNFT) return;
+
     updateMutation.mutate({
       ...updateData,
-      priceADA: updateData.priceADA ? parseFloat(updateData.priceADA.toString()) : undefined,
-    })
-  }
+      priceADA: updateData.priceADA
+        ? parseFloat(updateData.priceADA.toString())
+        : undefined,
+    });
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedNFT) return
-    deleteMutation.mutate(undefined)
-  }
-
-  const getStatusBadge = (status: NFTStatus) => {
-    const variants: Record<NFTStatus, { variant: "default" | "secondary" | "outline"; className: string; label: string }> = {
-      [NFTStatus.LISTED]: { variant: "default", className: "bg-[#3A8F4C] text-white", label: "En vente" },
-      [NFTStatus.MINTED]: { variant: "secondary", className: "bg-[#004D73] text-white", label: "Minté" },
-      [NFTStatus.SOLD]: { variant: "secondary", className: "bg-[#5A3E36] text-white", label: "Vendu" },
-      [NFTStatus.DRAFT]: { variant: "outline", className: "", label: "Brouillon" },
-      [NFTStatus.MINTING]: { variant: "outline", className: "", label: "En minting" },
-    }
-    return variants[status] || variants[NFTStatus.DRAFT]
-  }
-
-  const getTypeLabel = (type: NFTType) => {
-    const labels: Record<NFTType, string> = {
-      [NFTType.RECIPE]: "Recette",
-      [NFTType.TALE]: "Conte",
-      [NFTType.SONG]: "Chant",
-      [NFTType.ART]: "Art",
-      [NFTType.TRADITION]: "Tradition",
-    }
-    return labels[type] || type
-  }
-
-  const activeNFTs = nfts.filter((n) => n.status === NFTStatus.LISTED)
-  const totalRevenue = nfts.filter((n) => n.status === NFTStatus.SOLD).reduce((sum, n) => sum + n.priceADA, 0)
+    if (!selectedNFT) return;
+    deleteMutation.mutate(undefined);
+  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">NFTs Culturels</h1>
@@ -254,38 +360,7 @@ export default function NFTPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">NFTs créés</CardTitle>
-            <Image className="h-5 w-5 text-[#3A8F4C]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : nfts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Revenus générés</CardTitle>
-            <Image className="h-5 w-5 text-[#5A3E36]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₿ {isLoading ? "..." : totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Pour fonds scolaires</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">NFTs en vente</CardTitle>
-            <Image className="h-5 w-5 text-[#004D73]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : activeNFTs.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Actuellement</p>
-          </CardContent>
-        </Card>
-      </div>
+      <NFTStats nfts={nfts} isLoading={isLoading} />
 
       {/* NFTs List */}
       <Card>
@@ -318,277 +393,57 @@ export default function NFTPage() {
               <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
           ) : (
-            <div className="rounded-lg border">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Titre
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Prix
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {nfts.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                          Aucun NFT trouvé
-                        </td>
-                      </tr>
-                    ) : (
-                      nfts.map((nft) => {
-                        const statusBadge = getStatusBadge(nft.status)
-                        return (
-                          <tr key={nft.id} className="hover:bg-muted/50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium">{nft.title}</div>
-                              {nft.description && (
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {nft.description.slice(0, 50)}...
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {getTypeLabel(nft.type)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              ₿ {nft.priceADA.toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge variant={statusBadge.variant} className={statusBadge.className}>
-                                {statusBadge.label}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="end" className="w-48 p-2">
-                                  <div className="space-y-1">
-                                    <button
-                                      onClick={() => handleEdit(nft)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                      Modifier
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(nft)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Supprimer
-                                    </button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <NFTTable
+              nfts={nfts}
+              nftImages={nftImages}
+              imageStates={imageStates}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onMint={handleMint}
+              onList={handleList}
+            />
           )}
         </CardContent>
       </Card>
 
       {/* Add Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Ajouter un NFT</DialogTitle>
-            <DialogDescription>
-              Remplissez les informations pour ajouter un nouveau NFT culturel
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitAdd}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="creatorId">ID du créateur *</Label>
-                <Input
-                  id="creatorId"
-                  value={formData.creatorId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, creatorId: e.target.value })
-                  }
-                  placeholder="UUID du créateur"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="type">Type *</Label>
-                <select
-                  id="type"
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value as NFTType })
-                  }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                  required
-                >
-                  <option value={NFTType.RECIPE}>Recette</option>
-                  <option value={NFTType.TALE}>Conte</option>
-                  <option value={NFTType.SONG}>Chant</option>
-                  <option value={NFTType.ART}>Art</option>
-                  <option value={NFTType.TRADITION}>Tradition</option>
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="title">Titre *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="metadataURI">URI des métadonnées *</Label>
-                <Input
-                  id="metadataURI"
-                  value={formData.metadataURI}
-                  onChange={(e) =>
-                    setFormData({ ...formData, metadataURI: e.target.value })
-                  }
-                  placeholder="ipfs://..."
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="priceADA">Prix (ADA) *</Label>
-                <Input
-                  id="priceADA"
-                  type="number"
-                  step="0.01"
-                  min="0.000001"
-                  value={formData.priceADA}
-                  onChange={(e) =>
-                    setFormData({ ...formData, priceADA: parseFloat(e.target.value) || 0 })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-4">
-                <Label>Distribution des revenus (%)</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="creatorPercent">Créateur</Label>
-                    <Input
-                      id="creatorPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.revenueDistribution.creatorPercent}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          revenueDistribution: {
-                            ...formData.revenueDistribution,
-                            creatorPercent: parseFloat(e.target.value) || 0,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="schoolFundPercent">Fonds scolaire</Label>
-                    <Input
-                      id="schoolFundPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.revenueDistribution.schoolFundPercent}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          revenueDistribution: {
-                            ...formData.revenueDistribution,
-                            schoolFundPercent: parseFloat(e.target.value) || 0,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="platformPercent">Plateforme</Label>
-                    <Input
-                      id="platformPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.revenueDistribution.platformPercent}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          revenueDistribution: {
-                            ...formData.revenueDistribution,
-                            platformPercent: parseFloat(e.target.value) || 0,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
-                  </>
-                ) : (
-                  "Ajouter"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <NFTForm
+        isOpen={isAddDialogOpen}
+        onClose={() => {
+          setIsAddDialogOpen(false);
+          resetForm();
+        }}
+        onSubmit={handleSubmitAdd}
+        formData={formData}
+        onFormDataChange={updateFormData}
+        imageFile={imageFile}
+        audioFile={audioFile}
+        imagePreview={imagePreview}
+        audioPreview={audioPreview}
+        onImageSelect={(file) => {
+          try {
+            handleImageSelect(file);
+          } catch (error: unknown) {
+            toast.error(
+              (error as { message?: string })?.message ||
+                "Erreur lors de la sélection de l'image"
+            );
+          }
+        }}
+        onAudioSelect={(file) => {
+          try {
+            handleAudioSelect(file);
+          } catch (error: unknown) {
+            toast.error(
+              (error as { message?: string })?.message ||
+                "Erreur lors de la sélection de l'audio"
+            );
+          }
+        }}
+        onRemoveImage={removeImage}
+        onRemoveAudio={removeAudio}
+        isLoading={isSubmitting}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -617,7 +472,10 @@ export default function NFTPage() {
                   id="edit-description"
                   value={updateData.description || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, description: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      description: e.target.value,
+                    })
                   }
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
@@ -628,7 +486,10 @@ export default function NFTPage() {
                   id="edit-metadataURI"
                   value={updateData.metadataURI || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, metadataURI: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      metadataURI: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -637,12 +498,31 @@ export default function NFTPage() {
                 <Input
                   id="edit-priceADA"
                   type="number"
-                  step="0.01"
+                  step="0.000001"
                   min="0.000001"
-                  value={updateData.priceADA || ""}
-                  onChange={(e) =>
-                    setUpdateData({ ...updateData, priceADA: parseFloat(e.target.value) || 0 })
+                  value={
+                    updateData.priceADA !== undefined &&
+                    updateData.priceADA !== null
+                      ? updateData.priceADA.toString()
+                      : ""
                   }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      setUpdateData({
+                        ...updateData,
+                        priceADA: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setUpdateData({
+                          ...updateData,
+                          priceADA: numValue,
+                        });
+                      }
+                    }
+                  }}
                 />
               </div>
               <div className="grid gap-2">
@@ -651,7 +531,10 @@ export default function NFTPage() {
                   id="edit-status"
                   value={updateData.status || NFTStatus.DRAFT}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, status: e.target.value as NFTStatus })
+                    setUpdateData({
+                      ...updateData,
+                      status: e.target.value as NFTStatus,
+                    })
                   }
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
@@ -727,6 +610,263 @@ export default function NFTPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* List Dialog */}
+      <Dialog open={isListDialogOpen} onOpenChange={setIsListDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-blue-600" />
+              Mettre en vente
+            </DialogTitle>
+            <DialogDescription>
+              Voulez-vous mettre le NFT <strong>{selectedNFT?.title}</strong> en
+              vente sur le marketplace ? Le NFT sera visible par tous les
+              utilisateurs et pourra être acheté.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedNFT && (
+            <div className="py-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Prix:</span>
+                <span className="font-medium">
+                  ₳ {Number(selectedNFT.priceADA || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Statut actuel:</span>
+                <Badge variant="outline">{selectedNFT.status}</Badge>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsListDialogOpen(false);
+                setSelectedNFT(null);
+              }}
+              disabled={listMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleConfirmList}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={listMutation.isPending}
+            >
+              {listMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Mise en vente...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Mettre en vente
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mint Dialog */}
+      <Dialog open={isMintDialogOpen} onOpenChange={setIsMintDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-[#3A8F4C]" />
+              Mint le NFT
+            </DialogTitle>
+            <DialogDescription>
+              Mint le NFT <strong>{selectedNFT?.title}</strong> directement sur
+              la blockchain Cardano. Connectez votre wallet pour commencer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Blockfrost Configuration Check */}
+            {typeof window !== "undefined" &&
+            !process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY ? (
+              <div className="p-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+                <div className="flex items-center gap-3 mb-3">
+                  <Wallet className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <p className="font-semibold text-red-800 dark:text-red-200">
+                    Configuration manquante
+                  </p>
+                </div>
+                <p className="text-sm text-red-700 dark:text-red-300 mb-2">
+                  La clé API Blockfrost n&apos;est pas configurée.
+                </p>
+                <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                  Ajoutez{" "}
+                  <code className="bg-red-100 dark:bg-red-900 px-1 rounded">
+                    NEXT_PUBLIC_BLOCKFROST_API_KEY
+                  </code>{" "}
+                  dans votre fichier{" "}
+                  <code className="bg-red-100 dark:bg-red-900 px-1 rounded">
+                    .env.local
+                  </code>{" "}
+                  et redémarrez le serveur.
+                </p>
+              </div>
+            ) : null}
+
+            {/* Wallet Connection Status */}
+            {!connected ? (
+              <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
+                <div className="flex items-center gap-3 mb-3">
+                  <Wallet className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-200">
+                    Wallet non connecté
+                  </p>
+                </div>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                  Vous devez connecter votre wallet Cardano pour mint le NFT.
+                </p>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const { BrowserWallet } = await import("@meshsdk/core");
+                      const wallets = await BrowserWallet.getInstalledWallets();
+                      if (wallets.length === 0) {
+                        toast.error(
+                          "Aucun wallet Cardano détecté. Installez Nami, Eternl ou un autre wallet Cardano."
+                        );
+                        return;
+                      }
+                      // Connecter le premier wallet disponible
+                      await connect(wallets[0].name);
+                      toast.success("Wallet connecté avec succès");
+                    } catch (error) {
+                      toast.error(
+                        `Erreur de connexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+                      );
+                    }
+                  }}
+                  className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                  disabled={
+                    typeof window !== "undefined" &&
+                    !process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
+                  }
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Connecter Wallet
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Wallet className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div>
+                      <p className="font-semibold text-green-800 dark:text-green-200">
+                        Wallet connecté
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        {walletName}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      await disconnect();
+                      toast.success("Wallet déconnecté");
+                    }}
+                  >
+                    Déconnecter
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Optional: Manual Entry (for advanced users) */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border"></div>
+                <span className="text-xs text-muted-foreground">
+                  Optionnel: Entrée manuelle
+                </span>
+                <div className="flex-1 h-px bg-border"></div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="mint-policyId">
+                  Policy ID (optionnel - sera généré si vide)
+                </Label>
+                <Input
+                  id="mint-policyId"
+                  type="text"
+                  placeholder="Laissez vide pour générer automatiquement"
+                  value={mintData.policyId}
+                  onChange={(e) =>
+                    setMintData({ ...mintData, policyId: e.target.value })
+                  }
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si vide, un Policy ID sera généré automatiquement
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="mint-assetName">
+                  Nom de l&apos;Asset (optionnel - sera généré si vide)
+                </Label>
+                <Input
+                  id="mint-assetName"
+                  type="text"
+                  placeholder="Laissez vide pour générer automatiquement"
+                  value={mintData.assetName}
+                  onChange={(e) =>
+                    setMintData({ ...mintData, assetName: e.target.value })
+                  }
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si vide, un nom sera généré à partir du titre du NFT
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsMintDialogOpen(false);
+                setMintData({ onChainHash: "", policyId: "", assetName: "" });
+              }}
+              disabled={isMinting || mintMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={handleMintWithMesh}
+              className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+              disabled={
+                !connected || !wallet || isMinting || mintMutation.isPending
+              }
+            >
+              {isMinting || mintMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Mint en cours...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Mint
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

@@ -71,10 +71,10 @@ export const authOptions: NextAuthOptions = {
           console.log(
             "Google Auth data:",
             {
-              name: user.name,
-              email: user.email,
-              image: user.image,
-              providerId: account.providerAccountId,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+            providerId: account.providerAccountId,
             },
             "Google Auth data here",
             {
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
           );
 
           console.log("API URL:", API_BASE_URL);
-
+          
           // Use direct fetch instead of apiClient to avoid SSR issues
           // Déterminer si l'inscription vient de la page register (BUYER)
           // On utilise sessionStorage pour stocker l'origine de la connexion
@@ -117,7 +117,7 @@ export const authOptions: NextAuthOptions = {
           if (response.ok) {
             const data = await response.json();
             console.log("Google Auth response:", data);
-
+            
             if (data) {
               user.id = data.user.id;
               user.accessToken = data.accessToken;

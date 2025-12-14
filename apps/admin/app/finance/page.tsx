@@ -1,10 +1,26 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Coins, TrendingUp, DollarSign, CreditCard, Plus, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
+import {
+  Coins,
+  TrendingUp,
+  DollarSign,
+  CreditCard,
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -12,17 +28,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 
 enum LoanStatus {
   PENDING = "pending",
@@ -32,56 +48,59 @@ enum LoanStatus {
 }
 
 type MicroLoan = {
-  id: string
+  id: string;
   farmer: {
-    id: string
-    name: string
-  }
-  amountADA: number
-  interestRate: number
-  durationDays: number
-  status: LoanStatus
-  loanContractHash: string
-  startDate?: string
-  dueDate?: string
-  repaidAt?: string
-  createdAt: string
-}
+    id: string;
+    name: string;
+  };
+  amountADA: number;
+  interestRate: number;
+  durationDays: number;
+  status: LoanStatus;
+  loanContractHash: string;
+  startDate?: string;
+  dueDate?: string;
+  repaidAt?: string;
+  createdAt: string;
+};
 
 type CreateMicroLoanDto = {
-  farmerId: string
-  amountADA: number
-  interestRate: number
-  durationDays: number
-  loanContractHash: string
-}
+  farmerId: string;
+  amountADA: number;
+  interestRate: number;
+  durationDays: number;
+  loanContractHash: string;
+};
 
 type UpdateMicroLoanDto = {
-  status?: LoanStatus
-  loanContractHash?: string
-}
+  status?: LoanStatus;
+  loanContractHash?: string;
+};
 
 export default function FinancePage() {
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedLoan, setSelectedLoan] = React.useState<MicroLoan | null>(null)
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedLoan, setSelectedLoan] = React.useState<MicroLoan | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateMicroLoanDto>({
     farmerId: "",
     amountADA: 0,
     interestRate: 5,
     durationDays: 90,
     loanContractHash: "",
-  })
+  });
   const [updateData, setUpdateData] = React.useState<UpdateMicroLoanDto>({
     status: LoanStatus.PENDING,
-  })
+  });
 
   // Fetch loans
-  const { data: microLoans = [], isLoading, refetch } = useApiQuery<MicroLoan[]>(
-    ["loans"],
-    "/loans"
-  )
+  const {
+    data: microLoans = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<MicroLoan[]>(["loans"], "/loans");
 
   // Create mutation
   const createMutation = useApiMutation<MicroLoan, CreateMicroLoanDto>(
@@ -89,12 +108,12 @@ export default function FinancePage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("Micro-prêt ajouté avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Micro-prêt ajouté avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<MicroLoan, UpdateMicroLoanDto>(
@@ -102,13 +121,13 @@ export default function FinancePage() {
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Micro-prêt modifié avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedLoan(null)
-        refetch()
+        toast.success("Micro-prêt modifié avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedLoan(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -116,13 +135,13 @@ export default function FinancePage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Micro-prêt supprimé avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedLoan(null)
-        refetch()
+        toast.success("Micro-prêt supprimé avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedLoan(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -131,57 +150,80 @@ export default function FinancePage() {
       interestRate: 5,
       durationDays: 90,
       loanContractHash: "",
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (loan: MicroLoan) => {
-    setSelectedLoan(loan)
+    setSelectedLoan(loan);
     setUpdateData({
       status: loan.status,
       loanContractHash: loan.loanContractHash,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (loan: MicroLoan) => {
-    setSelectedLoan(loan)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedLoan(loan);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     createMutation.mutate({
       ...formData,
       amountADA: parseFloat(formData.amountADA.toString()),
       interestRate: parseFloat(formData.interestRate.toString()),
       durationDays: parseInt(formData.durationDays.toString()),
-    })
-  }
+    });
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedLoan) return
-    updateMutation.mutate(updateData)
-  }
+    e.preventDefault();
+    if (!selectedLoan) return;
+    updateMutation.mutate(updateData);
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedLoan) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedLoan) return;
+    deleteMutation.mutate(undefined);
+  };
 
   const getStatusBadge = (status: LoanStatus) => {
-    const variants: Record<LoanStatus, { variant: "default" | "secondary" | "outline"; className: string; label: string }> = {
-      [LoanStatus.ACTIVE]: { variant: "default", className: "bg-[#3A8F4C] text-white", label: "Actif" },
-      [LoanStatus.REPAID]: { variant: "secondary", className: "bg-[#5A3E36] text-white", label: "Remboursé" },
-      [LoanStatus.PENDING]: { variant: "outline", className: "", label: "En attente" },
-      [LoanStatus.DEFAULTED]: { variant: "outline", className: "bg-red-500 text-white", label: "En défaut" },
-    }
-    return variants[status] || variants[LoanStatus.PENDING]
-  }
+    const variants: Record<
+      LoanStatus,
+      {
+        variant: "default" | "secondary" | "outline";
+        className: string;
+        label: string;
+      }
+    > = {
+      [LoanStatus.ACTIVE]: {
+        variant: "default",
+        className: "bg-[#3A8F4C] text-white",
+        label: "Actif",
+      },
+      [LoanStatus.REPAID]: {
+        variant: "secondary",
+        className: "bg-[#5A3E36] text-white",
+        label: "Remboursé",
+      },
+      [LoanStatus.PENDING]: {
+        variant: "outline",
+        className: "",
+        label: "En attente",
+      },
+      [LoanStatus.DEFAULTED]: {
+        variant: "outline",
+        className: "bg-red-500 text-white",
+        label: "En défaut",
+      },
+    };
+    return variants[status] || variants[LoanStatus.PENDING];
+  };
 
-  const activeLoans = microLoans.filter((l) => l.status === LoanStatus.ACTIVE)
-  const totalActive = activeLoans.reduce((sum, l) => sum + l.amountADA, 0)
+  const activeLoans = microLoans.filter((l) => l.status === LoanStatus.ACTIVE);
+  const totalActive = activeLoans.reduce((sum, l) => sum + l.amountADA, 0);
 
   return (
     <div className="space-y-6">
@@ -202,24 +244,35 @@ export default function FinancePage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Micro-prêts actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Micro-prêts actifs
+            </CardTitle>
             <Coins className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : `₿ ${totalActive.toFixed(2)}`}
+              {isLoading ? "..." : `₳ ${totalActive.toFixed(2)}`}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{isLoading ? "..." : `${activeLoans.length} prêts actifs`}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isLoading ? "..." : `${activeLoans.length} prêts actifs`}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total remboursé</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total remboursé
+            </CardTitle>
             <DollarSign className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : `₿ ${microLoans.filter(l => l.status === LoanStatus.REPAID).reduce((sum, l) => sum + l.amountADA, 0).toFixed(2)}`}
+              {isLoading
+                ? "..."
+                : `₳ ${microLoans
+                    .filter((l) => l.status === LoanStatus.REPAID)
+                    .reduce((sum, l) => sum + l.amountADA, 0)
+                    .toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground mt-1">+18% ce mois</p>
           </CardContent>
@@ -230,13 +283,17 @@ export default function FinancePage() {
             <CreditCard className="h-5 w-5 text-[#004D73]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : microLoans.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : microLoans.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Ce mois</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Taux de remboursement</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Taux de remboursement
+            </CardTitle>
             <TrendingUp className="h-5 w-5 text-[#F2C94C]" />
           </CardHeader>
           <CardContent>
@@ -291,20 +348,23 @@ export default function FinancePage() {
                   <tbody className="divide-y">
                     {microLoans.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucun micro-prêt trouvé
                         </td>
                       </tr>
                     ) : (
                       microLoans.map((loan) => {
-                        const statusBadge = getStatusBadge(loan.status)
+                        const statusBadge = getStatusBadge(loan.status);
                         return (
                           <tr key={loan.id} className="hover:bg-muted/50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               {loan.farmer?.name || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              ₿ {loan.amountADA.toFixed(2)}
+                              ₳ {loan.amountADA.toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {loan.interestRate}%
@@ -313,10 +373,15 @@ export default function FinancePage() {
                               {loan.durationDays} jours
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                              {loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : "N/A"}
+                              {loan.dueDate
+                                ? new Date(loan.dueDate).toLocaleDateString()
+                                : "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                              <Badge
+                                variant={statusBadge.variant}
+                                className={statusBadge.className}
+                              >
                                 {statusBadge.label}
                               </Badge>
                             </td>
@@ -327,7 +392,10 @@ export default function FinancePage() {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent align="end" className="w-48 p-2">
+                                <PopoverContent
+                                  align="end"
+                                  className="w-48 p-2"
+                                >
                                   <div className="space-y-1">
                                     <button
                                       onClick={() => handleEdit(loan)}
@@ -348,7 +416,7 @@ export default function FinancePage() {
                               </Popover>
                             </td>
                           </tr>
-                        )
+                        );
                       })
                     )}
                   </tbody>
@@ -391,7 +459,10 @@ export default function FinancePage() {
                   min="1"
                   value={formData.amountADA}
                   onChange={(e) =>
-                    setFormData({ ...formData, amountADA: parseFloat(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      amountADA: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />
@@ -406,7 +477,10 @@ export default function FinancePage() {
                   max="100"
                   value={formData.interestRate}
                   onChange={(e) =>
-                    setFormData({ ...formData, interestRate: parseFloat(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      interestRate: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />
@@ -420,18 +494,26 @@ export default function FinancePage() {
                   max="365"
                   value={formData.durationDays}
                   onChange={(e) =>
-                    setFormData({ ...formData, durationDays: parseInt(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      durationDays: parseInt(e.target.value) || 0,
+                    })
                   }
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="loanContractHash">Hash du smart contract *</Label>
+                <Label htmlFor="loanContractHash">
+                  Hash du smart contract *
+                </Label>
                 <Input
                   id="loanContractHash"
                   value={formData.loanContractHash}
                   onChange={(e) =>
-                    setFormData({ ...formData, loanContractHash: e.target.value })
+                    setFormData({
+                      ...formData,
+                      loanContractHash: e.target.value,
+                    })
                   }
                   placeholder="0x..."
                   required
@@ -483,7 +565,10 @@ export default function FinancePage() {
                   id="edit-status"
                   value={updateData.status}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, status: e.target.value as LoanStatus })
+                    setUpdateData({
+                      ...updateData,
+                      status: e.target.value as LoanStatus,
+                    })
                   }
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
@@ -494,12 +579,17 @@ export default function FinancePage() {
                 </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-loanContractHash">Hash du smart contract</Label>
+                <Label htmlFor="edit-loanContractHash">
+                  Hash du smart contract
+                </Label>
                 <Input
                   id="edit-loanContractHash"
                   value={updateData.loanContractHash || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, loanContractHash: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      loanContractHash: e.target.value,
+                    })
                   }
                   placeholder="0x..."
                 />
@@ -540,8 +630,8 @@ export default function FinancePage() {
             <DialogTitle>Supprimer le micro-prêt</DialogTitle>
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer le micro-prêt de{" "}
-              <strong>{selectedLoan?.farmer?.name || "N/A"}</strong> ? Cette action est
-              irréversible.
+              <strong>{selectedLoan?.farmer?.name || "N/A"}</strong> ? Cette
+              action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -570,5 +660,5 @@ export default function FinancePage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

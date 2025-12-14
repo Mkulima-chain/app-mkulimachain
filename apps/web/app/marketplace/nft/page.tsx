@@ -1,440 +1,473 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Separator } from "@/components/ui/separator"
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-    Search, Filter, SlidersHorizontal, ShoppingCart, Star, TrendingUp,
-    Package, Users, User, Grid3x3, List, X, Sparkles, Heart, Share2,
-    ChevronLeft, ChevronRight, Coins, Wallet, Image as ImageIcon,
-    Zap, Crown, Gem, Flame, Eye, Copy, Check, Calendar
-} from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { AuthMenu } from "@/components/auth-menu"
-import { LanguageSelector } from "@/components/language-selector"
-import { ImageGallery } from "@/components/image-gallery"
-import { AudioPlayer } from "@/components/audio-player"
-import { cn } from "@/lib/utils"
-import { useCardanoWallet } from "@/hooks/use-cardano-wallet"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import {
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ShoppingCart,
+  Star,
+  TrendingUp,
+  Package,
+  Users,
+  Grid3x3,
+  List,
+  X,
+  Sparkles,
+  Heart,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  Coins,
+  Wallet,
+  Image as ImageIcon,
+  Zap,
+  Crown,
+  Gem,
+  Flame,
+  Copy,
+  Check,
+  Calendar,
+  Loader2,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthMenu } from "@/components/auth-menu";
+import { LanguageSelector } from "@/components/language-selector";
+import { ImageGallery } from "@/components/image-gallery";
+import { AudioPlayer } from "@/components/audio-player";
+import { cn } from "@/lib/utils";
+import { useCardanoWallet } from "@/hooks/use-cardano-wallet";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiPost } from "@/hooks/use-api-mutation";
+import { NFT, NFTType, NFTStatus } from "@/types/nft";
+import { useNFTImages } from "@/hooks/use-nft-images";
+import { NFTImageSkeleton } from "@/components/nft-image-skeleton";
+import { ipfsUriToHttpUrl } from "@/utils/ipfs";
+import { NFTPurchaseService } from "@/services/nft-purchase.service";
+import { useAtomValue } from "jotai";
+import { walletAtom } from "@/lib/wallet";
+import { toast } from "sonner";
 
-// Types
-type NFTCollection = "all" | "agriculture" | "culture" | "art" | "collectibles" | "land"
-type SortOption = "recent" | "price-asc" | "price-desc" | "popular" | "rarity"
+// Types pour les filtres
+type NFTCollection =
+  | "all"
+  | "agriculture"
+  | "culture"
+  | "art"
+  | "collectibles"
+  | "land";
+type SortOption = "recent" | "price-asc" | "price-desc" | "popular";
 
-interface NFT {
-  id: string
-  name: string
-  collection: NFTCollection
-  price: number
-  currency: string
-  images: string[]
-  description: string
-  creator: string
-  owner: string
-  rarity: "common" | "rare" | "epic" | "legendary"
-  attributes: { trait_type: string; value: string }[]
-  likes: number
-  views: number
-  blockchainHash?: string
-  mintedAt: string
-  educationFund?: number // Montant alloué à l'éducation (en ADA)
-  standard?: "CIP-25" | "CIP-27" // Standard Cardano
-  type?: "recipe" | "tale" | "song" | "proverb" | "product" | "art" | "land" // Type de contenu culturel
-  audioUrl?: string // URL de l'audio pour les chants
-}
-
-// Données de démonstration
-const mockNFTs: NFT[] = [
-  // NFTs Culturels Lingala - Recettes
-  {
-    id: "1",
-    name: "Recette Lingala : Fufu de Manioc",
-    collection: "culture",
-    price: 75,
-    currency: "ADA",
-    images: ["🍠", "👩‍🍳", "🍽️"],
-    description: "Recette traditionnelle congolaise de fufu de manioc transmise par générations. NFT CIP-25 préservant le patrimoine culinaire lingala.",
-    creator: "Mama Kasaï - Femme Agricultrice",
-    owner: "Culture_Lover",
-    rarity: "epic",
-    type: "recipe",
-    standard: "CIP-25",
-    educationFund: 30,
-    attributes: [
-      { trait_type: "Type", value: "Recette" },
-      { trait_type: "Région", value: "Kasaï" },
-      { trait_type: "Langue", value: "Lingala" },
-      { trait_type: "Finance Éducation", value: "30 ADA" }
-    ],
-    likes: 456,
-    views: 2100,
-    blockchainHash: "0x1234...5678",
-    mintedAt: "2024-01-15"
-  },
-  {
-    id: "2",
-    name: "Conte Lingala : Mwinda na Mputu",
-    collection: "culture",
-    price: 120,
-    currency: "ADA",
-    images: ["📖", "🌙", "✨"],
-    description: "Conte traditionnel lingala racontant l'histoire de la lumière et de l'obscurité. NFT CIP-25 préservant la tradition orale congolaise.",
-    creator: "Grand-mère Bandundu",
-    owner: "Story_Collector",
-    rarity: "legendary",
-    type: "tale",
-    standard: "CIP-25",
-    educationFund: 50,
-    attributes: [
-      { trait_type: "Type", value: "Conte" },
-      { trait_type: "Région", value: "Bandundu" },
-      { trait_type: "Langue", value: "Lingala" },
-      { trait_type: "Finance Éducation", value: "50 ADA" }
-    ],
-    likes: 678,
-    views: 3200,
-    blockchainHash: "0x2345...6789",
-    mintedAt: "2024-01-10"
-  },
-  {
-    id: "3",
-    name: "Chant Traditionnel : Mokili Mobimba",
-    collection: "culture",
-    price: 95,
-    currency: "ADA",
-    images: ["🎵", "🎤", "👥"],
-    description: "Chant traditionnel lingala célébrant l'unité et la fraternité. NFT CIP-25 avec enregistrement audio authentique.",
-    creator: "Chœur des Femmes Agricultrices",
-    owner: "Music_Fan",
-    rarity: "rare",
-    type: "song",
-    standard: "CIP-25",
-    educationFund: 40,
-    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // URL de démonstration
-    attributes: [
-      { trait_type: "Type", value: "Chant" },
-      { trait_type: "Région", value: "Bas-Congo" },
-      { trait_type: "Langue", value: "Lingala" },
-      { trait_type: "Finance Éducation", value: "40 ADA" },
-      { trait_type: "Durée", value: "3:45" }
-    ],
-    likes: 523,
-    views: 2800,
-    blockchainHash: "0x3456...7890",
-    mintedAt: "2024-01-12"
-  },
-  {
-    id: "4",
-    name: "Proverbe Lingala : Nzoto ezali na motema",
-    collection: "culture",
-    price: 60,
-    currency: "ADA",
-    images: ["💬", "🧠", "❤️"],
-    description: "Proverbe traditionnel lingala sur la sagesse et le cœur. NFT CIP-25 préservant la philosophie congolaise.",
-    creator: "Ancien du Kivu",
-    owner: "Wisdom_Seeker",
-    rarity: "rare",
-    type: "proverb",
-    standard: "CIP-25",
-    educationFund: 25,
-    attributes: [
-      { trait_type: "Type", value: "Proverbe" },
-      { trait_type: "Région", value: "Kivu" },
-      { trait_type: "Langue", value: "Lingala" },
-      { trait_type: "Finance Éducation", value: "25 ADA" }
-    ],
-    likes: 389,
-    views: 1900,
-    blockchainHash: "0x4567...8901",
-    mintedAt: "2024-01-18"
-  },
-  // NFTs Agriculture
-  {
-    id: "5",
-    name: "Cacao Premium #001",
-    collection: "agriculture",
-    price: 150,
-    currency: "ADA",
-    images: ["🌰", "🌰", "🌰"],
-    description: "NFT représentant un cacao premium certifié, première édition. Traçabilité blockchain complète.",
-    creator: "Coopérative Kivu - Femmes Agricultrices",
-    owner: "Collector_01",
-    rarity: "legendary",
-    type: "product",
-    attributes: [
-      { trait_type: "Origine", value: "Kongo Central" },
-      { trait_type: "Certification", value: "Bio" },
-      { trait_type: "Année", value: "2024" },
-      { trait_type: "Producteur", value: "Femme Agricultrice" }
-    ],
-    likes: 234,
-    views: 1520,
-    blockchainHash: "0x5678...9012",
-    mintedAt: "2024-01-15"
-  },
-  {
-    id: "6",
-    name: "Café Arabica #042",
-    collection: "agriculture",
-    price: 85,
-    currency: "ADA",
-    images: ["☕", "☕", "☕"],
-    description: "NFT de café arabica de qualité supérieure avec traçabilité blockchain complète",
-    creator: "Ferme Mwamba - Femmes Agricultrices",
-    owner: "CoffeeLover",
-    rarity: "epic",
-    type: "product",
-    attributes: [
-      { trait_type: "Torréfaction", value: "Moyenne" },
-      { trait_type: "Origine", value: "Kivu" },
-      { trait_type: "Producteur", value: "Femme Agricultrice" }
-    ],
-    likes: 189,
-    views: 980,
-    blockchainHash: "0x6789...0123",
-    mintedAt: "2024-01-20"
-  },
-  {
-    id: "7",
-    name: "Manioc Premium #203",
-    collection: "agriculture",
-    price: 45,
-    currency: "ADA",
-    images: ["🍠", "🍠", "🍠"],
-    description: "NFT de manioc séché premium avec certification blockchain",
-    creator: "Association Paysanne - Femmes Agricultrices",
-    owner: "NFT_Newbie",
-    rarity: "common",
-    type: "product",
-    attributes: [
-      { trait_type: "Qualité", value: "Premium" },
-      { trait_type: "Conditionnement", value: "Sacs 50kg" },
-      { trait_type: "Producteur", value: "Femme Agricultrice" }
-    ],
-    likes: 89,
-    views: 420,
-    blockchainHash: "0x7890...1234",
-    mintedAt: "2024-01-22"
-  },
-  {
-    id: "8",
-    name: "Terre Fertile #156",
-    collection: "land",
-    price: 500,
-    currency: "ADA",
-    images: ["🌾", "🌾", "🌾", "🌾"],
-    description: "Parcelle de terre fertile certifiée pour l'agriculture. Certification blockchain complète.",
-    creator: "Terra Congo",
-    owner: "Farmer_Pro",
-    rarity: "legendary",
-    type: "land",
-    attributes: [
-      { trait_type: "Superficie", value: "5 hectares" },
-      { trait_type: "Type", value: "Agricole" },
-      { trait_type: "Localisation", value: "Kongo Central" }
-    ],
-    likes: 456,
-    views: 2100,
-    blockchainHash: "0x8901...2345",
-    mintedAt: "2024-01-10"
-  },
-  {
-    id: "9",
-    name: "Art Paysan #089",
-    collection: "art",
-    price: 120,
-    currency: "ADA",
-    images: ["🎨", "🎨", "🎨"],
-    description: "Œuvre d'art numérique représentant la vie paysanne congolaise",
-    creator: "Artiste Congolais",
-    owner: "ArtCollector",
-    rarity: "rare",
-    type: "art",
-    attributes: [
-      { trait_type: "Style", value: "Digital" },
-      { trait_type: "Thème", value: "Agriculture" }
-    ],
-    likes: 167,
-    views: 750,
-    blockchainHash: "0x9012...3456",
-    mintedAt: "2024-01-18"
-  },
-  {
-    id: "10",
-    name: "Recette Lingala : Poulet Moambé",
-    collection: "culture",
-    price: 100,
-    currency: "ADA",
-    images: ["🍗", "🥘", "👩‍🍳"],
-    description: "Recette traditionnelle de poulet moambé, plat emblématique congolais. NFT CIP-25 préservant la gastronomie lingala.",
-    creator: "Mama Bas-Congo",
-    owner: "Foodie_Collector",
-    rarity: "epic",
-    type: "recipe",
-    standard: "CIP-25",
-    educationFund: 40,
-    attributes: [
-      { trait_type: "Type", value: "Recette" },
-      { trait_type: "Région", value: "Bas-Congo" },
-      { trait_type: "Langue", value: "Lingala" },
-      { trait_type: "Finance Éducation", value: "40 ADA" }
-    ],
-    likes: 567,
-    views: 2900,
-    blockchainHash: "0x0123...4567",
-    mintedAt: "2024-01-20"
+// Fonctions utilitaires pour mapper les types API vers l'affichage
+const getCollectionFromType = (type: NFTType): NFTCollection => {
+  switch (type) {
+    case NFTType.RECIPE:
+    case NFTType.TALE:
+    case NFTType.SONG:
+    case NFTType.TRADITION:
+      return "culture";
+    case NFTType.ART:
+      return "art";
+    default:
+      return "agriculture";
   }
-]
+};
 
-const getRarityColor = (rarity: NFT["rarity"]) => {
+const getTypeLabel = (type: NFTType): string => {
+  const labels: Record<NFTType, string> = {
+    [NFTType.RECIPE]: "Recette",
+    [NFTType.TALE]: "Conte",
+    [NFTType.SONG]: "Chant",
+    [NFTType.ART]: "Art",
+    [NFTType.TRADITION]: "Tradition",
+  };
+  return labels[type] || type;
+};
+
+type Rarity = "common" | "rare" | "epic" | "legendary";
+
+const getRarityFromStatus = (status: NFTStatus): Rarity => {
+  switch (status) {
+    case NFTStatus.SOLD:
+      return "legendary";
+    case NFTStatus.MINTED:
+      return "epic";
+    case NFTStatus.LISTED:
+      return "rare";
+    default:
+      return "common";
+  }
+};
+
+const getRarityColor = (rarity: Rarity) => {
   switch (rarity) {
     case "legendary":
-      return "text-[#F2C94C] bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 border-[#F2C94C]/30"
+      return "text-[#F2C94C] bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 border-[#F2C94C]/30";
     case "epic":
-      return "text-purple-600 bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700"
+      return "text-purple-600 bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700";
     case "rare":
-      return "text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700"
+      return "text-blue-600 bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700";
     case "common":
-      return "text-gray-600 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+      return "text-gray-600 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700";
     default:
-      return "text-gray-600 bg-gray-100 dark:bg-gray-800"
+      return "text-gray-600 bg-gray-100 dark:bg-gray-800";
   }
-}
+};
 
-const getRarityIcon = (rarity: NFT["rarity"]) => {
+const getRarityIcon = (rarity: Rarity) => {
   switch (rarity) {
     case "legendary":
-      return <Crown className="w-4 h-4" />
+      return <Crown className="w-4 h-4" />;
     case "epic":
-      return <Gem className="w-4 h-4" />
+      return <Gem className="w-4 h-4" />;
     case "rare":
-      return <Zap className="w-4 h-4" />
+      return <Zap className="w-4 h-4" />;
     case "common":
-      return <Flame className="w-4 h-4" />
+      return <Flame className="w-4 h-4" />;
     default:
-      return <Star className="w-4 h-4" />
+      return <Star className="w-4 h-4" />;
   }
-}
+};
 
-const getRarityLabel = (rarity: NFT["rarity"]) => {
+const getRarityLabel = (rarity: Rarity) => {
   switch (rarity) {
     case "legendary":
-      return "Légendaire"
+      return "Légendaire";
     case "epic":
-      return "Épique"
+      return "Épique";
     case "rare":
-      return "Rare"
+      return "Rare";
     case "common":
-      return "Commun"
+      return "Commun";
     default:
-      return rarity
+      return rarity;
   }
-}
+};
 
 export default function NFTMarketplacePage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCollection, setSelectedCollection] = useState<NFTCollection>("all")
-  const [sortBy, setSortBy] = useState<SortOption>("recent")
-  const [showFilters, setShowFilters] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null)
-  const [isNFTModalOpen, setIsNFTModalOpen] = useState(false)
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
-  const [copied, setCopied] = useState(false)
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null)
-  const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({})
-  const productsPerPage = 12
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCollection, setSelectedCollection] =
+    useState<NFTCollection>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
+  const [showFilters, setShowFilters] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
+  const [isNFTModalOpen, setIsNFTModalOpen] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [copied, setCopied] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>(
+    {}
+  );
+  interface NFTMetadata {
+    audio?: string;
+    attributes?: Array<{
+      trait_type?: string;
+      name?: string;
+      value: string | number;
+    }>;
+    [key: string]: unknown;
+  }
+  const [nftMetadata, setNftMetadata] = useState<Record<string, NFTMetadata>>(
+    {}
+  );
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
+  const [pendingPurchase, setPendingPurchase] = useState(false);
+  const productsPerPage = 12;
+
+  // Mutation pour créer l'achat NFT
+  const purchaseMutation = useApiPost<
+    { id: string; transactionHash: string },
+    { nftId: string; buyerId: string; transactionHash?: string }
+  >("/nft-purchases", {
+    onSuccess: () => {
+      toast.success("NFT acheté avec succès!");
+      setIsNFTModalOpen(false);
+      setShowPurchaseDialog(false);
+      // Invalider les queries pour rafraîchir les données
+      window.location.reload(); // Simple refresh pour l'instant
+    },
+    onError: (error) => {
+      toast.error(
+        `Erreur lors de l'enregistrement de l'achat: ${error.message}`
+      );
+    },
+  });
 
   // Wallet
-  const { connected } = useCardanoWallet()
+  const { connected, connect, wallets } = useCardanoWallet();
+  const walletState = useAtomValue(walletAtom);
+  const wallet = walletState.wallet;
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  // Récupérer les NFTs depuis l'API
+  const {
+    data: nfts = [],
+    isLoading,
+    error,
+  } = useApiQuery<NFT[]>({
+    queryKey: ["nfts", searchQuery],
+    endpoint: `/nfts${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`,
+  });
+
+  // Récupérer les images depuis IPFS
+  const { nftImages, imageStates } = useNFTImages(nfts);
 
   // Filtres avancés
-  const [minPrice, setMinPrice] = useState("")
-  const [maxPrice, setMaxPrice] = useState("")
-  const [selectedRarity, setSelectedRarity] = useState<string>("all")
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedRarity, setSelectedRarity] = useState<string>("all");
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Filtrer et trier les NFT
-  const filteredNFTs = mockNFTs
-    .filter(nft => {
-      const matchesSearch = nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          nft.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          nft.creator.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCollection = selectedCollection === "all" || nft.collection === selectedCollection
-      const matchesPrice = (!minPrice || nft.price >= Number(minPrice)) &&
-                          (!maxPrice || nft.price <= Number(maxPrice))
-      const matchesRarity = selectedRarity === "all" || nft.rarity === selectedRarity
-      return matchesSearch && matchesCollection && matchesPrice && matchesRarity
+  const filteredNFTs = nfts
+    .filter((nft) => {
+      // Filtrer uniquement les NFTs en vente
+      if (nft.status !== NFTStatus.LISTED) return false;
+
+      const matchesSearch =
+        nft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        nft.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        false;
+      const nftCollection = getCollectionFromType(nft.type);
+      const matchesCollection =
+        selectedCollection === "all" || nftCollection === selectedCollection;
+      const matchesPrice =
+        (!minPrice || Number(nft.priceADA || 0) >= Number(minPrice)) &&
+        (!maxPrice || Number(nft.priceADA || 0) <= Number(maxPrice));
+      const rarity = getRarityFromStatus(nft.status);
+      const matchesRarity =
+        selectedRarity === "all" || rarity === selectedRarity;
+      return (
+        matchesSearch && matchesCollection && matchesPrice && matchesRarity
+      );
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
-          return a.price - b.price
+          return Number(a.priceADA || 0) - Number(b.priceADA || 0);
         case "price-desc":
-          return b.price - a.price
+          return Number(b.priceADA || 0) - Number(a.priceADA || 0);
         case "popular":
-          return b.likes - a.likes
-        case "rarity":
-          const rarityOrder = { legendary: 4, epic: 3, rare: 2, common: 1 }
-          return rarityOrder[b.rarity] - rarityOrder[a.rarity]
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         default:
-          return 0
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
       }
-    })
+    });
 
   // Pagination
-  const totalPages = Math.ceil(filteredNFTs.length / productsPerPage)
+  const totalPages = Math.ceil(filteredNFTs.length / productsPerPage);
   const paginatedNFTs = filteredNFTs.slice(
     (currentPage - 1) * productsPerPage,
     currentPage * productsPerPage
-  )
+  );
+
+  // Fonction pour gérer l'achat d'un NFT
+  const handlePurchaseNFT = async () => {
+    if (!selectedNFT) {
+      return;
+    }
+
+    // Si le wallet n'est pas connecté, ouvrir le modal de connexion
+    if (!wallet || !connected) {
+      setPendingPurchase(true); // Marquer qu'un achat est en attente
+      if (wallets && wallets.length > 0) {
+        // Si un seul wallet disponible, connecter directement
+        if (wallets.length === 1) {
+          try {
+            await connect(wallets[0].name);
+            toast.success("Wallet connecté avec succès!");
+            // L'achat continuera automatiquement via useEffect
+            return;
+          } catch (error) {
+            setPendingPurchase(false);
+            toast.error(
+              `Erreur lors de la connexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+            );
+            return;
+          }
+        } else {
+          // Sinon, ouvrir le modal de sélection
+          setShowWalletModal(true);
+          return;
+        }
+      } else {
+        setPendingPurchase(false);
+        toast.error(
+          "Aucun wallet Cardano détecté. Veuillez installer un wallet comme Nami, Eternl ou Flint."
+        );
+        return;
+      }
+    }
+
+    // Si on arrive ici, le wallet est connecté, procéder à l'achat
+    await executePurchase();
+  };
+
+  // Fonction pour exécuter l'achat
+  const executePurchase = useCallback(async () => {
+    if (!selectedNFT || !wallet || !connected) {
+      return;
+    }
+
+    if (!walletState.address) {
+      toast.error("Adresse wallet non disponible");
+      setPendingPurchase(false);
+      return;
+    }
+
+    try {
+      setIsPurchasing(true);
+      setPendingPurchase(false);
+      toast.loading("Traitement de l'achat...", { id: "purchasing" });
+
+      // Pour l'instant, on utilise l'adresse du wallet connecté comme adresse du vendeur
+      // En production, il faudrait récupérer l'adresse du créateur depuis l'API
+      const sellerAddress = walletState.address; // TODO: Récupérer depuis l'API
+
+      // Effectuer le paiement avec Mesh SDK
+      const result = await NFTPurchaseService.purchaseNFT(
+        wallet,
+        selectedNFT,
+        sellerAddress
+      );
+
+      toast.success("Paiement effectué avec succès!", { id: "purchasing" });
+
+      // Enregistrer l'achat dans l'API
+      purchaseMutation.mutate({
+        nftId: selectedNFT.id,
+        buyerId: walletState.address, // Utiliser l'adresse comme buyerId temporairement
+        transactionHash: result.txHash,
+      });
+    } catch (error) {
+      setIsPurchasing(false);
+      setPendingPurchase(false);
+      const errorMessage =
+        error instanceof Error ? error.message : "Erreur inconnue";
+      toast.error(`Erreur lors de l'achat: ${errorMessage}`, {
+        id: "purchasing",
+        duration: 10000,
+      });
+      console.error("Purchase error details:", error);
+    }
+  }, [selectedNFT, wallet, connected, walletState.address, purchaseMutation]);
+
+  // Effectuer l'achat automatiquement après connexion du wallet
+  useEffect(() => {
+    if (
+      pendingPurchase &&
+      connected &&
+      wallet &&
+      selectedNFT &&
+      walletState.address
+    ) {
+      // Attendre un peu pour que le wallet soit complètement initialisé
+      const timer = setTimeout(() => {
+        executePurchase();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    pendingPurchase,
+    connected,
+    wallet,
+    selectedNFT,
+    walletState.address,
+    executePurchase,
+  ]);
 
   // Reset to first page when filters change
   useEffect(() => {
     const timer = setTimeout(() => {
-      setCurrentPage(1)
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [searchQuery, selectedCollection, sortBy, minPrice, maxPrice, selectedRarity])
+      setCurrentPage(1);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [
+    searchQuery,
+    selectedCollection,
+    sortBy,
+    minPrice,
+    maxPrice,
+    selectedRarity,
+  ]);
 
   const toggleFavorite = (nftId: string) => {
-    setFavorites(prev => {
-      const newSet = new Set(prev)
+    setFavorites((prev) => {
+      const newSet = new Set(prev);
       if (newSet.has(nftId)) {
-        newSet.delete(nftId)
+        newSet.delete(nftId);
       } else {
-        newSet.add(nftId)
+        newSet.add(nftId);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
+
+  // Récupérer les métadonnées pour le NFT sélectionné
+  useEffect(() => {
+    if (selectedNFT && selectedNFT.metadataURI) {
+      const fetchMetadata = async () => {
+        try {
+          const metadataUrl = ipfsUriToHttpUrl(selectedNFT.metadataURI);
+          const response = await fetch(metadataUrl);
+          if (response.ok) {
+            const metadata = await response.json();
+            setNftMetadata((prev) => ({
+              ...prev,
+              [selectedNFT.id]: metadata,
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching metadata:", error);
+        }
+      };
+      fetchMetadata();
+    }
+  }, [selectedNFT]);
 
   const openNFTModal = (nft: NFT) => {
-    setSelectedNFT(nft)
-    setIsNFTModalOpen(true)
-  }
+    setSelectedNFT(nft);
+    setIsNFTModalOpen(true);
+  };
 
   const handleCopyHash = () => {
-    if (selectedNFT?.blockchainHash) {
-      navigator.clipboard.writeText(selectedNFT.blockchainHash)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+    if (selectedNFT) {
+      const hash = selectedNFT.onChainHash || selectedNFT.metadataURI;
+      if (hash) {
+        navigator.clipboard.writeText(hash);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     }
-  }
+  };
 
   const collections: { value: NFTCollection; label: string; icon: string }[] = [
     { value: "all", label: "Tous", icon: "📦" },
@@ -442,33 +475,34 @@ export default function NFTMarketplacePage() {
     { value: "agriculture", label: "Agriculture", icon: "🌾" },
     { value: "art", label: "Art", icon: "🎨" },
     { value: "collectibles", label: "Collection", icon: "💎" },
-    { value: "land", label: "Terrains", icon: "🏞️" }
-  ]
+    { value: "land", label: "Terrains", icon: "🏞️" },
+  ];
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: "recent", label: "Plus récent" },
     { value: "price-asc", label: "Prix croissant" },
     { value: "price-desc", label: "Prix décroissant" },
     { value: "popular", label: "Plus populaire" },
-    { value: "rarity", label: "Rareté" }
-  ]
+  ];
 
   const rarities: { value: string; label: string }[] = [
     { value: "all", label: "Toutes" },
     { value: "legendary", label: "Légendaire" },
     { value: "epic", label: "Épique" },
     { value: "rare", label: "Rare" },
-    { value: "common", label: "Commun" }
-  ]
+    { value: "common", label: "Commun" },
+  ];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#004D73]">
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled 
-          ? "bg-white/98 dark:bg-[#004D73]/98 backdrop-blur-md border-b border-[#004D73]/20 dark:border-white/20 shadow-lg shadow-[#004D73]/5 dark:shadow-white/5" 
-          : "bg-white/95 dark:bg-[#004D73]/95 backdrop-blur-sm border-b border-[#004D73]/10 dark:border-white/10 shadow-sm"
-      }`}>
+      <nav
+        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-white/98 dark:bg-[#004D73]/98 backdrop-blur-md border-b border-[#004D73]/20 dark:border-white/20 shadow-lg shadow-[#004D73]/5 dark:shadow-white/5"
+            : "bg-white/95 dark:bg-[#004D73]/95 backdrop-blur-sm border-b border-[#004D73]/10 dark:border-white/10 shadow-sm"
+        }`}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="flex items-center gap-3 group">
@@ -496,25 +530,25 @@ export default function NFTMarketplacePage() {
                 </span>
               </div>
             </Link>
-            
+
             {/* Desktop Navigation Links */}
             <div className="hidden lg:flex items-center gap-1">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
               >
                 Accueil
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
               </Link>
-              <Link 
-                href="/marketplace" 
+              <Link
+                href="/marketplace"
                 className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
               >
                 Marketplace
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
               </Link>
-              <Link 
-                href="/marketplace/nft" 
+              <Link
+                href="/marketplace/nft"
                 className="relative px-4 py-2 text-[#3A8F4C] dark:text-[#3A8F4C] font-medium text-sm group"
               >
                 NFT
@@ -538,13 +572,16 @@ export default function NFTMarketplacePage() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 border border-[#3A8F4C]/30 mb-4">
               <Sparkles className="w-4 h-4 text-[#3A8F4C]" />
-              <span className="text-sm font-medium text-[#3A8F4C]">Marketplace NFT - Lingala Chain</span>
+              <span className="text-sm font-medium text-[#3A8F4C]">
+                Marketplace NFT - Lingala Chain
+              </span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-[#5A3E36] dark:text-white mb-4">
               NFTs Culturels & Agricoles
             </h1>
             <p className="text-xl text-[#004D73] dark:text-white/80 max-w-2xl mx-auto mb-4">
-              Découvrez et collectionnez des NFTs uniques : recettes, contes, chants lingala et produits agricoles certifiés
+              Découvrez et collectionnez des NFTs uniques : recettes, contes,
+              chants lingala et produits agricoles certifiés
             </p>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 border border-[#F2C94C]/30">
               <span className="text-2xl">🎓</span>
@@ -553,7 +590,8 @@ export default function NFTMarketplacePage() {
                   Financement de l&apos;éducation
                 </p>
                 <p className="text-xs text-[#004D73] dark:text-white/70">
-                  Les revenus des NFTs culturels financent la scolarité des enfants d&apos;agriculteurs
+                  Les revenus des NFTs culturels financent la scolarité des
+                  enfants d&apos;agriculteurs
                 </p>
               </div>
             </div>
@@ -580,7 +618,9 @@ export default function NFTMarketplacePage() {
               {collections.map((col) => (
                 <Button
                   key={col.value}
-                  variant={selectedCollection === col.value ? "default" : "outline"}
+                  variant={
+                    selectedCollection === col.value ? "default" : "outline"
+                  }
                   onClick={() => setSelectedCollection(col.value)}
                   className={cn(
                     "rounded-lg px-4 py-2 text-sm font-medium transition-all",
@@ -605,8 +645,8 @@ export default function NFTMarketplacePage() {
                   onClick={() => setViewMode("grid")}
                   className={cn(
                     "h-8 w-8",
-                    viewMode === "grid" 
-                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]" 
+                    viewMode === "grid"
+                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]"
                       : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                   )}
                 >
@@ -618,8 +658,8 @@ export default function NFTMarketplacePage() {
                   onClick={() => setViewMode("list")}
                   className={cn(
                     "h-8 w-8",
-                    viewMode === "list" 
-                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]" 
+                    viewMode === "list"
+                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]"
                       : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                   )}
                 >
@@ -633,8 +673,8 @@ export default function NFTMarketplacePage() {
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   "rounded-lg px-4 py-2 text-sm font-medium transition-all border-[#004D73]/20 dark:border-white/20",
-                  showFilters 
-                    ? "bg-[#3A8F4C] text-white border-[#3A8F4C]" 
+                  showFilters
+                    ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
                     : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                 )}
               >
@@ -665,7 +705,9 @@ export default function NFTMarketplacePage() {
             <Card className="mb-8 bg-white/90 dark:bg-[#003D5C]/90 border-[#004D73]/20 dark:border-white/20 backdrop-blur-sm animate-slide-up">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-[#5A3E36] dark:text-white">Filtres avancés</h3>
+                  <h3 className="text-lg font-semibold text-[#5A3E36] dark:text-white">
+                    Filtres avancés
+                  </h3>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -678,7 +720,9 @@ export default function NFTMarketplacePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Price Range */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">Prix (ADA)</Label>
+                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
+                      Prix (ADA)
+                    </Label>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -687,7 +731,9 @@ export default function NFTMarketplacePage() {
                         onChange={(e) => setMinPrice(e.target.value)}
                         className="border-[#004D73]/20 dark:border-white/20 bg-white dark:bg-[#004D73] text-[#5A3E36] dark:text-white/90"
                       />
-                      <span className="text-[#004D73] dark:text-white/70">-</span>
+                      <span className="text-[#004D73] dark:text-white/70">
+                        -
+                      </span>
                       <Input
                         type="number"
                         placeholder="Max"
@@ -700,7 +746,9 @@ export default function NFTMarketplacePage() {
 
                   {/* Rarity */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">Rareté</Label>
+                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
+                      Rareté
+                    </Label>
                     <select
                       value={selectedRarity}
                       onChange={(e) => setSelectedRarity(e.target.value)}
@@ -723,35 +771,68 @@ export default function NFTMarketplacePage() {
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <ImageIcon className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{mockNFTs.length}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">NFT disponibles</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {isLoading ? "..." : filteredNFTs.length}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  NFT disponibles
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <Users className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{new Set(mockNFTs.map(n => n.creator)).size}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Créateurs</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {isLoading
+                    ? "..."
+                    : new Set(nfts.map((n) => n.creatorId)).size}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Créateurs
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <TrendingUp className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{mockNFTs.reduce((sum, nft) => sum + nft.likes, 0)}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Likes total</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {isLoading
+                    ? "..."
+                    : nfts.filter((n) => n.status === NFTStatus.LISTED).length}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  En vente
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <Coins className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{mockNFTs.reduce((sum, nft) => sum + nft.price, 0)}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Volume total (ADA)</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {isLoading
+                    ? "..."
+                    : filteredNFTs
+                        .reduce(
+                          (sum, nft) => sum + Number(nft.priceADA || 0),
+                          0
+                        )
+                        .toFixed(2)}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Volume total (ADA)
+                </p>
               </CardContent>
             </Card>
           </div>
 
           {/* Education Impact Banner */}
-          {mockNFTs.filter(nft => nft.educationFund).length > 0 && (
+          {filteredNFTs.filter(
+            (nft) =>
+              nft.type === NFTType.RECIPE ||
+              nft.type === NFTType.TALE ||
+              nft.type === NFTType.SONG ||
+              nft.type === NFTType.TRADITION
+          ).length > 0 && (
             <Card className="max-w-4xl mx-auto bg-gradient-to-r from-[#F2C94C]/20 to-[#3A8F4C]/20 dark:from-[#F2C94C]/30 dark:to-[#3A8F4C]/30 border-[#F2C94C]/30 dark:border-[#F2C94C]/50">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -763,20 +844,54 @@ export default function NFTMarketplacePage() {
                       Impact Éducatif des NFTs Culturels
                     </h3>
                     <p className="text-sm text-[#004D73] dark:text-white/80 mb-2">
-                      Les NFTs culturels Lingala (recettes, contes, chants, proverbes) financent directement la scolarité des enfants d&apos;agriculteurs congolais.
+                      Les NFTs culturels Lingala (recettes, contes, chants,
+                      traditions) financent directement la scolarité des enfants
+                      d&apos;agriculteurs congolais.
                     </p>
                     <div className="flex items-center gap-4 text-sm">
                       <div>
                         <p className="font-semibold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                          {mockNFTs.filter(nft => nft.educationFund).length} NFTs culturels
+                          {
+                            filteredNFTs.filter(
+                              (nft) =>
+                                nft.type === NFTType.RECIPE ||
+                                nft.type === NFTType.TALE ||
+                                nft.type === NFTType.SONG ||
+                                nft.type === NFTType.TRADITION
+                            ).length
+                          }{" "}
+                          NFTs culturels
                         </p>
-                        <p className="text-xs text-[#004D73] dark:text-white/70">Avec financement éducation</p>
+                        <p className="text-xs text-[#004D73] dark:text-white/70">
+                          Avec financement éducation
+                        </p>
                       </div>
                       <div>
                         <p className="font-semibold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                          {mockNFTs.reduce((sum, nft) => sum + (nft.educationFund || 0), 0)} ADA
+                          {filteredNFTs
+                            .filter(
+                              (nft) =>
+                                nft.type === NFTType.RECIPE ||
+                                nft.type === NFTType.TALE ||
+                                nft.type === NFTType.SONG ||
+                                nft.type === NFTType.TRADITION
+                            )
+                            .reduce(
+                              (sum, nft) =>
+                                sum +
+                                (Number(
+                                  nft.revenueDistribution.schoolFundPercent || 0
+                                ) *
+                                  Number(nft.priceADA || 0)) /
+                                  100,
+                              0
+                            )
+                            .toFixed(2)}{" "}
+                          ADA
                         </p>
-                        <p className="text-xs text-[#004D73] dark:text-white/70">Total alloué à l&apos;éducation</p>
+                        <p className="text-xs text-[#004D73] dark:text-white/70">
+                          Total alloué à l&apos;éducation
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -793,7 +908,8 @@ export default function NFTMarketplacePage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                {filteredNFTs.length} {filteredNFTs.length === 1 ? "NFT trouvé" : "NFT trouvés"}
+                {filteredNFTs.length}{" "}
+                {filteredNFTs.length === 1 ? "NFT trouvé" : "NFT trouvés"}
               </h2>
               {filteredNFTs.length > 0 && (
                 <p className="text-sm text-[#004D73] dark:text-white/70 mt-1">
@@ -803,7 +919,11 @@ export default function NFTMarketplacePage() {
             </div>
           </div>
 
-          {filteredNFTs.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
+            </div>
+          ) : filteredNFTs.length === 0 ? (
             <Card className="p-12 text-center bg-muted/30 dark:bg-[#003D5C]/50 border-[#004D73]/20 dark:border-white/20">
               <CardContent>
                 <ImageIcon className="w-16 h-16 text-[#004D73]/40 dark:text-white/40 mx-auto mb-4" />
@@ -811,15 +931,17 @@ export default function NFTMarketplacePage() {
                   Aucun NFT trouvé
                 </h3>
                 <p className="text-[#004D73] dark:text-white/70 mb-4">
-                  Essayez de modifier vos critères de recherche
+                  {error
+                    ? "Erreur lors du chargement des NFTs"
+                    : "Essayez de modifier vos critères de recherche"}
                 </p>
                 <Button
                   onClick={() => {
-                    setSearchQuery("")
-                    setSelectedCollection("all")
-                    setMinPrice("")
-                    setMaxPrice("")
-                    setSelectedRarity("all")
+                    setSearchQuery("");
+                    setSelectedCollection("all");
+                    setMinPrice("");
+                    setMaxPrice("");
+                    setSelectedRarity("all");
                   }}
                   className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
                 >
@@ -830,121 +952,157 @@ export default function NFTMarketplacePage() {
           ) : (
             <>
               {/* NFTs Grid/List */}
-              <div className={cn(
-                viewMode === "grid" 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                  : "space-y-4"
-              )}>
-                {paginatedNFTs.map((nft) => (
-                  <Card
-                    key={nft.id}
-                    className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-[#004D73]/20 dark:border-white/20 bg-white dark:bg-[#003D5C] cursor-pointer"
-                    onClick={() => openNFTModal(nft)}
-                  >
-                    <CardContent className="p-0">
-                      {/* NFT Image */}
-                      <div className="relative h-64 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center rounded-t-lg overflow-hidden">
-                        <span className="text-8xl transition-transform duration-300 group-hover:scale-110">{nft.images[0]}</span>
-                        {nft.images.length > 1 && (
-                          <div className="absolute top-3 left-3 bg-black/50 dark:bg-black/70 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1.5 rounded-full flex items-center gap-1.5 z-20">
-                            <ImageIcon className="w-3.5 h-3.5" />
-                            {nft.images.length}
-                          </div>
-                        )}
-                        <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-                          <div className={cn("px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 border", getRarityColor(nft.rarity))}>
-                            {getRarityIcon(nft.rarity)}
-                            {getRarityLabel(nft.rarity)}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleFavorite(nft.id)
-                            }}
-                            className={cn(
-                              "h-8 w-8 bg-white/90 dark:bg-[#003D5C]/90 backdrop-blur-sm",
-                              favorites.has(nft.id)
-                                ? "text-red-500 hover:text-red-600"
-                                : "text-[#5A3E36] dark:text-white/90"
-                            )}
-                          >
-                            <Heart className={cn("w-4 h-4", favorites.has(nft.id) && "fill-current")} />
-                          </Button>
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
+              <div
+                className={cn(
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    : "space-y-4"
+                )}
+              >
+                {paginatedNFTs.map((nft) => {
+                  const imageUrl = nftImages[nft.id];
+                  const imageState = imageStates[nft.id] || "loading";
+                  const rarity = getRarityFromStatus(nft.status);
+                  const collection = getCollectionFromType(nft.type);
+                  const educationFund =
+                    (Number(nft.revenueDistribution.schoolFundPercent || 0) *
+                      Number(nft.priceADA || 0)) /
+                    100;
 
-                      {/* NFT Info */}
-                      <div className="p-4 space-y-3">
-                        <div>
-                          <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1 line-clamp-1">
-                            {nft.name}
-                          </h3>
-                          <p className="text-xs text-[#004D73] dark:text-white/70 capitalize mb-2">
-                            {nft.collection}
-                          </p>
-                        </div>
-
-                        {/* Creator & Owner */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs text-[#004D73] dark:text-white/70">
-                            <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">Créé par {nft.creator}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-[#004D73] dark:text-white/70">
-                            <User className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">Propriétaire: {nft.owner}</span>
-                          </div>
-                          {nft.educationFund && (
-                            <div className="flex items-center gap-2 text-xs text-[#3A8F4C] dark:text-[#3A8F4C] font-medium">
-                              <span className="text-base">🎓</span>
-                              <span>{nft.educationFund} ADA pour l&apos;éducation</span>
+                  return (
+                    <Card
+                      key={nft.id}
+                      className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-[#004D73]/20 dark:border-white/20 bg-white dark:bg-[#003D5C] cursor-pointer"
+                      onClick={() => openNFTModal(nft)}
+                    >
+                      <CardContent className="p-0">
+                        {/* NFT Image */}
+                        <div className="relative h-64 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 rounded-t-lg overflow-hidden">
+                          {imageState === "loading" ? (
+                            <NFTImageSkeleton />
+                          ) : imageState === "loaded" && imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={nft.title}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-8xl transition-transform duration-300 group-hover:scale-110">
+                                {nft.type === NFTType.RECIPE
+                                  ? "🍠"
+                                  : nft.type === NFTType.TALE
+                                    ? "📖"
+                                    : nft.type === NFTType.SONG
+                                      ? "🎵"
+                                      : nft.type === NFTType.ART
+                                        ? "🎨"
+                                        : "🌾"}
+                              </span>
                             </div>
                           )}
-                          {nft.standard && (
-                            <div className="flex items-center gap-2 text-xs text-[#004D73] dark:text-white/70">
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>Standard {nft.standard}</span>
+                          <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+                            <div
+                              className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 border",
+                                getRarityColor(rarity)
+                              )}
+                            >
+                              {getRarityIcon(rarity)}
+                              {getRarityLabel(rarity)}
                             </div>
-                          )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(nft.id);
+                              }}
+                              className={cn(
+                                "h-8 w-8 bg-white/90 dark:bg-[#003D5C]/90 backdrop-blur-sm",
+                                favorites.has(nft.id)
+                                  ? "text-red-500 hover:text-red-600"
+                                  : "text-[#5A3E36] dark:text-white/90"
+                              )}
+                            >
+                              <Heart
+                                className={cn(
+                                  "w-4 h-4",
+                                  favorites.has(nft.id) && "fill-current"
+                                )}
+                              />
+                            </Button>
+                          </div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
 
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 text-xs text-[#004D73] dark:text-white/70">
-                          <div className="flex items-center gap-1">
-                            <Heart className="w-3.5 h-3.5" />
-                            <span>{nft.likes}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>{nft.views}</span>
-                          </div>
-                        </div>
-
-                        {/* Price */}
-                        <div className="flex items-center justify-between pt-2 border-t border-[#004D73]/10 dark:border-white/10">
+                        {/* NFT Info */}
+                        <div className="p-4 space-y-3">
                           <div>
-                            <p className="text-2xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                              {nft.price} {nft.currency}
+                            <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1 line-clamp-1">
+                              {nft.title}
+                            </h3>
+                            <p className="text-xs text-[#004D73] dark:text-white/70 capitalize mb-2">
+                              {getTypeLabel(nft.type)}
                             </p>
                           </div>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openNFTModal(nft)
-                            }}
-                            className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white rounded-lg px-4 py-2"
-                          >
-                            <ShoppingCart className="w-4 h-4 mr-2" />
-                            Acheter
-                          </Button>
+
+                          {/* Creator & Info */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs text-[#004D73] dark:text-white/70">
+                              <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">
+                                Créateur:{" "}
+                                {nft.creator
+                                  ? `${nft.creator.firstName} ${nft.creator.lastName}`
+                                  : nft.creatorId.slice(0, 8) + "..."}
+                              </span>
+                            </div>
+                            {(nft.type === NFTType.RECIPE ||
+                              nft.type === NFTType.TALE ||
+                              nft.type === NFTType.SONG ||
+                              nft.type === NFTType.TRADITION) &&
+                              educationFund > 0 && (
+                                <div className="flex items-center gap-2 text-xs text-[#3A8F4C] dark:text-[#3A8F4C] font-medium">
+                                  <span className="text-base">🎓</span>
+                                  <span>
+                                    {educationFund.toFixed(2)} ADA pour
+                                    l&apos;éducation
+                                  </span>
+                                </div>
+                              )}
+                            <div className="flex items-center gap-2 text-xs text-[#004D73] dark:text-white/70">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Standard CIP-25</span>
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="flex items-center justify-between pt-2 border-t border-[#004D73]/10 dark:border-white/10">
+                            <div>
+                              <p className="text-2xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
+                                ₳ {Number(nft.priceADA || 0).toFixed(2)}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openNFTModal(nft);
+                              }}
+                              className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white rounded-lg px-4 py-2"
+                            >
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Acheter
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
 
               {/* Pagination */}
@@ -952,42 +1110,60 @@ export default function NFTMarketplacePage() {
                 <div className="flex items-center justify-center gap-2 mt-8">
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                     className="border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          onClick={() => setCurrentPage(page)}
-                          className={cn(
-                            currentPage === page
-                              ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
-                              : "border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
-                          )}
-                        >
-                          {page}
-                        </Button>
-                      )
-                    } else if (page === currentPage - 2 || page === currentPage + 2) {
-                      return <span key={page} className="text-[#004D73] dark:text-white/70">...</span>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                              currentPage === page
+                                ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
+                                : "border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
+                            )}
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span
+                            key={page}
+                            className="text-[#004D73] dark:text-white/70"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
                     }
-                    return null
-                  })}
-                  
+                  )}
+
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
                   >
@@ -1009,10 +1185,10 @@ export default function NFTMarketplacePage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <DialogTitle className="text-2xl font-bold text-[#5A3E36] dark:text-white mb-2">
-                      {selectedNFT.name}
+                      {selectedNFT.title}
                     </DialogTitle>
                     <DialogDescription className="text-[#004D73] dark:text-white/70">
-                      {selectedNFT.description}
+                      {selectedNFT.description || "NFT culturel ou agricole"}
                     </DialogDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1027,7 +1203,12 @@ export default function NFTMarketplacePage() {
                           : "text-[#5A3E36] dark:text-white/90"
                       )}
                     >
-                      <Heart className={cn("w-5 h-5", favorites.has(selectedNFT.id) && "fill-current")} />
+                      <Heart
+                        className={cn(
+                          "w-5 h-5",
+                          favorites.has(selectedNFT.id) && "fill-current"
+                        )}
+                      />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                       <Share2 className="w-5 h-5" />
@@ -1039,142 +1220,244 @@ export default function NFTMarketplacePage() {
               <div className="space-y-6 mt-4">
                 {/* NFT Image Gallery */}
                 <div className="relative">
-                  <ImageGallery 
-                    images={selectedNFT.images} 
-                    isPlaying={selectedNFT.type === "song" && playingAudio === selectedNFT.id}
-                  />
-                  <div className="absolute top-4 right-4 z-10">
-                    <div className={cn("px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 border", getRarityColor(selectedNFT.rarity))}>
-                      {getRarityIcon(selectedNFT.rarity)}
-                      {getRarityLabel(selectedNFT.rarity)}
-                    </div>
-                  </div>
+                  {(() => {
+                    const imageUrl = nftImages[selectedNFT.id];
+                    const imageState = imageStates[selectedNFT.id] || "loading";
+                    const metadata = nftMetadata[selectedNFT.id];
+                    const images = imageUrl ? [imageUrl] : [];
+
+                    if (imageState === "loading") {
+                      return <NFTImageSkeleton />;
+                    }
+
+                    return (
+                      <>
+                        {images.length > 0 ? (
+                          <ImageGallery
+                            images={images}
+                            isPlaying={
+                              selectedNFT.type === NFTType.SONG &&
+                              playingAudio === selectedNFT.id
+                            }
+                          />
+                        ) : (
+                          <div className="w-full h-64 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center rounded-lg">
+                            <span className="text-8xl">
+                              {selectedNFT.type === NFTType.RECIPE
+                                ? "🍠"
+                                : selectedNFT.type === NFTType.TALE
+                                  ? "📖"
+                                  : selectedNFT.type === NFTType.SONG
+                                    ? "🎵"
+                                    : selectedNFT.type === NFTType.ART
+                                      ? "🎨"
+                                      : "🌾"}
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute top-4 right-4 z-10">
+                          <div
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 border",
+                              getRarityColor(
+                                getRarityFromStatus(selectedNFT.status)
+                              )
+                            )}
+                          >
+                            {getRarityIcon(
+                              getRarityFromStatus(selectedNFT.status)
+                            )}
+                            {getRarityLabel(
+                              getRarityFromStatus(selectedNFT.status)
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Audio Player for Songs */}
-                {selectedNFT.type === "song" && selectedNFT.audioUrl && (
-                  <Card className="bg-gradient-to-r from-[#3A8F4C]/10 to-[#004D73]/10 dark:from-[#3A8F4C]/20 dark:to-[#004D73]/30 border-[#3A8F4C]/30 dark:border-[#3A8F4C]/50">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 rounded-full bg-[#3A8F4C]/20 dark:bg-[#3A8F4C]/30">
-                          <span className="text-3xl">🎵</span>
+                {selectedNFT.type === NFTType.SONG &&
+                  nftMetadata[selectedNFT.id]?.audio && (
+                    <Card className="bg-gradient-to-r from-[#3A8F4C]/10 to-[#004D73]/10 dark:from-[#3A8F4C]/20 dark:to-[#004D73]/30 border-[#3A8F4C]/30 dark:border-[#3A8F4C]/50">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="p-3 rounded-full bg-[#3A8F4C]/20 dark:bg-[#3A8F4C]/30">
+                            <span className="text-3xl">🎵</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1">
+                              Écouter le chant
+                            </h3>
+                            <p className="text-sm text-[#004D73] dark:text-white/70">
+                              Enregistrement audio authentique de ce chant
+                              traditionnel lingala
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1">
-                            Écouter le chant
-                          </h3>
-                          <p className="text-sm text-[#004D73] dark:text-white/70">
-                            Enregistrement audio authentique de ce chant traditionnel lingala
-                          </p>
-                        </div>
-                      </div>
-                      <AudioPlayer
-                        audioUrl={selectedNFT.audioUrl}
-                        nftId={selectedNFT.id}
-                        isPlaying={playingAudio === selectedNFT.id}
-                        onPlay={() => setPlayingAudio(selectedNFT.id)}
-                        onPause={() => setPlayingAudio(null)}
-                        progress={audioProgress[selectedNFT.id] || 0}
-                        onProgressChange={(progress) => setAudioProgress(prev => ({ ...prev, [selectedNFT.id]: progress }))}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
+                        <AudioPlayer
+                          audioUrl={ipfsUriToHttpUrl(
+                            nftMetadata[selectedNFT.id]?.audio ?? ""
+                          )}
+                          nftId={selectedNFT.id}
+                          isPlaying={playingAudio === selectedNFT.id}
+                          onPlay={() => setPlayingAudio(selectedNFT.id)}
+                          onPause={() => setPlayingAudio(null)}
+                          progress={audioProgress[selectedNFT.id] || 0}
+                          onProgressChange={(progress) =>
+                            setAudioProgress((prev) => ({
+                              ...prev,
+                              [selectedNFT.id]: progress,
+                            }))
+                          }
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-4">
                     <Card className="bg-muted/30 dark:bg-white/5 border-[#004D73]/20 dark:border-white/20">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">Informations</h3>
+                        <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">
+                          Informations
+                        </h3>
                         <div className="space-y-3">
                           <div className="flex items-center gap-3">
                             <Users className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Créateur</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{selectedNFT.creator}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <User className="w-4 h-4 text-[#004D73] dark:text-white/70" />
-                            <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Propriétaire actuel</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{selectedNFT.owner}</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Créateur
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                {selectedNFT.creator
+                                  ? `${selectedNFT.creator.firstName} ${selectedNFT.creator.lastName}`
+                                  : selectedNFT.creatorId.slice(0, 8) + "..."}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <Package className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Collection</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white capitalize">{selectedNFT.collection}</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Type
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                {getTypeLabel(selectedNFT.type)}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <Calendar className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Date de création</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Date de création
+                              </p>
                               <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
-                                {new Date(selectedNFT.mintedAt).toLocaleDateString("fr-FR")}
+                                {new Date(
+                                  selectedNFT.createdAt
+                                ).toLocaleDateString("fr-FR")}
                               </p>
                             </div>
                           </div>
-                          {selectedNFT.educationFund && (
+                          {(selectedNFT.type === NFTType.RECIPE ||
+                            selectedNFT.type === NFTType.TALE ||
+                            selectedNFT.type === NFTType.SONG ||
+                            selectedNFT.type === NFTType.TRADITION) && (
                             <div className="flex items-center gap-3 p-3 rounded-lg bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 border border-[#F2C94C]/30">
                               <span className="text-2xl">🎓</span>
                               <div>
-                                <p className="text-xs text-[#004D73] dark:text-white/60">Financement éducation</p>
+                                <p className="text-xs text-[#004D73] dark:text-white/60">
+                                  Financement éducation
+                                </p>
                                 <p className="text-sm font-semibold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                                  {selectedNFT.educationFund} ADA alloués à la scolarité
+                                  {(
+                                    (Number(
+                                      selectedNFT.revenueDistribution
+                                        .schoolFundPercent || 0
+                                    ) *
+                                      Number(selectedNFT.priceADA || 0)) /
+                                    100
+                                  ).toFixed(2)}{" "}
+                                  ADA alloués à la scolarité
                                 </p>
                                 <p className="text-xs text-[#004D73] dark:text-white/60 mt-1">
-                                  Les revenus de ce NFT financent l&apos;éducation des enfants d&apos;agriculteurs
+                                  Les revenus de ce NFT financent
+                                  l&apos;éducation des enfants
+                                  d&apos;agriculteurs
                                 </p>
                               </div>
                             </div>
                           )}
-                          {selectedNFT.standard && (
-                            <div className="flex items-center gap-3">
-                              <Sparkles className="w-4 h-4 text-[#3A8F4C]" />
-                              <div>
-                                <p className="text-xs text-[#004D73] dark:text-white/60">Standard Cardano</p>
-                                <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
-                                  {selectedNFT.standard}
-                                </p>
-                              </div>
+                          <div className="flex items-center gap-3">
+                            <Sparkles className="w-4 h-4 text-[#3A8F4C]" />
+                            <div>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Standard Cardano
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                CIP-25
+                              </p>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
 
                     {/* Attributes */}
-                    <Card className="bg-muted/30 dark:bg-white/5 border-[#004D73]/20 dark:border-white/20">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">Attributs</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                          {selectedNFT.attributes.map((attr, index) => (
-                            <div key={index} className="p-2 rounded-lg bg-white/50 dark:bg-[#004D73]/30 border border-[#004D73]/10 dark:border-white/10">
-                              <p className="text-xs text-[#004D73] dark:text-white/60">{attr.trait_type}</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{attr.value}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {nftMetadata[selectedNFT.id]?.attributes && (
+                      <Card className="bg-muted/30 dark:bg-white/5 border-[#004D73]/20 dark:border-white/20">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">
+                            Attributs
+                          </h3>
+                          <div className="grid grid-cols-2 gap-2">
+                            {nftMetadata[selectedNFT.id].attributes?.map(
+                              (attr, index: number) => (
+                                <div
+                                  key={index}
+                                  className="p-2 rounded-lg bg-white/50 dark:bg-[#004D73]/30 border border-[#004D73]/10 dark:border-white/10"
+                                >
+                                  <p className="text-xs text-[#004D73] dark:text-white/60">
+                                    {attr.trait_type || attr.name}
+                                  </p>
+                                  <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                    {attr.value}
+                                  </p>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Blockchain Hash */}
-                    {selectedNFT.blockchainHash && (
+                    {(selectedNFT.onChainHash || selectedNFT.metadataURI) && (
                       <Card className="bg-muted/30 dark:bg-white/5 border-[#004D73]/20 dark:border-white/20">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-[#3A8F4C]" />
-                              <h3 className="font-semibold text-[#5A3E36] dark:text-white">Traçabilité Blockchain</h3>
+                              <h3 className="font-semibold text-[#5A3E36] dark:text-white">
+                                Traçabilité Blockchain
+                              </h3>
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={handleCopyHash}
+                              onClick={() => {
+                                const hash =
+                                  selectedNFT.onChainHash ||
+                                  selectedNFT.metadataURI;
+                                if (hash) {
+                                  navigator.clipboard.writeText(hash);
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 2000);
+                                }
+                              }}
                               className="h-7 w-7"
                             >
                               {copied ? (
@@ -1185,7 +1468,7 @@ export default function NFTMarketplacePage() {
                             </Button>
                           </div>
                           <p className="text-xs font-mono text-[#004D73] dark:text-white/70 break-all">
-                            {selectedNFT.blockchainHash}
+                            {selectedNFT.onChainHash || selectedNFT.metadataURI}
                           </p>
                         </CardContent>
                       </Card>
@@ -1199,23 +1482,61 @@ export default function NFTMarketplacePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-3xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                              {selectedNFT.price} {selectedNFT.currency}
+                              ₳ {Number(selectedNFT.priceADA || 0).toFixed(2)}
                             </p>
-                            <p className="text-sm text-[#004D73] dark:text-white/70">Prix actuel</p>
+                            <p className="text-sm text-[#004D73] dark:text-white/70">
+                              Prix actuel
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="flex items-center gap-2">
-                            <Heart className="w-4 h-4 text-red-500" />
-                            <span className="text-sm font-semibold text-[#5A3E36] dark:text-white">
-                              {selectedNFT.likes}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-[#004D73] dark:text-white/70">
+                              Créateur
+                            </span>
+                            <span className="font-medium text-[#5A3E36] dark:text-white">
+                              {(
+                                (Number(
+                                  selectedNFT.revenueDistribution
+                                    .creatorPercent || 0
+                                ) *
+                                  Number(selectedNFT.priceADA || 0)) /
+                                100
+                              ).toFixed(2)}{" "}
+                              ADA
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Eye className="w-4 h-4 text-[#004D73] dark:text-white/70" />
-                            <span className="text-sm text-[#004D73] dark:text-white/70">
-                              {selectedNFT.views} vues
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-[#004D73] dark:text-white/70">
+                              Fonds scolaire
+                            </span>
+                            <span className="font-medium text-[#3A8F4C] dark:text-[#3A8F4C]">
+                              {(
+                                (Number(
+                                  selectedNFT.revenueDistribution
+                                    .schoolFundPercent || 0
+                                ) *
+                                  Number(selectedNFT.priceADA || 0)) /
+                                100
+                              ).toFixed(2)}{" "}
+                              ADA
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-[#004D73] dark:text-white/70">
+                              Plateforme
+                            </span>
+                            <span className="font-medium text-[#5A3E36] dark:text-white">
+                              {(
+                                (Number(
+                                  selectedNFT.revenueDistribution
+                                    .platformPercent || 0
+                                ) *
+                                  Number(selectedNFT.priceADA || 0)) /
+                                100
+                              ).toFixed(2)}{" "}
+                              ADA
                             </span>
                           </div>
                         </div>
@@ -1226,31 +1547,67 @@ export default function NFTMarketplacePage() {
                           <div className="space-y-3">
                             <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
                               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                Connectez votre wallet Cardano pour acheter ce NFT
+                                Connectez votre wallet Cardano pour acheter ce
+                                NFT
                               </p>
                             </div>
                             <Button
                               variant="outline"
+                              onClick={() => {
+                                if (wallets && wallets.length > 0) {
+                                  // Si un seul wallet disponible, connecter directement
+                                  if (wallets.length === 1) {
+                                    connect(wallets[0].name);
+                                  } else {
+                                    // Sinon, ouvrir le modal de sélection
+                                    setShowWalletModal(true);
+                                  }
+                                } else {
+                                  toast.error(
+                                    "Aucun wallet Cardano détecté. Veuillez installer un wallet comme Nami, Eternl ou Flint."
+                                  );
+                                }
+                              }}
                               className="w-full border-[#3A8F4C] text-[#3A8F4C] hover:bg-[#3A8F4C] hover:text-white"
                             >
                               <Wallet className="w-4 h-4 mr-2" />
                               Connecter Wallet
                             </Button>
                           </div>
+                        ) : selectedNFT.status !== NFTStatus.LISTED ? (
+                          <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800">
+                            <p className="text-sm text-gray-800 dark:text-gray-200 text-center">
+                              Ce NFT n&apos;est plus disponible à la vente
+                            </p>
+                          </div>
                         ) : (
                           <div className="space-y-3">
                             <Button
-                              className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white h-11 text-base font-semibold"
+                              onClick={handlePurchaseNFT}
+                              disabled={
+                                isPurchasing || purchaseMutation.isPending
+                              }
+                              className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white h-11 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <ShoppingCart className="w-5 h-5 mr-2" />
-                              Acheter maintenant
+                              {isPurchasing || purchaseMutation.isPending ? (
+                                <>
+                                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                  Achat en cours...
+                                </>
+                              ) : (
+                                <>
+                                  <ShoppingCart className="w-5 h-5 mr-2" />
+                                  Acheter maintenant
+                                </>
+                              )}
                             </Button>
 
                             <Button
                               variant="outline"
                               className="w-full border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
+                              disabled
                             >
-                              Faire une offre
+                              Faire une offre (bientôt)
                             </Button>
                           </div>
                         )}
@@ -1263,7 +1620,69 @@ export default function NFTMarketplacePage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
 
+      {/* Wallet Connection Modal */}
+      <Dialog open={showWalletModal} onOpenChange={setShowWalletModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connecter votre wallet Cardano</DialogTitle>
+            <DialogDescription>
+              Sélectionnez un wallet pour continuer avec l&apos;achat
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {wallets && wallets.length > 0 ? (
+              wallets.map((walletItem) => (
+                <Button
+                  key={walletItem.name}
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await connect(walletItem.name);
+                      setShowWalletModal(false);
+                      toast.success("Wallet connecté avec succès!");
+                      // Si un achat est en attente, il sera exécuté automatiquement via useEffect
+                    } catch (error) {
+                      setPendingPurchase(false);
+                      toast.error(
+                        `Erreur lors de la connexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+                      );
+                    }
+                  }}
+                  className="w-full justify-start h-auto p-4 border-[#004D73]/20 dark:border-white/20 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    {walletItem.icon && (
+                      <img
+                        src={walletItem.icon}
+                        alt={walletItem.name}
+                        className="w-8 h-8"
+                      />
+                    )}
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-[#5A3E36] dark:text-white">
+                        {walletItem.name}
+                      </p>
+                      {walletItem.version && (
+                        <p className="text-xs text-[#004D73] dark:text-white/70">
+                          Version {walletItem.version}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Button>
+              ))
+            ) : (
+              <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Aucun wallet Cardano détecté. Veuillez installer un wallet
+                  comme Nami, Eternl ou Flint.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

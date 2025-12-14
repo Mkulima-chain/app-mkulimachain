@@ -77,9 +77,9 @@ export default function SettingsPage() {
     []
   );
 
-  const walletData = useWalletData({
+  const { walletData } = useWalletData({
     connected,
-    wallet: wallet || undefined,
+    wallet: wallet as any, // Type assertion pour compatibilité avec Mesh SDK
     saveToStorage,
   });
 
@@ -1022,7 +1022,9 @@ export default function SettingsPage() {
                                       {isBalanceVisible ? (
                                         <>
                                           <p className="text-2xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                                            {walletData.balance !== null
+                                            {walletData.balance != null &&
+                                            typeof walletData.balance ===
+                                              "number"
                                               ? walletData.balance.toLocaleString(
                                                   "fr-FR",
                                                   {

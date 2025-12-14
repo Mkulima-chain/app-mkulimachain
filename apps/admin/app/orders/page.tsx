@@ -1,11 +1,26 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ShoppingCart, Search, Filter, Plus, Edit, Trash2, MoreVertical, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
+import {
+  ShoppingCart,
+  Search,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -13,16 +28,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 
 enum OrderStatus {
   PENDING = "pending",
@@ -34,63 +49,67 @@ enum OrderStatus {
 }
 
 type Order = {
-  id: string
-  buyerId: string
+  id: string;
+  buyerId: string;
   item: {
-    id: string
-    title: string
-    priceADA: number
+    id: string;
+    title: string;
+    priceADA: number;
     farmer: {
-      id: string
-      name: string
-    }
-  }
-  quantityKg: number
-  unitPriceADA: number
-  totalADA: number
-  status: OrderStatus
-  paymentHash?: string
-  shippingAddress?: string
-  trackingNumber?: string
-  createdAt: string
-  updatedAt: string
-}
+      id: string;
+      name: string;
+    };
+  };
+  quantityKg: number;
+  unitPriceADA: number;
+  totalADA: number;
+  status: OrderStatus;
+  paymentHash?: string;
+  shippingAddress?: string;
+  trackingNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type CreateOrderDto = {
-  buyerId: string
-  itemId: string
-  quantityKg: number
-  shippingAddress?: string
-}
+  buyerId: string;
+  itemId: string;
+  quantityKg: number;
+  shippingAddress?: string;
+};
 
 type UpdateOrderDto = {
-  status?: OrderStatus
-  paymentHash?: string
-  shippingAddress?: string
-  trackingNumber?: string
-}
+  status?: OrderStatus;
+  paymentHash?: string;
+  shippingAddress?: string;
+  trackingNumber?: string;
+};
 
 export default function OrdersPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
   const [formData, setFormData] = React.useState<CreateOrderDto>({
     buyerId: "",
     itemId: "",
     quantityKg: 0,
     shippingAddress: "",
-  })
+  });
   const [updateData, setUpdateData] = React.useState<UpdateOrderDto>({
     status: OrderStatus.PENDING,
-  })
+  });
 
   // Fetch orders
-  const { data: orders = [], isLoading, refetch } = useApiQuery<Order[]>(
+  const {
+    data: orders = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<Order[]>(
     ["orders", searchQuery],
     `/orders${searchQuery ? `?status=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
   // Create mutation
   const createMutation = useApiMutation<Order, CreateOrderDto>(
@@ -98,12 +117,12 @@ export default function OrdersPage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("Commande ajoutée avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("Commande ajoutée avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<Order, UpdateOrderDto>(
@@ -111,13 +130,13 @@ export default function OrdersPage() {
     "PUT",
     {
       onSuccess: () => {
-        toast.success("Commande modifiée avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedOrder(null)
-        refetch()
+        toast.success("Commande modifiée avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedOrder(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -125,13 +144,13 @@ export default function OrdersPage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("Commande supprimée avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedOrder(null)
-        refetch()
+        toast.success("Commande supprimée avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedOrder(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -139,56 +158,87 @@ export default function OrdersPage() {
       itemId: "",
       quantityKg: 0,
       shippingAddress: "",
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (order: Order) => {
-    setSelectedOrder(order)
+    setSelectedOrder(order);
     setUpdateData({
       status: order.status,
       paymentHash: order.paymentHash,
       shippingAddress: order.shippingAddress,
       trackingNumber: order.trackingNumber,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (order: Order) => {
-    setSelectedOrder(order)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedOrder(order);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     createMutation.mutate({
       ...formData,
       quantityKg: parseFloat(formData.quantityKg.toString()),
-    })
-  }
+    });
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedOrder) return
-    updateMutation.mutate(updateData)
-  }
+    e.preventDefault();
+    if (!selectedOrder) return;
+    updateMutation.mutate(updateData);
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedOrder) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedOrder) return;
+    deleteMutation.mutate(undefined);
+  };
 
   const getStatusBadge = (status: OrderStatus) => {
-    const variants: Record<OrderStatus, { variant: "default" | "secondary" | "outline"; className: string; label: string }> = {
-      [OrderStatus.COMPLETED]: { variant: "default", className: "bg-[#3A8F4C] text-white", label: "Complétée" },
-      [OrderStatus.SHIPPED]: { variant: "secondary", className: "bg-[#004D73] text-white", label: "Expédiée" },
-      [OrderStatus.PAID]: { variant: "secondary", className: "bg-[#5A3E36] text-white", label: "Payée" },
-      [OrderStatus.PENDING]: { variant: "outline", className: "", label: "En attente" },
-      [OrderStatus.CANCELLED]: { variant: "outline", className: "", label: "Annulée" },
-      [OrderStatus.REFUNDED]: { variant: "outline", className: "", label: "Remboursée" },
-    }
-    return variants[status] || variants[OrderStatus.PENDING]
-  }
+    const variants: Record<
+      OrderStatus,
+      {
+        variant: "default" | "secondary" | "outline";
+        className: string;
+        label: string;
+      }
+    > = {
+      [OrderStatus.COMPLETED]: {
+        variant: "default",
+        className: "bg-[#3A8F4C] text-white",
+        label: "Complétée",
+      },
+      [OrderStatus.SHIPPED]: {
+        variant: "secondary",
+        className: "bg-[#004D73] text-white",
+        label: "Expédiée",
+      },
+      [OrderStatus.PAID]: {
+        variant: "secondary",
+        className: "bg-[#5A3E36] text-white",
+        label: "Payée",
+      },
+      [OrderStatus.PENDING]: {
+        variant: "outline",
+        className: "",
+        label: "En attente",
+      },
+      [OrderStatus.CANCELLED]: {
+        variant: "outline",
+        className: "",
+        label: "Annulée",
+      },
+      [OrderStatus.REFUNDED]: {
+        variant: "outline",
+        className: "",
+        label: "Remboursée",
+      },
+    };
+    return variants[status] || variants[OrderStatus.PENDING];
+  };
 
   return (
     <div className="space-y-6">
@@ -209,11 +259,15 @@ export default function OrdersPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total commandes</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total commandes
+            </CardTitle>
             <ShoppingCart className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : orders.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : orders.length}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">+15% ce mois</p>
           </CardContent>
         </Card>
@@ -224,7 +278,9 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.PENDING).length}
+              {isLoading
+                ? "..."
+                : orders.filter((o) => o.status === OrderStatus.PENDING).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">16% du total</p>
           </CardContent>
@@ -236,7 +292,13 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.SHIPPED || o.status === OrderStatus.PAID).length}
+              {isLoading
+                ? "..."
+                : orders.filter(
+                    (o) =>
+                      o.status === OrderStatus.SHIPPED ||
+                      o.status === OrderStatus.PAID
+                  ).length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">26% du total</p>
           </CardContent>
@@ -248,7 +310,10 @@ export default function OrdersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : orders.filter((o) => o.status === OrderStatus.COMPLETED).length}
+              {isLoading
+                ? "..."
+                : orders.filter((o) => o.status === OrderStatus.COMPLETED)
+                    .length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">58% du total</p>
           </CardContent>
@@ -321,17 +386,22 @@ export default function OrdersPage() {
                   <tbody className="divide-y">
                     {orders.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucune commande trouvée
                         </td>
                       </tr>
                     ) : (
                       orders.map((order) => {
-                        const statusBadge = getStatusBadge(order.status)
+                        const statusBadge = getStatusBadge(order.status);
                         return (
                           <tr key={order.id} className="hover:bg-muted/50">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium">#{order.id.slice(0, 8)}</div>
+                              <div className="text-sm font-medium">
+                                #{order.id.slice(0, 8)}
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {order.item?.title || "N/A"}
@@ -343,10 +413,13 @@ export default function OrdersPage() {
                               {order.quantityKg} kg
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              ₿ {order.totalADA.toFixed(2)}
+                              ₳ {order.totalADA.toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                              <Badge
+                                variant={statusBadge.variant}
+                                className={statusBadge.className}
+                              >
                                 {statusBadge.label}
                               </Badge>
                             </td>
@@ -357,7 +430,10 @@ export default function OrdersPage() {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent align="end" className="w-48 p-2">
+                                <PopoverContent
+                                  align="end"
+                                  className="w-48 p-2"
+                                >
                                   <div className="space-y-1">
                                     <button
                                       onClick={() => handleEdit(order)}
@@ -378,7 +454,7 @@ export default function OrdersPage() {
                               </Popover>
                             </td>
                           </tr>
-                        )
+                        );
                       })
                     )}
                   </tbody>
@@ -433,7 +509,10 @@ export default function OrdersPage() {
                   min="0.01"
                   value={formData.quantityKg}
                   onChange={(e) =>
-                    setFormData({ ...formData, quantityKg: parseFloat(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      quantityKg: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />
@@ -444,7 +523,10 @@ export default function OrdersPage() {
                   id="shippingAddress"
                   value={formData.shippingAddress}
                   onChange={(e) =>
-                    setFormData({ ...formData, shippingAddress: e.target.value })
+                    setFormData({
+                      ...formData,
+                      shippingAddress: e.target.value,
+                    })
                   }
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
@@ -495,7 +577,10 @@ export default function OrdersPage() {
                   id="edit-status"
                   value={updateData.status}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, status: e.target.value as OrderStatus })
+                    setUpdateData({
+                      ...updateData,
+                      status: e.target.value as OrderStatus,
+                    })
                   }
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
@@ -513,18 +598,26 @@ export default function OrdersPage() {
                   id="edit-paymentHash"
                   value={updateData.paymentHash || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, paymentHash: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      paymentHash: e.target.value,
+                    })
                   }
                   placeholder="Hash de la transaction"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-shippingAddress">Adresse de livraison</Label>
+                <Label htmlFor="edit-shippingAddress">
+                  Adresse de livraison
+                </Label>
                 <textarea
                   id="edit-shippingAddress"
                   value={updateData.shippingAddress || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, shippingAddress: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      shippingAddress: e.target.value,
+                    })
                   }
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                 />
@@ -535,7 +628,10 @@ export default function OrdersPage() {
                   id="edit-trackingNumber"
                   value={updateData.trackingNumber || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, trackingNumber: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      trackingNumber: e.target.value,
+                    })
                   }
                   placeholder="Numéro de suivi"
                 />
@@ -576,8 +672,8 @@ export default function OrdersPage() {
             <DialogTitle>Supprimer la commande</DialogTitle>
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer la commande{" "}
-              <strong>#{selectedOrder?.id.slice(0, 8)}</strong> ? Cette action est
-              irréversible.
+              <strong>#{selectedOrder?.id.slice(0, 8)}</strong> ? Cette action
+              est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -606,5 +702,5 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

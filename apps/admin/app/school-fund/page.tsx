@@ -1,11 +1,26 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { School, Search, Plus, Edit, Trash2, MoreVertical, Loader2, TrendingUp } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import * as React from "react";
+import {
+  School,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+  TrendingUp,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -13,16 +28,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { toast } from "sonner"
-import { useApiQuery } from "@/hooks/use-api-query"
-import { useApiMutation } from "@/hooks/use-api-mutation"
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiMutation } from "@/hooks/use-api-mutation";
 
 enum SchoolStatus {
   ACTIVE = "active",
@@ -31,52 +46,54 @@ enum SchoolStatus {
 }
 
 type SchoolFund = {
-  id: string
-  schoolName: string
-  province: string
-  city?: string
-  address?: string
-  contactPerson?: string
-  contactPhone?: string
-  walletAddress?: string
-  totalFundedADA: number
-  totalDisbursedADA: number
-  studentCount?: number
-  status: SchoolStatus
-  lastUpdate: string
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  schoolName: string;
+  province: string;
+  city?: string;
+  address?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  walletAddress?: string;
+  totalFundedADA: number;
+  totalDisbursedADA: number;
+  studentCount?: number;
+  status: SchoolStatus;
+  lastUpdate: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type CreateSchoolFundDto = {
-  schoolName: string
-  province: string
-  city?: string
-  address?: string
-  contactPerson?: string
-  contactPhone?: string
-  walletAddress?: string
-  studentCount?: number
-}
+  schoolName: string;
+  province: string;
+  city?: string;
+  address?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  walletAddress?: string;
+  studentCount?: number;
+};
 
 type UpdateSchoolFundDto = {
-  schoolName?: string
-  province?: string
-  city?: string
-  address?: string
-  contactPerson?: string
-  contactPhone?: string
-  walletAddress?: string
-  studentCount?: number
-  status?: SchoolStatus
-}
+  schoolName?: string;
+  province?: string;
+  city?: string;
+  address?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  walletAddress?: string;
+  studentCount?: number;
+  status?: SchoolStatus;
+};
 
 export default function SchoolFundPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedSchool, setSelectedSchool] = React.useState<SchoolFund | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedSchool, setSelectedSchool] = React.useState<SchoolFund | null>(
+    null
+  );
   const [formData, setFormData] = React.useState<CreateSchoolFundDto>({
     schoolName: "",
     province: "",
@@ -86,14 +103,18 @@ export default function SchoolFundPage() {
     contactPhone: "",
     walletAddress: "",
     studentCount: 0,
-  })
-  const [updateData, setUpdateData] = React.useState<UpdateSchoolFundDto>({})
+  });
+  const [updateData, setUpdateData] = React.useState<UpdateSchoolFundDto>({});
 
   // Fetch schools
-  const { data: schools = [], isLoading, refetch } = useApiQuery<SchoolFund[]>(
+  const {
+    data: schools = [],
+    isLoading,
+    refetch,
+  } = useApiQuery<SchoolFund[]>(
     ["school-funds", searchQuery],
     `/school-funds${searchQuery ? `?province=${encodeURIComponent(searchQuery)}` : ""}`
-  )
+  );
 
   // Create mutation
   const createMutation = useApiMutation<SchoolFund, CreateSchoolFundDto>(
@@ -101,12 +122,12 @@ export default function SchoolFundPage() {
     "POST",
     {
       onSuccess: () => {
-        toast.success("École ajoutée avec succès")
-        setIsAddDialogOpen(false)
-        refetch()
+        toast.success("École ajoutée avec succès");
+        setIsAddDialogOpen(false);
+        refetch();
       },
     }
-  )
+  );
 
   // Update mutation
   const updateMutation = useApiMutation<SchoolFund, UpdateSchoolFundDto>(
@@ -114,13 +135,13 @@ export default function SchoolFundPage() {
     "PUT",
     {
       onSuccess: () => {
-        toast.success("École modifiée avec succès")
-        setIsEditDialogOpen(false)
-        setSelectedSchool(null)
-        refetch()
+        toast.success("École modifiée avec succès");
+        setIsEditDialogOpen(false);
+        setSelectedSchool(null);
+        refetch();
       },
     }
-  )
+  );
 
   // Delete mutation
   const deleteMutation = useApiMutation<void, void>(
@@ -128,13 +149,13 @@ export default function SchoolFundPage() {
     "DELETE",
     {
       onSuccess: () => {
-        toast.success("École supprimée avec succès")
-        setIsDeleteDialogOpen(false)
-        setSelectedSchool(null)
-        refetch()
+        toast.success("École supprimée avec succès");
+        setIsDeleteDialogOpen(false);
+        setSelectedSchool(null);
+        refetch();
       },
     }
-  )
+  );
 
   const handleAdd = () => {
     setFormData({
@@ -146,12 +167,12 @@ export default function SchoolFundPage() {
       contactPhone: "",
       walletAddress: "",
       studentCount: 0,
-    })
-    setIsAddDialogOpen(true)
-  }
+    });
+    setIsAddDialogOpen(true);
+  };
 
   const handleEdit = (school: SchoolFund) => {
-    setSelectedSchool(school)
+    setSelectedSchool(school);
     setUpdateData({
       schoolName: school.schoolName,
       province: school.province,
@@ -162,55 +183,83 @@ export default function SchoolFundPage() {
       walletAddress: school.walletAddress,
       studentCount: school.studentCount,
       status: school.status,
-    })
-    setIsEditDialogOpen(true)
-  }
+    });
+    setIsEditDialogOpen(true);
+  };
 
   const handleDelete = (school: SchoolFund) => {
-    setSelectedSchool(school)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedSchool(school);
+    setIsDeleteDialogOpen(true);
+  };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     createMutation.mutate({
       ...formData,
-      studentCount: formData.studentCount ? parseInt(formData.studentCount.toString()) : undefined,
-    })
-  }
+      studentCount: formData.studentCount
+        ? parseInt(formData.studentCount.toString())
+        : undefined,
+    });
+  };
 
   const handleSubmitEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedSchool) return
+    e.preventDefault();
+    if (!selectedSchool) return;
     updateMutation.mutate({
       ...updateData,
-      studentCount: updateData.studentCount ? parseInt(updateData.studentCount.toString()) : undefined,
-    })
-  }
+      studentCount: updateData.studentCount
+        ? parseInt(updateData.studentCount.toString())
+        : undefined,
+    });
+  };
 
   const handleConfirmDelete = () => {
-    if (!selectedSchool) return
-    deleteMutation.mutate(undefined)
-  }
+    if (!selectedSchool) return;
+    deleteMutation.mutate(undefined);
+  };
 
   const getStatusBadge = (status: SchoolStatus) => {
-    const variants: Record<SchoolStatus, { variant: "default" | "secondary" | "outline"; className: string; label: string }> = {
-      [SchoolStatus.ACTIVE]: { variant: "default", className: "bg-[#3A8F4C] text-white", label: "Active" },
-      [SchoolStatus.INACTIVE]: { variant: "outline", className: "", label: "Inactive" },
-      [SchoolStatus.PENDING]: { variant: "outline", className: "", label: "En attente" },
-    }
-    return variants[status] || variants[SchoolStatus.PENDING]
-  }
+    const variants: Record<
+      SchoolStatus,
+      {
+        variant: "default" | "secondary" | "outline";
+        className: string;
+        label: string;
+      }
+    > = {
+      [SchoolStatus.ACTIVE]: {
+        variant: "default",
+        className: "bg-[#3A8F4C] text-white",
+        label: "Active",
+      },
+      [SchoolStatus.INACTIVE]: {
+        variant: "outline",
+        className: "",
+        label: "Inactive",
+      },
+      [SchoolStatus.PENDING]: {
+        variant: "outline",
+        className: "",
+        label: "En attente",
+      },
+    };
+    return variants[status] || variants[SchoolStatus.PENDING];
+  };
 
-  const totalFunded = schools.reduce((sum, s) => sum + s.totalFundedADA, 0)
-  const totalDisbursed = schools.reduce((sum, s) => sum + s.totalDisbursedADA, 0)
-  const activeSchools = schools.filter((s) => s.status === SchoolStatus.ACTIVE)
+  const totalFunded = schools.reduce((sum, s) => sum + s.totalFundedADA, 0);
+  const totalDisbursed = schools.reduce(
+    (sum, s) => sum + s.totalDisbursedADA,
+    0
+  );
+  const activeSchools = schools.filter((s) => s.status === SchoolStatus.ACTIVE);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Fonds scolaires</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Fonds scolaires
+          </h1>
           <p className="text-muted-foreground mt-1">
             Gérez les fonds scolaires générés par les NFTs
           </p>
@@ -225,32 +274,50 @@ export default function SchoolFundPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total collecté</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total collecté
+            </CardTitle>
             <School className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₿ {isLoading ? "..." : totalFunded.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Depuis le début</p>
+            <div className="text-2xl font-bold">
+              ₳ {isLoading ? "..." : totalFunded.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Depuis le début
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total déboursé</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total déboursé
+            </CardTitle>
             <TrendingUp className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₿ {isLoading ? "..." : totalDisbursed.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Envoyé aux écoles</p>
+            <div className="text-2xl font-bold">
+              ₳ {isLoading ? "..." : totalDisbursed.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Envoyé aux écoles
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Écoles actives</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Écoles actives
+            </CardTitle>
             <School className="h-5 w-5 text-[#004D73]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : activeSchools.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Sur {schools.length} total</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : activeSchools.length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Sur {schools.length} total
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -314,32 +381,42 @@ export default function SchoolFundPage() {
                   <tbody className="divide-y">
                     {schools.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                        <td
+                          colSpan={6}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
                           Aucune école trouvée
                         </td>
                       </tr>
                     ) : (
                       schools.map((school) => {
-                        const statusBadge = getStatusBadge(school.status)
+                        const statusBadge = getStatusBadge(school.status);
                         return (
                           <tr key={school.id} className="hover:bg-muted/50">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium">{school.schoolName}</div>
+                              <div className="text-sm font-medium">
+                                {school.schoolName}
+                              </div>
                               {school.city && (
-                                <div className="text-xs text-muted-foreground">{school.city}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {school.city}
+                                </div>
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {school.province}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              ₿ {school.totalFundedADA.toFixed(2)}
+                              ₳ {school.totalFundedADA.toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              ₿ {school.totalDisbursedADA.toFixed(2)}
+                              ₳ {school.totalDisbursedADA.toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                              <Badge
+                                variant={statusBadge.variant}
+                                className={statusBadge.className}
+                              >
                                 {statusBadge.label}
                               </Badge>
                             </td>
@@ -350,7 +427,10 @@ export default function SchoolFundPage() {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent align="end" className="w-48 p-2">
+                                <PopoverContent
+                                  align="end"
+                                  className="w-48 p-2"
+                                >
                                   <div className="space-y-1">
                                     <button
                                       onClick={() => handleEdit(school)}
@@ -371,7 +451,7 @@ export default function SchoolFundPage() {
                               </Popover>
                             </td>
                           </tr>
-                        )
+                        );
                       })
                     )}
                   </tbody>
@@ -388,7 +468,8 @@ export default function SchoolFundPage() {
           <DialogHeader>
             <DialogTitle>Ajouter une école</DialogTitle>
             <DialogDescription>
-              Remplissez les informations pour ajouter une nouvelle école bénéficiaire
+              Remplissez les informations pour ajouter une nouvelle école
+              bénéficiaire
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitAdd}>
@@ -476,7 +557,10 @@ export default function SchoolFundPage() {
                   min="0"
                   value={formData.studentCount}
                   onChange={(e) =>
-                    setFormData({ ...formData, studentCount: parseInt(e.target.value) || 0 })
+                    setFormData({
+                      ...formData,
+                      studentCount: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </div>
@@ -567,7 +651,10 @@ export default function SchoolFundPage() {
                   id="edit-contactPerson"
                   value={updateData.contactPerson || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, contactPerson: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      contactPerson: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -577,17 +664,25 @@ export default function SchoolFundPage() {
                   id="edit-contactPhone"
                   value={updateData.contactPhone || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, contactPhone: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      contactPhone: e.target.value,
+                    })
                   }
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-walletAddress">Adresse du portefeuille</Label>
+                <Label htmlFor="edit-walletAddress">
+                  Adresse du portefeuille
+                </Label>
                 <Input
                   id="edit-walletAddress"
                   value={updateData.walletAddress || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, walletAddress: e.target.value })
+                    setUpdateData({
+                      ...updateData,
+                      walletAddress: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -599,7 +694,10 @@ export default function SchoolFundPage() {
                   min="0"
                   value={updateData.studentCount || ""}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, studentCount: parseInt(e.target.value) || 0 })
+                    setUpdateData({
+                      ...updateData,
+                      studentCount: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </div>
@@ -609,7 +707,10 @@ export default function SchoolFundPage() {
                   id="edit-status"
                   value={updateData.status || SchoolStatus.PENDING}
                   onChange={(e) =>
-                    setUpdateData({ ...updateData, status: e.target.value as SchoolStatus })
+                    setUpdateData({
+                      ...updateData,
+                      status: e.target.value as SchoolStatus,
+                    })
                   }
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
@@ -684,5 +785,5 @@ export default function SchoolFundPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

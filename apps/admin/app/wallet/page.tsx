@@ -223,7 +223,7 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₿ {isLoading ? "..." : totalBalance.toFixed(2)}
+              ₳ {isLoading ? "..." : totalBalance.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">En circulation</p>
           </CardContent>
@@ -325,7 +325,7 @@ export default function WalletPage() {
                             {wallet.mobileMoneyNumber || "N/A"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            ₿ {wallet.balanceADA.toFixed(2)}
+                            ₳ {wallet.balanceADA.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <Popover>
