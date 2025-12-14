@@ -48,10 +48,10 @@ export class NFTEntity implements INFT {
   @Column({ type: 'varchar', length: 255, nullable: true })
   onChainHash?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   policyId?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   assetName?: string;
 
   @Index()

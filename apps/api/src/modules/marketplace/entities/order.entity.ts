@@ -48,7 +48,7 @@ export class OrderEntity implements IOrder {
   @Column({ type: 'text', nullable: true })
   shippingAddress?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   trackingNumber?: string;
 
   @Column({ type: 'timestamp', nullable: true })

@@ -21,22 +21,22 @@ export class FarmerEntity implements IFarmer {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'varchar', length: 20 })
   phone!: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   walletAddress?: string;
 
   @Column({ type: 'varchar', length: 255 })
   address!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   city!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   state!: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })

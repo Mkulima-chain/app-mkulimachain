@@ -46,7 +46,7 @@ export class MobileMoneyTransactionEntity implements IMobileMoneyTransaction {
   @Column({ type: 'enum', enum: TransactionType })
   type!: TransactionType;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   transactionRef?: string;
 
   @Column({ type: 'text', nullable: true })

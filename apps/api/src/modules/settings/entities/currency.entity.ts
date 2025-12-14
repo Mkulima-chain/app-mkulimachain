@@ -15,7 +15,7 @@ export class CurrencyEntity {
   @Column({ type: 'varchar', length: 3, unique: true })
   code!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'varchar', length: 10, nullable: true })

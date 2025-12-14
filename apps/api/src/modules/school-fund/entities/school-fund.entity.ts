@@ -19,16 +19,16 @@ export class SchoolFundEntity implements ISchoolFund {
   schoolName!: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   province!: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   city?: string;
 
   @Column({ type: 'text', nullable: true })
   address?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   contactPerson?: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true })

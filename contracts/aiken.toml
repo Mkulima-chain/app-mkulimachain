@@ -1,0 +1,17 @@
+name = "mkulimachain/nft-contracts"
+version = "0.1.0"
+plutus = "v3"
+license = "Apache-2.0"
+description = "Contrats intelligents Plutus pour le mint et la vente de NFTs"
+
+[repository]
+user = "mkulimachain"
+project = "nft-contracts"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v3.0.0"
+source = "github"
+
+[config]

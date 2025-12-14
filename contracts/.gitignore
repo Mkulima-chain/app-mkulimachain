@@ -1,0 +1,15 @@
+# Aiken build artifacts
+plutus.json
+*.plutus
+*.cbor
+
+# Aiken cache
+.aiken/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

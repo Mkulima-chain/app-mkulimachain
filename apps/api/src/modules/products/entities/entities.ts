@@ -19,13 +19,13 @@ export class ProductEntity implements IProduct {
   @Column({ type: 'varchar', length: 50, unique: true })
   sku!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   unit!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   category!: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })

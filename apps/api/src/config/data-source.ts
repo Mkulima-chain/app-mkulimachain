@@ -12,7 +12,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'mkulimachain',
   entities: [__dirname + '/../modules/**/entities/*{.ts,.js}'],
   migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
-  synchronize: false,
+  synchronize: process.env.NODE_ENV !== 'production' ? true : false,
+  migrationsRun: process.env.NODE_ENV !== 'production' ? true : false,
   logging: true,
 });
-

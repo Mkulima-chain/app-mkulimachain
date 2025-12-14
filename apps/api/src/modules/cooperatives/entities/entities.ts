@@ -15,13 +15,13 @@ export class CooperativeEntity implements ICooperative {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'varchar', length: 255 })
   location!: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 255 })
   leader!: string;
 
   @OneToMany(() => FarmerEntity, (farmer) => farmer.cooperative)

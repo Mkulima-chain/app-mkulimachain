@@ -4,6 +4,7 @@ import {
   BlockfrostProvider,
   ForgeScript,
   stringToHex,
+  resolveScriptHash,
 } from "@meshsdk/core";
 import { NFT } from "../types";
 import { ipfsUriToHttpUrl } from "../utils";
@@ -86,34 +87,48 @@ export class NFTMintService {
       const changeAddress = await wallet.getChangeAddress();
 
       // Créer une policy simple avec ForgeScript
-      // Pour ForgeScript, Mesh SDK génère automatiquement le Policy ID
       const forgingScript = ForgeScript.withOneSignature(changeAddress);
 
-      // Pour ForgeScript, le Policy ID est généré automatiquement par Mesh SDK
-      // Si un Policy ID est fourni, l'utiliser
-      // Sinon, on utilisera un Policy ID temporaire qui sera remplacé après le mint
+      // Obtenir le Policy ID réel depuis le script ForgeScript
+      // Si un Policy ID est fourni, l'utiliser (pour réutiliser une policy existante)
+      // Sinon, calculer le Policy ID depuis le script
       let finalPolicyId: string;
       if (policyId) {
         finalPolicyId = policyId;
+        console.log("Utilisation du Policy ID fourni:", finalPolicyId);
       } else {
-        // Générer un Policy ID temporaire valide (56 caractères hex)
-        // Le vrai Policy ID sera extrait après le mint depuis la transaction
-        // Format: hash de l'adresse + timestamp pour garantir l'unicité
-        const addressBytes = Buffer.from(changeAddress);
-        const timestamp = Date.now().toString();
-        const combined = Buffer.concat([addressBytes, Buffer.from(timestamp)]);
-        finalPolicyId = combined
-          .toString("hex")
-          .substring(0, 56)
-          .padEnd(56, "0");
+        // Calculer le Policy ID depuis le script ForgeScript
+        try {
+          finalPolicyId = resolveScriptHash(forgingScript);
+          console.log("Policy ID calculé depuis ForgeScript:", finalPolicyId);
+          console.log("Type de forgingScript:", typeof forgingScript);
 
-        console.log(
-          "Using temporary Policy ID for ForgeScript:",
-          finalPolicyId
-        );
-        console.log(
-          "Note: The actual Policy ID will be extracted after minting"
-        );
+          // Vérifier que le Policy ID est valide (56 caractères hex)
+          if (
+            !finalPolicyId ||
+            finalPolicyId.length !== 56 ||
+            !/^[0-9a-fA-F]+$/.test(finalPolicyId) ||
+            finalPolicyId ===
+              "00000000000000000000000000000000000000000000000000000000"
+          ) {
+            throw new Error(
+              `Policy ID invalide calculé depuis ForgeScript: ${finalPolicyId}. ` +
+                `Le Policy ID doit être une string hexadécimale de 56 caractères valide.`
+            );
+          }
+        } catch (error) {
+          console.error(
+            "Erreur lors du calcul du Policy ID avec resolveScriptHash:",
+            error
+          );
+          // Si resolveScriptHash échoue, cela pourrait être un bug de Mesh SDK
+          // Dans ce cas, on ne peut pas continuer car on a besoin du Policy ID
+          throw new Error(
+            `Impossible de calculer le Policy ID depuis ForgeScript. ` +
+              `Cela pourrait être un bug dans Mesh SDK v1.9.0-beta.87. ` +
+              `Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`
+          );
+        }
       }
 
       // Générer ou utiliser le nom d'asset fourni
@@ -280,8 +295,12 @@ export class NFTMintService {
                 `Metadata value "${currentPath}" exceeds 64 bytes limit (${byteLength} bytes). Please shorten the content.`
               );
             }
-          } else if (typeof value === "object" && value !== null) {
-            validateMetadata(value, currentPath);
+          } else if (
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value)
+          ) {
+            validateMetadata(value as Record<string, unknown>, currentPath);
           }
         }
       };
@@ -296,9 +315,11 @@ export class NFTMintService {
       });
 
       // Construire la transaction avec la policy
+      // Important: appeler .mintingScript() avant .mint() pour que Mesh SDK
+      // puisse correctement associer le script au Policy ID
       const unsignedTx = await txBuilder
-        .mint("1", finalPolicyId, finalAssetName)
         .mintingScript(forgingScript)
+        .mint("1", finalPolicyId, finalAssetName)
         .metadataValue(721, cip25Metadata)
         .changeAddress(changeAddress)
         .selectUtxosFrom(utxos)
@@ -308,26 +329,9 @@ export class NFTMintService {
       const signedTx = await wallet.signTx(unsignedTx);
       const txHash = await wallet.submitTx(signedTx);
 
-      // Pour ForgeScript, le Policy ID réel est généré automatiquement par Mesh SDK
-      // Il est inclus dans les métadonnées de la transaction (label 721)
-      // On peut l'extraire depuis cip25Metadata qui contient le Policy ID comme clé
-      let actualPolicyId = finalPolicyId;
-
-      // Le Policy ID réel est dans les métadonnées qu'on a créées
-      // Mais comme on a utilisé un Policy ID temporaire, on doit le récupérer autrement
-      // En production, vous pouvez interroger Blockfrost API pour obtenir le Policy ID depuis la transaction
-      // Pour l'instant, on retourne le Policy ID utilisé (qui sera le vrai si fourni, ou temporaire sinon)
-      console.log("Transaction submitted successfully:", {
-        txHash,
-        policyId: actualPolicyId,
-        note: policyId
-          ? "Using provided Policy ID"
-          : "Using temporary Policy ID. Query Blockfrost API to get the actual Policy ID from the transaction.",
-      });
-
       return {
         txHash,
-        policyId: actualPolicyId,
+        policyId: finalPolicyId,
         assetName: tokenName, // Retourner le nom en texte, pas en hex
       };
     } catch (error) {
