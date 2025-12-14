@@ -78,6 +78,48 @@ export class NFTEntity implements INFT {
   @Column({ type: 'timestamp', nullable: true })
   soldAt?: Date;
 
+  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  images?: string[];
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  thumbnailUrl?: string;
+
+  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  tags?: string[];
+
+  @Index()
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  collection?: string;
+
+  @Index()
+  @Column({ type: 'integer', default: 0 })
+  views!: number;
+
+  @Index()
+  @Column({ type: 'integer', default: 0 })
+  likes!: number;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  audioUrl?: string;
+
+  @Index()
+  @Column({ type: 'boolean', default: false })
+  verified!: boolean;
+
+  @Index()
+  @Column({ type: 'boolean', default: false })
+  featured!: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  featuredAt?: Date;
+
+  @Index()
+  @Column({ type: 'varchar', length: 50, nullable: true, default: 'common' })
+  rarity?: string;
+
+  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  attributes?: Array<{ trait_type: string; value: string }>;
+
   @CreateDateColumn()
   createdAt!: Date;
 

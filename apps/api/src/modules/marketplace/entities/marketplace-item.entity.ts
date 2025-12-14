@@ -100,14 +100,14 @@ export class MarketplaceItemEntity implements IMarketplaceItem {
   notes?: string;
 
   @Index()
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'featured' })
   featured!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'expiresAt' })
   expiresAt?: Date;
 
   @Index()
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'cooperativeId' })
   cooperativeId?: string;
 
   @ManyToOne(() => CooperativeEntity)
@@ -119,6 +119,7 @@ export class MarketplaceItemEntity implements IMarketplaceItem {
     type: 'enum',
     enum: MarketplaceItemStatus,
     default: MarketplaceItemStatus.DRAFT,
+    name: 'status',
   })
   status!: MarketplaceItemStatus;
 

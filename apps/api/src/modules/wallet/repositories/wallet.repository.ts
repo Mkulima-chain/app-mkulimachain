@@ -39,15 +39,88 @@ export class WalletRepository {
     return this.repository.findOne({ where: { ownerType, ownerId } });
   }
 
-  async findAll(query: GetWalletDto): Promise<WalletEntity[]> {
-    const where: Record<string, unknown> = {};
+  async findAll(
+    query: GetWalletDto,
+  ): Promise<{
+    data: WalletEntity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const qb = this.repository.createQueryBuilder('wallet');
 
-    if (query.id) where.id = query.id;
-    if (query.ownerType) where.ownerType = query.ownerType;
-    if (query.ownerId) where.ownerId = query.ownerId;
-    if (query.adaAddress) where.adaAddress = query.adaAddress;
+    // Filtres
+    if (query.id) {
+      qb.andWhere('wallet.id = :id', { id: query.id });
+    }
+    if (query.ownerType) {
+      qb.andWhere('wallet.ownerType = :ownerType', {
+        ownerType: query.ownerType,
+      });
+    }
+    if (query.ownerId) {
+      qb.andWhere('wallet.ownerId = :ownerId', { ownerId: query.ownerId });
+    }
+    if (query.adaAddress) {
+      qb.andWhere('wallet.adaAddress = :adaAddress', {
+        adaAddress: query.adaAddress,
+      });
+    }
+    if (query.status) {
+      qb.andWhere('wallet.status = :status', { status: query.status });
+    }
+    if (query.isVerified !== undefined) {
+      qb.andWhere('wallet.isVerified = :isVerified', {
+        isVerified: query.isVerified,
+      });
+    }
+    if (query.minBalance !== undefined) {
+      qb.andWhere('wallet.balanceADA >= :minBalance', {
+        minBalance: query.minBalance,
+      });
+    }
+    if (query.maxBalance !== undefined) {
+      qb.andWhere('wallet.balanceADA <= :maxBalance', {
+        maxBalance: query.maxBalance,
+      });
+    }
+    if (query.search) {
+      qb.andWhere(
+        '(wallet.adaAddress ILIKE :search OR wallet.label ILIKE :search OR wallet.mobileMoneyNumber ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
 
-    return this.repository.find({ where });
+    // Tri
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'DESC';
+    const validSortFields = [
+      'balanceADA',
+      'createdAt',
+      'lastTransactionAt',
+      'transactionCount',
+    ];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    qb.orderBy(`wallet.${sortField}`, sortOrder);
+
+    // Pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    qb.skip(skip).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async update(id: string, dto: UpdateWalletDto): Promise<WalletEntity | null> {
@@ -62,7 +135,28 @@ export class WalletRepository {
     const wallet = await this.findById(id);
     if (!wallet) return null;
 
-    wallet.balanceADA = Number(wallet.balanceADA) + amount;
+    const oldBalance = Number(wallet.balanceADA);
+    wallet.balanceADA = oldBalance + amount;
+
+    // Mettre à jour les statistiques
+    wallet.transactionCount += 1;
+    wallet.lastTransactionAt = new Date();
+
+    if (amount > 0) {
+      wallet.totalReceived = Number(wallet.totalReceived || 0) + amount;
+    } else {
+      wallet.totalSent = Number(wallet.totalSent || 0) + Math.abs(amount);
+    }
+
+    // Mettre à jour minBalance et maxBalance
+    const newBalance = Number(wallet.balanceADA);
+    if (wallet.minBalance === null || newBalance < Number(wallet.minBalance)) {
+      wallet.minBalance = newBalance;
+    }
+    if (wallet.maxBalance === null || newBalance > Number(wallet.maxBalance)) {
+      wallet.maxBalance = newBalance;
+    }
+
     return this.repository.save(wallet);
   }
 

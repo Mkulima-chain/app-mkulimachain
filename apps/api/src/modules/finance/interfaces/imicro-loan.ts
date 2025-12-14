@@ -19,6 +19,15 @@ export interface IMicroLoan {
   startDate?: Date;
   dueDate?: Date;
   repaidAt?: Date;
+  notes?: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
+  penaltyRate?: number;
+  totalRepaymentAmount?: number;
+  remainingAmount?: number;
+  lastPaymentDate?: Date;
+  paymentCount?: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

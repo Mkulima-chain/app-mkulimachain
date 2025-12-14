@@ -69,49 +69,50 @@ export class HarvestEntity implements IHarvest {
     type: 'enum',
     enum: HarvestStatus,
     default: HarvestStatus.PENDING,
+    name: 'status',
   })
   status!: HarvestStatus;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'verified' })
   verified!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'verifiedAt' })
   verifiedAt?: Date;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'verifiedBy' })
   verifiedBy?: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true, default: 'kg' })
+  @Column({ type: 'varchar', length: 20, nullable: true, default: 'kg', name: 'unit' })
   unit?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'quality' })
   quality?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'notes' })
   notes?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'photos' })
   photos?: string[];
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'weatherConditions' })
   weatherConditions?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'harvestMethod' })
   harvestMethod?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'storageLocation' })
   storageLocation?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'batchNumber' })
   batchNumber?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'certification' })
   certification?: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'estimatedValue' })
   estimatedValue?: number;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'cooperativeId' })
   cooperativeId?: string;
 
   @ManyToOne(() => CooperativeEntity, { nullable: true })

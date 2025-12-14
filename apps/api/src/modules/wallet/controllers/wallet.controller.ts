@@ -24,9 +24,11 @@ import {
   GetWalletDto,
   UpdateBalanceDto,
   WalletResponseDto,
+  WalletsResponseDto,
+  WalletStatsDto,
 } from '../dto/wallet.dto';
 import { WalletEntity } from '../entities/wallet.entity';
-import { OwnerType } from '../interfaces/iwallet';
+import { OwnerType, WalletStatus } from '../interfaces/iwallet';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('wallets')
@@ -53,14 +55,14 @@ export class WalletController {
   @Get()
   @ApiOperation({
     summary: 'Lister les portefeuilles',
-    description: 'Récupère la liste des portefeuilles avec filtres',
+    description: 'Récupère la liste des portefeuilles avec filtres et pagination',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liste des portefeuilles',
-    type: [WalletResponseDto],
+    description: 'Liste paginée des portefeuilles',
+    type: WalletsResponseDto,
   })
-  async findAll(@Query() query: GetWalletDto): Promise<WalletEntity[]> {
+  async findAll(@Query() query: GetWalletDto): Promise<WalletsResponseDto> {
     return this.service.findAll(query);
   }
 
@@ -213,10 +215,108 @@ export class WalletController {
     description: 'ID du portefeuille',
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: HttpStatus.NO_CONTENT,
     description: 'Portefeuille supprimé',
   })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Post(':id/verify')
+  @ApiOperation({
+    summary: 'Vérifier un portefeuille',
+    description: 'Marque un portefeuille comme vérifié manuellement',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID du portefeuille',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portefeuille vérifié',
+    type: WalletResponseDto,
+  })
+  // @UseGuards(JwtAuthGuard) // À activer quand l'auth sera prête
+  async verify(
+    @Param('id', ParseUUIDPipe) id: string,
+    // @CurrentUser() user: User, // À activer quand l'auth sera prête
+  ): Promise<WalletEntity> {
+    // TODO: Remplacer 'admin-user-id' par user.id quand l'auth sera prête
+    return this.service.verifyWallet(id, 'admin-user-id');
+  }
+
+  @Put(':id/status')
+  @ApiOperation({
+    summary: 'Mettre à jour le statut d\'un portefeuille',
+    description: 'Change le statut d\'un portefeuille (active, inactive, frozen, suspended)',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID du portefeuille',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: Object.values(WalletStatus),
+          example: WalletStatus.ACTIVE,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statut mis à jour',
+    type: WalletResponseDto,
+  })
+  // @UseGuards(JwtAuthGuard) // À activer quand l'auth sera prête
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status') status: WalletStatus,
+  ): Promise<WalletEntity> {
+    return this.service.updateWalletStatus(id, status);
+  }
+
+  @Get(':id/stats')
+  @ApiOperation({
+    summary: 'Obtenir les statistiques d\'un portefeuille',
+    description: 'Récupère les statistiques détaillées d\'un portefeuille',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID du portefeuille',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques du portefeuille',
+    type: WalletStatsDto,
+  })
+  async getStats(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<WalletStatsDto> {
+    return this.service.getWalletStats(id);
+  }
+
+  @Post(':id/sync')
+  @ApiOperation({
+    summary: 'Synchroniser le solde avec la blockchain',
+    description: 'Synchronise le solde du portefeuille avec la blockchain Cardano',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID du portefeuille',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portefeuille synchronisé',
+    type: WalletResponseDto,
+  })
+  // @UseGuards(JwtAuthGuard) // À activer quand l'auth sera prête
+  async sync(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<WalletEntity> {
+    return this.service.syncWalletBalance(id);
   }
 }

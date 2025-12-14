@@ -6,8 +6,10 @@ import {
   IsNumber,
   Min,
   Max,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { RiskLevel } from '../interfaces/icredit-score';
 
 export class CreateCreditScoreDto {
   @ApiProperty({
@@ -75,6 +77,14 @@ export class UpdateCreditScoreDto {
   @Min(0)
   @Max(100)
   loanRepaymentRate?: number;
+
+  @ApiPropertyOptional({
+    description: 'Niveau de risque',
+    enum: RiskLevel,
+  })
+  @IsEnum(RiskLevel)
+  @IsOptional()
+  riskLevel?: RiskLevel;
 }
 
 export class GetCreditScoreDto {
@@ -113,6 +123,14 @@ export class GetCreditScoreDto {
   @IsOptional()
   @Max(1000)
   maxScore?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par niveau de risque',
+    enum: RiskLevel,
+  })
+  @IsEnum(RiskLevel)
+  @IsOptional()
+  riskLevel?: RiskLevel;
 }
 
 export class RecordHarvestDto {

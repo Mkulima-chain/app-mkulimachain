@@ -51,72 +51,72 @@ export class BatchEntity implements IBatch {
   @Column({ type: 'enum', enum: BatchStatus, default: BatchStatus.CREATED })
   status!: BatchStatus;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'name' })
   name?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'description' })
   description?: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'totalQuantity' })
   totalQuantity?: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'totalWeight' })
   totalWeight?: number;
 
-  @Column({ type: 'varchar', length: 20, nullable: true, default: 'kg' })
+  @Column({ type: 'varchar', length: 20, nullable: true, default: 'kg', name: 'unit' })
   unit?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'productionDate' })
   productionDate?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'expirationDate' })
   expirationDate?: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'verified' })
   verified!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'verifiedAt' })
   verifiedAt?: Date;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'verifiedBy' })
   verifiedBy?: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'quality' })
   quality?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'notes' })
   notes?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'photos' })
   photos?: string[];
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'originLocation' })
   originLocation?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'destinationLocation' })
   destinationLocation?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'certification' })
   certification?: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true, name: 'estimatedValue' })
   estimatedValue?: number;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'cooperativeId' })
   cooperativeId?: string;
 
   @ManyToOne(() => CooperativeEntity, { nullable: true })
   @JoinColumn({ name: 'cooperativeId' })
   cooperative?: CooperativeEntity;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'farmerId' })
   farmerId?: string;
 
   @ManyToOne(() => FarmerEntity, { nullable: true })
   @JoinColumn({ name: 'farmerId' })
   farmer?: FarmerEntity;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'productId' })
   productId?: string;
 
   @ManyToOne(() => ProductEntity, { nullable: true })

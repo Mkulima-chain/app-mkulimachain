@@ -12,6 +12,9 @@ import {
   TransactionStatus,
   TransactionType,
 } from '../interfaces/imobile-money-transaction';
+import { ManyToOne, JoinColumn } from 'typeorm';
+import { FarmerEntity } from '@/modules/farmers/entities/entities';
+import { MicroLoanEntity } from './micro-loan.entity';
 
 @Entity('mobile_money_transactions')
 export class MobileMoneyTransactionEntity implements IMobileMoneyTransaction {
@@ -57,6 +60,31 @@ export class MobileMoneyTransactionEntity implements IMobileMoneyTransaction {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   externalTransactionId?: string;
+
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  farmerId?: string;
+
+  @ManyToOne(() => FarmerEntity, { nullable: true })
+  @JoinColumn({ name: 'farmerId' })
+  farmer?: FarmerEntity;
+
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  loanId?: string;
+
+  @ManyToOne(() => MicroLoanEntity, { nullable: true })
+  @JoinColumn({ name: 'loanId' })
+  loan?: MicroLoanEntity;
+
+  @Column({ type: 'text', nullable: true })
+  notes?: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  processedBy?: string;
+
+  @Column({ type: 'int', nullable: true })
+  processingTime?: number;
 
   @CreateDateColumn()
   createdAt!: Date;

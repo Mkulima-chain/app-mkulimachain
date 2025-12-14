@@ -24,6 +24,7 @@ import {
   GetNFTDto,
   MintNFTDto,
   NFTResponseDto,
+  NFTListResponseDto,
 } from '../dto/nft.dto';
 import { NFTEntity } from '../entities/nft.entity';
 import { NFTType } from '../interfaces/inft';
@@ -53,14 +54,19 @@ export class NFTController {
   @Get()
   @ApiOperation({
     summary: 'Lister les NFTs',
-    description: 'Récupère la liste des NFTs avec filtres',
+    description: 'Récupère la liste des NFTs avec filtres et pagination',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liste des NFTs',
-    type: [NFTResponseDto],
+    description: 'Liste des NFTs avec pagination',
+    type: NFTListResponseDto,
   })
-  async findAll(@Query() query: GetNFTDto): Promise<NFTEntity[]> {
+  async findAll(@Query() query: GetNFTDto): Promise<{
+    data: NFTEntity[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     return this.service.findAll(query);
   }
 
@@ -138,6 +144,88 @@ export class NFTController {
     return this.service.findByOnChainHash(onChainHash);
   }
 
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Statistiques des NFTs',
+    description: 'Récupère les statistiques globales des NFTs',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques',
+    schema: {
+      type: 'object',
+      properties: {
+        total: { type: 'number' },
+        listed: { type: 'number' },
+        sold: { type: 'number' },
+        totalRevenue: { type: 'number' },
+        totalViews: { type: 'number' },
+        totalLikes: { type: 'number' },
+        byType: { type: 'object' },
+        byCollection: { type: 'object' },
+      },
+    },
+  })
+  async getStats(): Promise<{
+    total: number;
+    listed: number;
+    sold: number;
+    totalRevenue: number;
+    totalViews: number;
+    totalLikes: number;
+    byType: Record<string, number>;
+    byCollection: Record<string, number>;
+  }> {
+    return this.service.getStats();
+  }
+
+  @Get('featured')
+  @ApiOperation({
+    summary: 'NFTs mis en avant',
+    description: 'Récupère les NFTs mis en avant',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'NFTs mis en avant',
+    type: [NFTResponseDto],
+  })
+  async getFeatured(
+    @Query('limit') limit?: number,
+  ): Promise<NFTEntity[]> {
+    return this.service.getFeatured(limit ? parseInt(limit.toString()) : 10);
+  }
+
+  @Get('trending')
+  @ApiOperation({
+    summary: 'NFTs tendances',
+    description: 'Récupère les NFTs les plus vus et likés',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'NFTs tendances',
+    type: [NFTResponseDto],
+  })
+  async getTrending(
+    @Query('limit') limit?: number,
+  ): Promise<NFTEntity[]> {
+    return this.service.getTrending(limit ? parseInt(limit.toString()) : 10);
+  }
+
+  @Get('tags')
+  @ApiOperation({
+    summary: 'NFTs par tags',
+    description: 'Récupère les NFTs correspondant aux tags',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'NFTs par tags',
+    type: [NFTResponseDto],
+  })
+  async findByTags(@Query('tags') tags: string): Promise<NFTEntity[]> {
+    const tagsArray = tags.split(',').map((tag) => tag.trim());
+    return this.service.findByTags(tagsArray);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Obtenir un NFT',
@@ -151,6 +239,100 @@ export class NFTController {
   })
   async findById(@Param('id', ParseUUIDPipe) id: string): Promise<NFTEntity> {
     return this.service.findById(id);
+  }
+
+  @Post(':id/view')
+  @ApiOperation({
+    summary: 'Incrémenter les vues',
+    description: "Incrémente le compteur de vues d'un NFT",
+  })
+  @ApiParam({ name: 'id', description: 'ID du NFT' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Vues incrémentées',
+  })
+  async incrementViews(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.service.incrementViews(id);
+  }
+
+  @Post(':id/like')
+  @ApiOperation({
+    summary: 'Liker un NFT',
+    description: "Incrémente le compteur de likes d'un NFT",
+  })
+  @ApiParam({ name: 'id', description: 'ID du NFT' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Like ajouté',
+  })
+  async like(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.service.incrementLikes(id);
+  }
+
+  @Post(':id/unlike')
+  @ApiOperation({
+    summary: 'Retirer le like',
+    description: "Décrémente le compteur de likes d'un NFT",
+  })
+  @ApiParam({ name: 'id', description: 'ID du NFT' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Like retiré',
+  })
+  async unlike(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.service.decrementLikes(id);
+  }
+
+  @Put(':id/featured')
+  @ApiOperation({
+    summary: 'Mettre en avant / Retirer de la mise en avant',
+    description: 'Change le statut de mise en avant d\'un NFT',
+  })
+  @ApiParam({ name: 'id', description: 'ID du NFT' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        featured: { type: 'boolean' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statut de mise en avant modifié',
+    type: NFTResponseDto,
+  })
+  async setFeatured(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('featured') featured: boolean,
+  ): Promise<NFTEntity> {
+    return this.service.setFeatured(id, featured);
+  }
+
+  @Put(':id/verify')
+  @ApiOperation({
+    summary: 'Vérifier / Dévérifier un NFT',
+    description: 'Change le statut de vérification d\'un NFT',
+  })
+  @ApiParam({ name: 'id', description: 'ID du NFT' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        verified: { type: 'boolean' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statut de vérification modifié',
+    type: NFTResponseDto,
+  })
+  async setVerified(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('verified') verified: boolean,
+  ): Promise<NFTEntity> {
+    return this.service.setVerified(id, verified);
   }
 
   @Get(':id/revenue-shares')

@@ -37,6 +37,8 @@ export class MicroLoanEntity implements IMicroLoan {
   @Column({ type: 'enum', enum: LoanStatus, default: LoanStatus.PENDING })
   status!: LoanStatus;
 
+  @Index('IDX_micro_loans_status_farmerId', ['status', 'farmerId'])
+
   @Column({ type: 'varchar', length: 255 })
   loanContractHash!: string;
 
@@ -48,6 +50,34 @@ export class MicroLoanEntity implements IMicroLoan {
 
   @Column({ type: 'timestamp', nullable: true })
   repaidAt?: Date;
+
+  @Column({ type: 'text', nullable: true })
+  notes?: string;
+
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  approvedBy?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  approvedAt?: Date;
+
+  @Column({ type: 'text', nullable: true })
+  rejectionReason?: string;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  penaltyRate?: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 6, nullable: true })
+  totalRepaymentAmount?: number;
+
+  @Column({ type: 'decimal', precision: 18, scale: 6, nullable: true })
+  remainingAmount?: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastPaymentDate?: Date;
+
+  @Column({ type: 'int', default: 0 })
+  paymentCount?: number;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -29,6 +29,11 @@ export interface IMobileMoneyTransaction {
   failureReason?: string;
   processedAt?: Date;
   externalTransactionId?: string;
+  farmerId?: string;
+  loanId?: string;
+  notes?: string;
+  processedBy?: string;
+  processingTime?: number;
   createdAt: Date;
   updatedAt: Date;
 }

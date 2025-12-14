@@ -35,6 +35,18 @@ export interface INFT {
   status: NFTStatus;
   mintedAt?: Date;
   soldAt?: Date;
+  images?: string[];
+  thumbnailUrl?: string;
+  tags?: string[];
+  collection?: string;
+  views: number;
+  likes: number;
+  audioUrl?: string;
+  verified: boolean;
+  featured: boolean;
+  featuredAt?: Date;
+  rarity?: string;
+  attributes?: Array<{ trait_type: string; value: string }>;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

@@ -27,6 +27,7 @@ import {
 } from '../dto/micro-loan.dto';
 import { MicroLoanEntity } from '../entities/micro-loan.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
+import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 
 @ApiTags('micro-loans')
 @Controller('loans')
@@ -221,5 +222,97 @@ export class MicroLoanController {
   })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Statistiques des prêts',
+    description: 'Récupère les statistiques globales des prêts',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques des prêts',
+  })
+  async getStatistics(@Query('farmerId') farmerId?: string) {
+    return this.service.getLoanStatistics(farmerId);
+  }
+
+  @Get(':id/schedule')
+  @ApiOperation({
+    summary: 'Calendrier de remboursement',
+    description: 'Récupère le calendrier de remboursement d\'un prêt',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Calendrier de remboursement',
+  })
+  async getRepaymentSchedule(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getRepaymentSchedule(id);
+  }
+
+  @Get(':id/remaining')
+  @ApiOperation({
+    summary: 'Montant restant',
+    description: 'Récupère le montant restant à rembourser',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Montant restant',
+  })
+  async getRemainingAmount(@Param('id', ParseUUIDPipe) id: string) {
+    const amount = await this.service.calculateRemainingAmount(id);
+    return { remainingAmount: amount };
+  }
+
+  @Post(':id/approve')
+  @ApiOperation({
+    summary: 'Approuver un prêt',
+    description: 'Approuve un prêt en attente (nécessite authentification)',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Prêt approuvé',
+    type: MicroLoanResponseDto,
+  })
+  async approveLoan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ): Promise<MicroLoanEntity> {
+    return this.service.approveLoan(id, user.id);
+  }
+
+  @Post(':id/reject')
+  @ApiOperation({
+    summary: 'Rejeter un prêt',
+    description: 'Rejette un prêt en attente avec une raison (nécessite authentification)',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        rejectionReason: {
+          type: 'string',
+          description: 'Raison du rejet',
+          example: 'Score de crédit insuffisant',
+        },
+      },
+      required: ['rejectionReason'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Prêt rejeté',
+    type: MicroLoanResponseDto,
+  })
+  async rejectLoan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('rejectionReason') rejectionReason: string,
+    @CurrentUser() user: { id: string },
+  ): Promise<MicroLoanEntity> {
+    return this.service.rejectLoan(id, rejectionReason, user.id);
   }
 }

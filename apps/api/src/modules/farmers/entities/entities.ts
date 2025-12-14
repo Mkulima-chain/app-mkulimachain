@@ -86,46 +86,49 @@ export class FarmerEntity implements IFarmer {
   cooperativeId?: string;
 
   // Nouvelles colonnes améliorées
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date', nullable: true, name: 'dateOfBirth' })
   dateOfBirth?: Date;
 
   @Column({
     type: 'enum',
     enum: FarmerStatus,
     default: FarmerStatus.ACTIVE,
+    name: 'status',
   })
   status!: FarmerStatus;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'photoUrl' })
   photoUrl?: string;
 
   @Column({
     type: 'enum',
     enum: FarmerGender,
     nullable: true,
+    name: 'gender',
   })
   gender?: FarmerGender;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'identificationNumber' })
   identificationNumber?: string;
 
   @Column({
     type: 'enum',
     enum: FarmerIdentificationType,
     nullable: true,
+    name: 'identificationType',
   })
   identificationType?: FarmerIdentificationType;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'notes' })
   notes?: string;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'verified' })
   verified!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'verifiedAt' })
   verifiedAt?: Date;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'verifiedBy' })
   verifiedBy?: string;
 
   // Colonne géospatiale (PostGIS) - optionnelle

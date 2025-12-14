@@ -52,40 +52,41 @@ export class CooperativeEntity implements ICooperative {
     type: 'enum',
     enum: CooperativeStatus,
     default: CooperativeStatus.ACTIVE,
+    name: 'status',
   })
   status!: CooperativeStatus;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'logoUrl' })
   logoUrl?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'description' })
   description?: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'registrationNumber' })
   registrationNumber?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date', nullable: true, name: 'foundedDate' })
   foundedDate?: Date;
 
-  @Column({ type: 'integer', default: 0 })
+  @Column({ type: 'integer', default: 0, name: 'memberCount' })
   memberCount!: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'notes' })
   notes?: string;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'verified' })
   verified!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'verifiedAt' })
   verifiedAt?: Date;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'verifiedBy' })
   verifiedBy?: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true, name: 'latitude' })
   latitude?: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true, name: 'longitude' })
   longitude?: number;
 
   // Colonne géospatiale (PostGIS) - optionnelle

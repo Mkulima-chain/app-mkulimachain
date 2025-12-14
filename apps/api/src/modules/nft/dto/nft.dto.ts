@@ -7,12 +7,16 @@ import {
   IsNumber,
   IsUrl,
   IsObject,
+  IsArray,
+  IsBoolean,
   MaxLength,
   Min,
   Max,
   ValidateNested,
+  IsIn,
+  Matches,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform, Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { NFTType, NFTStatus } from '../interfaces/inft';
 
@@ -88,13 +92,16 @@ export class CreateNFTDto {
   description?: string;
 
   @ApiProperty({
-    description: 'URI des métadonnées CIP-25',
+    description: 'URI des métadonnées CIP-25 (peut être IPFS ou HTTP/HTTPS)',
     example: 'ipfs://QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco',
     maxLength: 500,
   })
-  @IsUrl()
+  @IsString()
   @IsNotEmpty()
   @MaxLength(500)
+  @Matches(/^(ipfs:\/\/|https?:\/\/|ar:\/\/)/i, {
+    message: 'metadataURI must be a valid URI (ipfs://, http://, https://, or ar://)',
+  })
   metadataURI!: string;
 
   @ApiProperty({
@@ -115,6 +122,70 @@ export class CreateNFTDto {
   @ValidateNested()
   @Type(() => RevenueDistributionDto)
   revenueDistribution!: RevenueDistributionDto;
+
+  @ApiPropertyOptional({
+    description: 'URLs des images',
+    example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+    type: [String],
+  })
+  @IsArray()
+  @IsUrl({}, { each: true })
+  @IsOptional()
+  images?: string[];
+
+  @ApiPropertyOptional({
+    description: 'URL de la miniature',
+    example: 'https://example.com/thumbnail.jpg',
+  })
+  @IsUrl()
+  @IsOptional()
+  thumbnailUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tags pour catégoriser le NFT',
+    example: ['tradition', 'cuisine', 'lingala'],
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Collection du NFT',
+    example: 'culture',
+    maxLength: 100,
+  })
+  @IsString()
+  @MaxLength(100)
+  @IsOptional()
+  collection?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL de l\'audio (pour les chants)',
+    example: 'https://example.com/audio.mp3',
+  })
+  @IsUrl()
+  @IsOptional()
+  audioUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Rareté du NFT',
+    example: 'rare',
+    enum: ['common', 'rare', 'epic', 'legendary'],
+  })
+  @IsOptional()
+  @IsIn(['common', 'rare', 'epic', 'legendary'])
+  rarity?: string;
+
+  @ApiPropertyOptional({
+    description: 'Attributs personnalisés',
+    example: [{ trait_type: 'Région', value: 'Kasaï' }],
+    type: 'array',
+  })
+  @IsArray()
+  @IsOptional()
+  attributes?: Array<{ trait_type: string; value: string }>;
 }
 
 export class UpdateNFTDto extends PartialType(CreateNFTDto) {
@@ -125,12 +196,29 @@ export class UpdateNFTDto extends PartialType(CreateNFTDto) {
   @IsEnum(NFTStatus)
   @IsOptional()
   status?: NFTStatus;
+
+  @ApiPropertyOptional({
+    description: 'Mettre en avant',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  featured?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Vérifié',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  verified?: boolean;
 }
 
 export class GetNFTDto {
   @ApiPropertyOptional({
     description: 'ID du NFT',
   })
+  @Expose()
   @IsUUID()
   @IsOptional()
   id?: string;
@@ -138,6 +226,7 @@ export class GetNFTDto {
   @ApiPropertyOptional({
     description: 'Filtrer par créateur',
   })
+  @Expose()
   @IsUUID()
   @IsOptional()
   creatorId?: string;
@@ -146,6 +235,7 @@ export class GetNFTDto {
     description: 'Filtrer par type',
     enum: NFTType,
   })
+  @Expose()
   @IsEnum(NFTType)
   @IsOptional()
   type?: NFTType;
@@ -154,6 +244,7 @@ export class GetNFTDto {
     description: 'Filtrer par statut',
     enum: NFTStatus,
   })
+  @Expose()
   @IsEnum(NFTStatus)
   @IsOptional()
   status?: NFTStatus;
@@ -162,8 +253,10 @@ export class GetNFTDto {
     description: 'Prix minimum',
     example: 10,
   })
-  @IsNumber()
+  @Expose()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   @IsOptional()
+  @IsNumber()
   @Min(0)
   minPrice?: number;
 
@@ -171,17 +264,116 @@ export class GetNFTDto {
     description: 'Prix maximum',
     example: 100,
   })
-  @IsNumber()
+  @Expose()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   @IsOptional()
+  @IsNumber()
   maxPrice?: number;
 
   @ApiPropertyOptional({
     description: 'Recherche textuelle',
     example: 'recette',
   })
+  @Expose()
   @IsString()
   @IsOptional()
   search?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par collection',
+    example: 'culture',
+  })
+  @Expose()
+  @IsString()
+  @IsOptional()
+  collection?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par vérifiés',
+    example: true,
+  })
+  @Expose()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsOptional()
+  @IsBoolean()
+  verified?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par mis en avant',
+    example: true,
+  })
+  @Expose()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsOptional()
+  @IsBoolean()
+  featured?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par rareté',
+    example: 'rare',
+    enum: ['common', 'rare', 'epic', 'legendary'],
+  })
+  @Expose()
+  @IsIn(['common', 'rare', 'epic', 'legendary'])
+  @IsOptional()
+  rarity?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tags à rechercher',
+    example: ['tradition', 'cuisine'],
+    type: [String],
+  })
+  @Expose()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Numéro de page',
+    example: 1,
+    minimum: 1,
+  })
+  @Expose()
+  @Transform(({ value }) => (value ? parseInt(value, 10) : undefined))
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({
+    description: 'Nombre d\'éléments par page',
+    example: 20,
+    minimum: 1,
+    maximum: 100,
+  })
+  @Expose()
+  @Transform(({ value }) => (value ? parseInt(value, 10) : undefined))
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Champ de tri',
+    example: 'createdAt',
+    enum: ['createdAt', 'views', 'likes', 'price'],
+  })
+  @Expose()
+  @IsOptional()
+  @IsIn(['createdAt', 'views', 'likes', 'price'])
+  sortBy?: 'createdAt' | 'views' | 'likes' | 'price';
+
+  @ApiPropertyOptional({
+    description: 'Ordre de tri',
+    example: 'DESC',
+    enum: ['ASC', 'DESC'],
+  })
+  @Expose()
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export class MintNFTDto {
@@ -265,6 +457,53 @@ export class NFTResponseDto {
   @ApiPropertyOptional({ example: '0xabc123def456...' })
   onChainHash?: string;
 
+  @ApiPropertyOptional({ example: ['https://example.com/image1.jpg'] })
+  images?: string[];
+
+  @ApiPropertyOptional({ example: 'https://example.com/thumbnail.jpg' })
+  thumbnailUrl?: string;
+
+  @ApiPropertyOptional({ example: ['tradition', 'cuisine'] })
+  tags?: string[];
+
+  @ApiPropertyOptional({ example: 'culture' })
+  collection?: string;
+
+  @ApiProperty({ example: 0 })
+  views!: number;
+
+  @ApiProperty({ example: 0 })
+  likes!: number;
+
+  @ApiPropertyOptional({ example: 'https://example.com/audio.mp3' })
+  audioUrl?: string;
+
+  @ApiProperty({ example: false })
+  verified!: boolean;
+
+  @ApiProperty({ example: false })
+  featured!: boolean;
+
+  @ApiPropertyOptional({ example: 'rare' })
+  rarity?: string;
+
+  @ApiPropertyOptional({ example: [{ trait_type: 'Région', value: 'Kasaï' }] })
+  attributes?: Array<{ trait_type: string; value: string }>;
+
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   createdAt!: Date;
+}
+
+export class NFTListResponseDto {
+  @ApiProperty({ type: [NFTResponseDto] })
+  data!: NFTResponseDto[];
+
+  @ApiProperty({ example: 100 })
+  total!: number;
+
+  @ApiProperty({ example: 1 })
+  page!: number;
+
+  @ApiProperty({ example: 20 })
+  limit!: number;
 }

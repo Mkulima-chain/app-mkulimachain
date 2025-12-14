@@ -11,6 +11,7 @@
     "migration:generate": "pnpm run build && pnpm run typeorm migration:generate ./src/database/migrations/migration",
     "migration:run": "pnpm run build && pnpm run typeorm migration:run -d dist/config/data-source.js",
     "migration:revert": "pnpm run build && pnpm run typeorm migration:revert -d dist/config/data-source.js",
+    "fix:columns": "ts-node -r tsconfig-paths/register scripts/fix-missing-columns.ts",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

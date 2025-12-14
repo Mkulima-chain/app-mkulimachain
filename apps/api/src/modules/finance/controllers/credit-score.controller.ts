@@ -9,6 +9,7 @@ import {
   Query,
   ParseUUIDPipe,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,6 +27,7 @@ import {
   CreditScoreResponseDto,
 } from '../dto/credit-score.dto';
 import { CreditScoreEntity } from '../entities/credit-score.entity';
+import { RiskLevel } from '../interfaces/icredit-score';
 
 @ApiTags('credit-scores')
 @Controller('credit-scores')
@@ -175,5 +177,63 @@ export class CreditScoreController {
   })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Statistiques des scores',
+    description: 'Récupère les statistiques globales des scores de crédit',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques des scores',
+  })
+  async getStatistics() {
+    return this.service.getStatistics();
+  }
+
+  @Get('farmer/:farmerId/history')
+  @ApiOperation({
+    summary: 'Historique de crédit',
+    description: "Récupère l'historique de crédit d'un agriculteur",
+  })
+  @ApiParam({
+    name: 'farmerId',
+    description: "ID de l'agriculteur",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Historique de crédit',
+    type: CreditScoreResponseDto,
+  })
+  async getCreditHistory(
+    @Param('farmerId', ParseUUIDPipe) farmerId: string,
+  ): Promise<CreditScoreEntity> {
+    return this.service.getCreditHistory(farmerId);
+  }
+
+  @Get('risk-level/:level')
+  @ApiOperation({
+    summary: 'Scores par niveau de risque',
+    description: 'Récupère tous les scores d\'un niveau de risque donné',
+  })
+  @ApiParam({
+    name: 'level',
+    description: 'Niveau de risque (low, medium, high, very_high)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Liste des scores',
+    type: [CreditScoreResponseDto],
+  })
+  async getByRiskLevel(
+    @Param('level') level: string,
+    @Query() query: GetCreditScoreDto,
+  ): Promise<CreditScoreEntity[]> {
+    const riskLevel = level.toUpperCase() as keyof typeof RiskLevel;
+    if (!RiskLevel[riskLevel]) {
+      throw new BadRequestException(`Niveau de risque invalide: ${level}`);
+    }
+    return this.service.findAll({ ...query, riskLevel: RiskLevel[riskLevel] });
   }
 }
