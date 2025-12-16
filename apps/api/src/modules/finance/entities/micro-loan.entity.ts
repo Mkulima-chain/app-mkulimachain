@@ -55,6 +55,22 @@ export class MicroLoanEntity implements IMicroLoan {
   @Column({ type: 'text', nullable: true })
   rejectionReason?: string;
 
+  // Documents pour la demande de prêt
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  identificationNumber?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  idCardPhotoUrl?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  harvestProofUrl?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  guaranteeDocumentUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  loanPurpose?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

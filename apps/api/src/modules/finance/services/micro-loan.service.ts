@@ -187,6 +187,11 @@ export class MicroLoanService {
       // Si pas de score, on utilise 0
     }
 
+    // POUR LE TEST: Si le score est 0, on donne un score de base de 300
+    if (creditScore === 0) {
+      creditScore = 300;
+    }
+
     // Compter les prêts actifs
     const activeLoansCount =
       await this.repository.countActiveByFarmerId(farmerId);

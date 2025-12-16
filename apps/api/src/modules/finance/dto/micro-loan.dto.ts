@@ -9,6 +9,7 @@ import {
   MaxLength,
   Min,
   Max,
+  IsDateString,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LoanStatus } from '../interfaces/imicro-loan';
@@ -65,6 +66,61 @@ export class CreateMicroLoanDto {
   @IsNotEmpty()
   @MaxLength(255)
   loanContractHash!: string;
+
+  @ApiPropertyOptional({
+    description: "Date d'échéance personnalisée",
+    example: '2024-04-15T10:30:00Z',
+  })
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
+  // Documents pour la demande de prêt
+  @ApiPropertyOptional({
+    description: "Numéro d'identification (CNI, passeport)",
+    example: 'CNI-123456789',
+    maxLength: 50,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  identificationNumber?: string;
+
+  @ApiPropertyOptional({
+    description: "URL de la photo de la carte d'identité",
+    example: 'https://storage.example.com/id-card.jpg',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  idCardPhotoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL du justificatif de récolte',
+    example: 'https://storage.example.com/harvest-proof.pdf',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  harvestProofUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL du document de garantie/caution',
+    example: 'https://storage.example.com/guarantee.pdf',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  guaranteeDocumentUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Objet/raison du prêt',
+    example: 'Achat de semences et engrais pour la saison',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  loanPurpose?: string;
 }
 
 export class UpdateMicroLoanDto {

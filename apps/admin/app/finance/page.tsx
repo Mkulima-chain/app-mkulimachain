@@ -2,56 +2,58 @@
 
 import * as React from "react";
 import {
-    Coins,
-    TrendingUp,
-    DollarSign, Plus,
-    Edit,
-    Trash2,
-    MoreVertical,
-    Loader2,
-    CheckCircle,
-    XCircle,
-    Play,
-    AlertTriangle,
-    Eye,
-    Search,
-    Filter,
-    RefreshCw
+  Coins,
+  TrendingUp,
+  DollarSign, Plus,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Play,
+  AlertTriangle,
+  Eye,
+  Search,
+  Filter,
+  RefreshCw
 } from "lucide-react";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { useApiMutation } from "@/hooks/use-api-mutation";
+import { DatePicker } from "@/components/ui/date-picker";
+import { FileUpload } from "@/components/ui/file-upload";
 
 enum LoanStatus {
   PENDING = "pending",
@@ -79,6 +81,12 @@ type MicroLoan = {
   approvedAt?: string;
   approvedBy?: string;
   rejectionReason?: string;
+  // Documents
+  identificationNumber?: string;
+  idCardPhotoUrl?: string;
+  harvestProofUrl?: string;
+  guaranteeDocumentUrl?: string;
+  loanPurpose?: string;
   createdAt: string;
 };
 
@@ -126,6 +134,13 @@ type CreateMicroLoanDto = {
   interestRate: number;
   durationDays: number;
   loanContractHash: string;
+  dueDate?: string;
+  // Documents
+  identificationNumber?: string;
+  idCardPhotoUrl?: string;
+  harvestProofUrl?: string;
+  guaranteeDocumentUrl?: string;
+  loanPurpose?: string;
 };
 
 type UpdateMicroLoanDto = {
@@ -151,12 +166,26 @@ export default function FinancePage() {
     interestRate: 5,
     durationDays: 90,
     loanContractHash: "",
+    dueDate: undefined,
+    // Documents
+    identificationNumber: "",
+    idCardPhotoUrl: undefined,
+    harvestProofUrl: undefined,
+    guaranteeDocumentUrl: undefined,
+    loanPurpose: "",
   });
+  const [selectedDueDate, setSelectedDueDate] = React.useState<Date | undefined>(undefined);
   const [updateData, setUpdateData] = React.useState<UpdateMicroLoanDto>({
     status: LoanStatus.PENDING,
   });
   const [eligibility, setEligibility] = React.useState<EligibilityResponse | null>(null);
   const [checkingEligibility, setCheckingEligibility] = React.useState(false);
+  const [currentStep, setCurrentStep] = React.useState(1);
+
+  const steps = [
+    { number: 1, title: "Informations du Prêt" },
+    { number: 2, title: "Documents" },
+  ];
 
   // Fetch loans
   const {
@@ -302,18 +331,25 @@ export default function FinancePage() {
     }
     setCheckingEligibility(true);
     try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5600/api";
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/loans/eligibility`,
+        `${API_BASE_URL}/loans/eligibility`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ farmerId, amountADA: amount }),
         }
       );
-      const data = await response.json();
-      setEligibility(data);
+      if (response.ok) {
+        const data = await response.json();
+        setEligibility(data);
+      } else {
+        console.error("Eligibility check failed:", response.status);
+        setEligibility(null);
+      }
     } catch (error) {
       console.error("Error checking eligibility:", error);
+      setEligibility(null);
     } finally {
       setCheckingEligibility(false);
     }
@@ -326,8 +362,17 @@ export default function FinancePage() {
       interestRate: 5,
       durationDays: 90,
       loanContractHash: "",
+      dueDate: undefined,
+      // Documents
+      identificationNumber: "",
+      idCardPhotoUrl: undefined,
+      harvestProofUrl: undefined,
+      guaranteeDocumentUrl: undefined,
+      loanPurpose: "",
     });
+    setSelectedDueDate(undefined);
     setEligibility(null);
+    setCurrentStep(1);
     setIsAddDialogOpen(true);
   };
 
@@ -377,11 +422,25 @@ export default function FinancePage() {
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Handle Step 1 transition (allow Enter key to move to next step)
+    if (currentStep === 1) {
+       const isStep1Valid = formData.farmerId && formData.amountADA > 0 && 
+                            formData.interestRate !== undefined && formData.interestRate !== null && 
+                            formData.durationDays > 0 && formData.loanContractHash;
+       
+       if (isStep1Valid) {
+         setCurrentStep(2);
+       }
+       return;
+    }
+
     createMutation.mutate({
       ...formData,
       amountADA: parseFloat(formData.amountADA.toString()),
       interestRate: parseFloat(formData.interestRate.toString()),
       durationDays: parseInt(formData.durationDays.toString()),
+      dueDate: selectedDueDate ? selectedDueDate.toISOString() : undefined,
     });
   };
 
@@ -783,190 +842,352 @@ export default function FinancePage() {
           <DialogHeader>
             <DialogTitle>Nouveau micro-prêt</DialogTitle>
             <DialogDescription>
-              Créez une nouvelle demande de micro-prêt
+              Étapes {currentStep} sur {steps.length}: {steps[currentStep-1].title}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Stepper Indicator */}
+          <div className="flex items-center justify-center mb-6 mt-2">
+            {steps.map((step, index) => (
+              <React.Fragment key={step.number}>
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-bold transition-colors ${
+                      currentStep === step.number
+                        ? "border-[#3A8F4C] bg-[#3A8F4C] text-white"
+                        : currentStep > step.number
+                        ? "border-[#3A8F4C] bg-[#3A8F4C] text-white"
+                        : "border-muted-foreground text-muted-foreground"
+                    }`}
+                  >
+                    {currentStep > step.number ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      step.number
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs mt-1 ${
+                      currentStep === step.number
+                        ? "font-medium text-[#3A8F4C]"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`h-[2px] w-12 mx-2 mb-4 ${
+                      currentStep > step.number + 1
+                        ? "bg-[#3A8F4C]"
+                        : "bg-muted"
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="farmerId">Agriculteur *</Label>
-                <Select
-                  value={formData.farmerId}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, farmerId: value });
-                    if (formData.amountADA > 0) {
-                      checkEligibility(value, formData.amountADA);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un agriculteur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {farmers.map((farmer) => (
-                      <SelectItem key={farmer.id} value={farmer.id}>
-                        {farmer.name} - {farmer.city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="amountADA">Montant (ADA) *</Label>
-                <Input
-                  id="amountADA"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  value={formData.amountADA}
-                  onChange={(e) => {
-                    const amount = parseFloat(e.target.value) || 0;
-                    setFormData({ ...formData, amountADA: amount });
-                    if (formData.farmerId) {
-                      checkEligibility(formData.farmerId, amount);
-                    }
-                  }}
-                  required
-                />
-              </div>
+              {/* Step 1: Informations du Prêt (Éligibilité + Détails) */}
+              {currentStep === 1 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="grid gap-2">
+                    <Label htmlFor="farmerId">Agriculteur *</Label>
+                    <Select
+                      value={formData.farmerId}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, farmerId: value });
+                        if (formData.amountADA > 0) {
+                          checkEligibility(value, formData.amountADA);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un agriculteur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {farmers.map((farmer) => (
+                          <SelectItem key={farmer.id} value={farmer.id}>
+                            {farmer.name} - {farmer.city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="amountADA">Montant (ADA) *</Label>
+                    <Input
+                      id="amountADA"
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      value={formData.amountADA}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        setFormData({ ...formData, amountADA: amount });
+                        if (formData.farmerId) {
+                          checkEligibility(formData.farmerId, amount);
+                        }
+                      }}
+                      required
+                    />
+                  </div>
 
-              {/* Eligibility Check Display */}
-              {formData.farmerId && formData.amountADA > 0 && (
-                <div
-                  className={`p-4 rounded-lg border ${
-                    checkingEligibility
-                      ? "bg-gray-50"
-                      : eligibility?.eligible
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                  }`}
-                >
-                  {checkingEligibility ? (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Vérification de l'éligibilité...
+                  {/* Eligibility Check Display */}
+                  {formData.farmerId && formData.amountADA > 0 && (
+                    <div
+                      className={`p-4 rounded-lg border ${
+                        checkingEligibility
+                          ? "bg-gray-50"
+                          : eligibility?.eligible
+                          ? "bg-green-50 border-green-200"
+                          : "bg-red-50 border-red-200"
+                      }`}
+                    >
+                      {checkingEligibility ? (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Vérification de l'éligibilité...
+                        </div>
+                      ) : eligibility ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            {eligibility.eligible ? (
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                            ) : (
+                              <XCircle className="h-5 w-5 text-red-600" />
+                            )}
+                            <span
+                              className={`font-medium ${
+                                eligibility.eligible
+                                  ? "text-green-700"
+                                  : "text-red-700"
+                              }`}
+                            >
+                              {eligibility.eligible
+                                ? "Éligible pour ce prêt"
+                                : "Non éligible"}
+                            </span>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p>
+                              Score de crédit: <strong>{eligibility.creditScore}</strong>{" "}
+                              (minimum: {eligibility.minimumScoreRequired})
+                            </p>
+                            <p>
+                              Montant max autorisé:{" "}
+                              <strong>₳ {eligibility.maxAmountAllowed}</strong>
+                            </p>
+                            <p>
+                              Prêts actifs: {eligibility.activeLoansCount}
+                            </p>
+                            {eligibility.reason && (
+                              <p className="text-red-600 mt-2">
+                                ⚠️ {eligibility.reason}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                  ) : eligibility ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {eligibility.eligible ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-red-600" />
-                        )}
-                        <span
-                          className={`font-medium ${
-                            eligibility.eligible
-                              ? "text-green-700"
-                              : "text-red-700"
-                          }`}
-                        >
-                          {eligibility.eligible
-                            ? "Éligible pour ce prêt"
-                            : "Non éligible"}
-                        </span>
-                      </div>
-                      <div className="text-sm space-y-1">
-                        <p>
-                          Score de crédit: <strong>{eligibility.creditScore}</strong>{" "}
-                          (minimum: {eligibility.minimumScoreRequired})
-                        </p>
-                        <p>
-                          Montant max autorisé:{" "}
-                          <strong>₳ {eligibility.maxAmountAllowed}</strong>
-                        </p>
-                        <p>
-                          Prêts actifs: {eligibility.activeLoansCount}
-                        </p>
-                        {eligibility.reason && (
-                          <p className="text-red-600 mt-2">
-                            ⚠️ {eligibility.reason}
-                          </p>
-                        )}
-                      </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="interestRate">Taux d'intérêt (%) *</Label>
+                      <Input
+                        id="interestRate"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={formData.interestRate}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            interestRate: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        required
+                      />
                     </div>
-                  ) : null}
+                    <div className="grid gap-2">
+                      <Label htmlFor="durationDays">Durée (jours) *</Label>
+                      <Input
+                        id="durationDays"
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={formData.durationDays}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            durationDays: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="loanContractHash">
+                      Hash du smart contract *
+                    </Label>
+                    <Input
+                      id="loanContractHash"
+                      value={formData.loanContractHash}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          loanContractHash: e.target.value,
+                        })
+                      }
+                      placeholder="0x..."
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Date d'échéance (optionnel)</Label>
+                    <DatePicker
+                      date={selectedDueDate}
+                      onDateChange={(date) => {
+                        setSelectedDueDate(date);
+                        if (date) {
+                          // Calculate duration in days from today
+                          const today = new Date();
+                          const diffTime = date.getTime() - today.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          if (diffDays > 0) {
+                            setFormData({ ...formData, durationDays: diffDays });
+                          }
+                        }
+                      }}
+                      placeholder="Sélectionner la date d'échéance"
+                      minDate={new Date()}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Si non sélectionnée, l'échéance sera calculée à partir de la durée
+                    </p>
+                  </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="interestRate">Taux d'intérêt (%) *</Label>
-                  <Input
-                    id="interestRate"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={formData.interestRate}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        interestRate: parseFloat(e.target.value) || 0,
-                      })
+              {/* Step 2: Documents */}
+              {currentStep === 2 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="grid gap-2">
+                    <Label htmlFor="identificationNumber">Numéro d'identification</Label>
+                    <Input
+                      id="identificationNumber"
+                      value={formData.identificationNumber || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          identificationNumber: e.target.value,
+                        })
+                      }
+                      placeholder="CNI, Passeport, etc."
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="loanPurpose">Objet du prêt</Label>
+                    <Input
+                      id="loanPurpose"
+                      value={formData.loanPurpose || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          loanPurpose: e.target.value,
+                        })
+                      }
+                      placeholder="Ex: Achat de semences, engrais..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FileUpload
+                      label="Photo CNI/Passeport"
+                      value={formData.idCardPhotoUrl}
+                      onChange={(url) =>
+                        setFormData({ ...formData, idCardPhotoUrl: url })
+                      }
+                      accept="image/*"
+                      placeholder="Photo d'identité"
+                    />
+                    <FileUpload
+                      label="Justificatif Récolte"
+                      value={formData.harvestProofUrl}
+                      onChange={(url) =>
+                        setFormData({ ...formData, harvestProofUrl: url })
+                      }
+                      accept="image/*,.pdf"
+                      placeholder="Justificatif"
+                    />
+                  </div>
+                  
+                  <FileUpload
+                    label="Garantie / Caution"
+                    value={formData.guaranteeDocumentUrl}
+                    onChange={(url) =>
+                      setFormData({ ...formData, guaranteeDocumentUrl: url })
                     }
-                    required
+                    accept="image/*,.pdf"
+                    placeholder="Document de garantie (optionnel)"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="durationDays">Durée (jours) *</Label>
-                  <Input
-                    id="durationDays"
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={formData.durationDays}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        durationDays: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="loanContractHash">
-                  Hash du smart contract *
-                </Label>
-                <Input
-                  id="loanContractHash"
-                  value={formData.loanContractHash}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      loanContractHash: e.target.value,
-                    })
-                  }
-                  placeholder="0x..."
-                  required
-                />
-              </div>
+              )}
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Création...
-                  </>
-                ) : (
-                  "Créer le prêt"
-                )}
-              </Button>
+            
+            <DialogFooter className="flex justify-between sm:justify-between">
+              {currentStep > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentStep(currentStep - 1)}
+                >
+                  Précédent
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddDialogOpen(false)}
+                >
+                  Annuler
+                </Button>
+              )}
+
+              {currentStep < 2 ? (
+                <Button
+                  type="button"
+                  onClick={() => setCurrentStep(currentStep + 1)}
+                  className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                  disabled={
+                    currentStep === 1 && (!formData.farmerId || formData.amountADA <= 0 || formData.interestRate === undefined || formData.interestRate === null || !formData.durationDays || !formData.loanContractHash)
+                  }
+                >
+                  Suivant
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    "Créer le prêt"
+                  )}
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>

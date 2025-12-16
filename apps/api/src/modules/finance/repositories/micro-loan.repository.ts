@@ -29,6 +29,13 @@ export class MicroLoanRepository {
       durationDays: dto.durationDays,
       loanContractHash: dto.loanContractHash,
       status: LoanStatus.PENDING,
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      // Documents
+      identificationNumber: dto.identificationNumber,
+      idCardPhotoUrl: dto.idCardPhotoUrl,
+      harvestProofUrl: dto.harvestProofUrl,
+      guaranteeDocumentUrl: dto.guaranteeDocumentUrl,
+      loanPurpose: dto.loanPurpose,
     });
 
     return this.repository.save(loan);
