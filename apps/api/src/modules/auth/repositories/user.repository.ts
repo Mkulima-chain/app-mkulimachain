@@ -27,6 +27,20 @@ export class UserRepository {
     return this.repository.save(user);
   }
 
+  async createAdmin(dto: RegisterDto): Promise<UserEntity> {
+    const hashedPassword = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : undefined;
+    const user = this.repository.create({
+      ...dto,
+      password: hashedPassword,
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE, // Les comptes admin sont automatiquement actifs
+      authProvider: AuthProvider.EMAIL,
+    });
+    return this.repository.save(user);
+  }
+
   async findById(id: string): Promise<UserEntity | null> {
     return this.repository.findOne({ where: { id } });
   }
@@ -44,6 +58,10 @@ export class UserRepository {
       return this.findByEmail(identifier);
     }
     return this.findByPhone(identifier);
+  }
+
+  async countAdmins(): Promise<number> {
+    return this.repository.count({ where: { role: UserRole.ADMIN } });
   }
 
   async findByWalletAddress(walletAddress: string): Promise<UserEntity | null> {

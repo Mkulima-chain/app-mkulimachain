@@ -1,19 +1,24 @@
-"use client"
+"use client";
 
-import { useSession, signIn } from "next-auth/react"
-import { useCardanoWallet } from "@/hooks"
-import { LogIn, Wallet } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { ModalWallet } from "@/components/wallet/modal-wallet"
-import { UserAvatar } from "@/components/user-avatar"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useSession, signIn } from "next-auth/react";
+import { useCardanoWallet } from "@/hooks";
+import { LogIn, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { ModalWallet } from "@/components/wallet/modal-wallet";
+import { WalletPopover } from "@/components/common/nav/wallet-popover";
+import { UserAvatar } from "@/components/user-avatar";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 // Composant pour le bouton Wallet avec le style de l'image
 function WalletButton() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
@@ -38,32 +43,37 @@ function WalletButton() {
         </div>
       </Button>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setIsOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setIsOpen(false)}
+        >
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative z-10 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative z-10 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <ModalWallet />
           </div>
         </div>
       )}
     </>
-  )
+  );
 }
 
 export function AuthMenu() {
-  const { data: session } = useSession()
-  const { connected } = useCardanoWallet()
-  
-  const isAuthenticated = session?.user || connected
+  const { data: session } = useSession();
+  const { connected } = useCardanoWallet();
 
-  // Si l'utilisateur est connecté, afficher l'avatar ou le wallet
+  const isAuthenticated = session?.user || connected;
+
+  // Si l'utilisateur est connecté, afficher l'avatar et/ou le wallet
   if (isAuthenticated) {
-    if (session?.user) {
-      // Connecté via Google/Email
-      return <UserAvatar />
-    } else if (connected) {
-      // Connecté via Wallet
-      return <ModalWallet />
-    }
+    return (
+      <div className="flex items-center gap-2">
+        {session?.user && <UserAvatar />}
+        {connected && <WalletPopover />}
+      </div>
+    );
   }
 
   // Si non connecté, afficher le menu de connexion
@@ -91,7 +101,7 @@ export function AuthMenu() {
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </div>
-          
+
           <div className="relative flex items-center gap-2.5 z-10">
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 bg-[#004D73]/20 dark:bg-white/20 rounded-lg blur-sm group-hover:bg-[#3A8F4C]/30 dark:group-hover:bg-[#3A8F4C]/30 transition-colors duration-300" />
@@ -101,7 +111,10 @@ export function AuthMenu() {
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4 bg-[#004D73] dark:bg-[#004D73] border-white/20" align="end">
+      <PopoverContent
+        className="w-80 p-4 bg-[#004D73] dark:bg-[#004D73] border-white/20"
+        align="end"
+      >
         <div className="space-y-4">
           <div className="text-center mb-2">
             <h3 className="font-semibold text-white text-sm mb-1">
@@ -116,7 +129,7 @@ export function AuthMenu() {
           <div className="flex gap-3">
             {/* Bouton Google */}
             <Button
-              onClick={() => signIn('google')}
+              onClick={() => signIn("google")}
               className={cn(
                 "flex-1 group relative overflow-hidden",
                 "px-4 py-3 h-auto",
@@ -170,6 +183,5 @@ export function AuthMenu() {
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-

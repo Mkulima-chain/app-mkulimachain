@@ -43,19 +43,18 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSelector } from "@/components/language-selector";
-import { AuthMenu } from "@/components/auth-menu";
 import { useCardanoWallet } from "@/hooks/use-cardano-wallet";
 import { useWalletData } from "@/components/wallet/hooks/use-wallet-data";
 import { STORAGE_KEYS } from "@/components/wallet/constants";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
+import { BrowserWallet } from "@meshsdk/core";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>(
     searchParams.get("section") || "profile"
   );
@@ -79,7 +78,7 @@ export default function SettingsPage() {
 
   const { walletData } = useWalletData({
     connected,
-    wallet: wallet as any, // Type assertion pour compatibilité avec Mesh SDK
+    wallet: wallet as unknown as BrowserWallet, // Type assertion pour compatibilité avec Mesh SDK
     saveToStorage,
   });
 
@@ -126,14 +125,6 @@ export default function SettingsPage() {
       router.push("/login");
     }
   }, [status, router]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   if (status === "loading") {
     return (
@@ -209,77 +200,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#004D73]">
-      {/* Navigation */}
-      <nav
-        className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-          scrolled
-            ? "bg-white/98 dark:bg-[#004D73]/98 backdrop-blur-md border-b border-[#004D73]/20 dark:border-white/20 shadow-lg shadow-[#004D73]/5 dark:shadow-white/5"
-            : "bg-white/95 dark:bg-[#004D73]/95 backdrop-blur-sm border-b border-[#004D73]/10 dark:border-white/10 shadow-sm"
-        }`}
-      >
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center shadow-lg shadow-[#3A8F4C]/30 group-hover:shadow-xl group-hover:shadow-[#3A8F4C]/40 transition-all duration-300 group-hover:scale-105">
-                <svg
-                  className="w-7 h-7 text-white transition-transform group-hover:rotate-12 duration-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-[#5A3E36] dark:text-white group-hover:text-[#3A8F4C] dark:group-hover:text-[#3A8F4C] transition-colors duration-300">
-                  Mkulima Chain
-                </span>
-                <span className="text-[10px] text-[#004D73]/70 dark:text-white/70 font-medium -mt-1">
-                  Terra Congo
-                </span>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation Links */}
-            <div className="hidden lg:flex items-center gap-1">
-              <Link
-                href="/"
-                className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
-              >
-                Accueil
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
-                href="/marketplace"
-                className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
-              >
-                Marketplace
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
-                href="/dashboard"
-                className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
-              >
-                Dashboard
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <LanguageSelector />
-              <ThemeToggle />
-              <AuthMenu />
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Settings Content */}
       <div className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="container mx-auto max-w-6xl">

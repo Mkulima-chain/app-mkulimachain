@@ -1,0 +1,40 @@
+{
+  "common": {
+    "welcome": "Karibu",
+    "home": "Nyumbani",
+    "marketplace": "Soko",
+    "dashboard": "Dashibodi",
+    "settings": "Mipangilio",
+    "profile": "Wasifu",
+    "cart": "Rukwama",
+    "language": "Lugha",
+    "theme": "Mandhari",
+    "login": "Ingia",
+    "logout": "Toka",
+    "register": "Jisajili",
+    "search": "Tafuta",
+    "filter": "Chuja",
+    "sort": "Panga",
+    "price": "Bei",
+    "quantity": "Wingi",
+    "total": "Jumla",
+    "addToCart": "Ongeza kwenye rukwama",
+    "buyNow": "Nunua sasa",
+    "description": "Maelezo",
+    "details": "Maelezo zaidi",
+    "contact": "Wasiliana",
+    "about": "Kuhusu",
+    "help": "Msaada",
+    "support": "Msaada",
+    "terms": "Masharti",
+    "privacy": "Faragha",
+    "copyright": "© 2024 Mkulima Chain. Haki zote zimehifadhiwa."
+  },
+  "nav": {
+    "home": "Nyumbani",
+    "marketplace": "Soko",
+    "dashboard": "Dashibodi",
+    "settings": "Mipangilio",
+    "profile": "Wasifu"
+  }
+}

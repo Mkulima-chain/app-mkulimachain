@@ -50,7 +50,7 @@ export function UserAvatar() {
             "flex items-center gap-2 px-2 py-1.5 h-9 rounded-lg",
             "hover:bg-muted/50 dark:hover:bg-white/10",
             "transition-all duration-200",
-            "focus-visible:ring-2 focus-visible:ring-[#3A8F4C] focus-visible:ring-offset-2"
+            "focus-visible:ring-2 focus-visible:ring-[#3A8F4C] focus-visible:ring-offset-2 cursor-pointer"
           )}
         >
           <Avatar className="size-7 border-2 border-[#3A8F4C]/20 dark:border-white/20">
@@ -65,19 +65,8 @@ export function UserAvatar() {
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden sm:flex flex-col items-start min-w-0">
-            <Link
-              href="/profile"
-              onClick={(e) => e.stopPropagation()}
-              className="text-xs font-semibold text-[#5A3E36] dark:text-white/90 truncate max-w-[120px] hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors"
-            >
-              {user.name || "Utilisateur"}
-            </Link>
-            <span className="text-[10px] text-[#004D73]/60 dark:text-white/60 truncate max-w-[120px]">
-              {user.email}
-            </span>
-          </div>
-          <ChevronDown className="hidden sm:block size-3.5 text-[#004D73]/60 dark:text-white/60" />
+
+          <ChevronDown className="hidden sm:block size-3.5 text-[#004D73]/60 dark:text-white/60 cursor-pointer" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">

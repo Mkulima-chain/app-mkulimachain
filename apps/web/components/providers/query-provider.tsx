@@ -10,7 +10,11 @@ function Devtools() {
   const [DevtoolsComponent, setDevtoolsComponent] =
     useState<React.ComponentType<{
       initialIsOpen?: boolean;
-      buttonPosition?: string;
+      buttonPosition?:
+        | "top-left"
+        | "top-right"
+        | "bottom-left"
+        | "bottom-right";
     }> | null>(null);
 
   React.useEffect(() => {
@@ -18,10 +22,20 @@ function Devtools() {
       return;
     }
 
-    // @ts-expect-error - Types peuvent ne pas être disponibles immédiatement après installation
     import("@tanstack/react-query-devtools")
       .then((mod) => {
-        setDevtoolsComponent(() => mod.ReactQueryDevtools);
+        // ReactQueryDevtools est un composant valide
+        setDevtoolsComponent(
+          () =>
+            mod.ReactQueryDevtools as React.ComponentType<{
+              initialIsOpen?: boolean;
+              buttonPosition?:
+                | "top-left"
+                | "top-right"
+                | "bottom-left"
+                | "bottom-right";
+            }>
+        );
       })
       .catch(() => {
         // Devtools non disponibles
@@ -43,7 +57,7 @@ interface QueryProviderProps {
 
 /**
  * Provider React Query pour l'application
- * 
+ *
  * Inclut:
  * - QueryClientProvider avec configuration optimisée
  * - React Query Devtools (uniquement en développement)
@@ -60,4 +74,3 @@ export function QueryProvider({ children }: QueryProviderProps) {
     </QueryClientProvider>
   );
 }
-

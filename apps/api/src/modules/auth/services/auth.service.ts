@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -30,6 +31,14 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<LoginResponseDto> {
+    // Empêcher la création de comptes admin via l'endpoint public
+    // Seuls les admins existants peuvent créer d'autres admins (via un endpoint séparé)
+    if (dto.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Cannot create admin account via public registration. Only existing admins can create admin accounts.',
+      );
+    }
+
     // Vérifier si l'email existe déjà
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
@@ -57,6 +66,82 @@ export class AuthService {
       accessToken,
       refreshToken,
       user: this.mapToResponseDto(user),
+    };
+  }
+
+  async createAdminAccount(
+    currentAdmin: UserEntity,
+    dto: RegisterDto,
+  ): Promise<UserResponseDto> {
+    // Vérifier que l'utilisateur actuel est un admin
+    if (currentAdmin.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only administrators can create admin accounts.',
+      );
+    }
+
+    // Vérifier si l'email existe déjà
+    const existingUser = await this.userRepository.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // Vérifier si le téléphone existe déjà (si fourni)
+    if (dto.phone) {
+      const existingPhone = await this.userRepository.findByPhone(dto.phone);
+      if (existingPhone) {
+        throw new ConflictException('Phone number already registered');
+      }
+    }
+
+    // Créer le compte admin avec le statut actif (pas besoin de vérification)
+    const adminUser = await this.userRepository.createAdmin(dto);
+
+    return this.mapToResponseDto(adminUser);
+  }
+
+  async hasAdmins(): Promise<boolean> {
+    const adminCount = await this.userRepository.countAdmins();
+    return adminCount > 0;
+  }
+
+  async createFirstAdmin(dto: RegisterDto): Promise<LoginResponseDto> {
+    // Vérifier s'il existe déjà des admins
+    const adminCount = await this.userRepository.countAdmins();
+    if (adminCount > 0) {
+      throw new ForbiddenException(
+        'Admin accounts already exist. Use the protected endpoint to create additional admin accounts.',
+      );
+    }
+
+    // Vérifier si l'email existe déjà
+    const existingUser = await this.userRepository.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // Vérifier si le téléphone existe déjà (si fourni)
+    if (dto.phone) {
+      const existingPhone = await this.userRepository.findByPhone(dto.phone);
+      if (existingPhone) {
+        throw new ConflictException('Phone number already registered');
+      }
+    }
+
+    // Créer le premier compte admin
+    const adminUser = await this.userRepository.createAdmin(dto);
+
+    // Générer les tokens pour connecter automatiquement l'utilisateur
+    const accessToken = this.generateAccessToken(adminUser);
+    const refreshToken = this.generateRefreshToken(adminUser);
+
+    // Sauvegarder le refresh token
+    await this.userRepository.updateRefreshToken(adminUser.id, refreshToken);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: this.mapToResponseDto(adminUser),
     };
   }
 

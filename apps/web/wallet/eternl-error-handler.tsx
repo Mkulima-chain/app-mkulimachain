@@ -15,7 +15,7 @@ export function EternlErrorHandler() {
     const originalWarn = console.warn;
 
     // Filter out Eternl-specific errors
-    const filterEternlErrors = (args: any[]) => {
+    const filterEternlErrors = (args: string[]) => {
       const message = args.join(" ");
 
       // Check if this is an Eternl DOM error
@@ -36,14 +36,14 @@ export function EternlErrorHandler() {
     };
 
     // Override console.error
-    console.error = (...args: any[]) => {
+    console.error = (...args: string[]) => {
       if (!filterEternlErrors(args)) {
         originalError.apply(console, args);
       }
     };
 
     // Override console.warn (some extensions use warn instead of error)
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: string[]) => {
       if (!filterEternlErrors(args)) {
         originalWarn.apply(console, args);
       }

@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 interface SelectContextValue {
-  value?: string
-  onValueChange?: (value: string) => void
+  value?: string;
+  onValueChange?: (value: string) => void;
 }
 
-const SelectContext = React.createContext<SelectContextValue>({})
+const SelectContext = React.createContext<SelectContextValue>({});
 
 interface SelectProps {
-  value?: string
-  onValueChange?: (value: string) => void
-  children: React.ReactNode
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children: React.ReactNode;
 }
 
 const Select = ({ value, onValueChange, children }: SelectProps) => {
@@ -22,17 +22,18 @@ const Select = ({ value, onValueChange, children }: SelectProps) => {
     <SelectContext.Provider value={{ value, onValueChange }}>
       {children}
     </SelectContext.Provider>
-  )
-}
+  );
+};
 
-interface SelectTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  asChild?: boolean
+interface SelectTriggerProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
 }
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
   ({ className, children, ...props }, ref) => {
-    const { value } = React.useContext(SelectContext)
-    const [open, setOpen] = React.useState(false)
+    const { value, onValueChange } = React.useContext(SelectContext);
+    const [open, setOpen] = React.useState(false);
 
     return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -52,50 +53,67 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
-          <SelectContext.Provider value={{ value, onValueChange: (val) => {
-            onValueChange?.(val)
-            setOpen(false)
-          }}}>
-            {React.Children.map(children, child => {
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-1"
+          align="start"
+        >
+          <SelectContext.Provider
+            value={{
+              value,
+              onValueChange: (val) => {
+                onValueChange?.(val);
+                setOpen(false);
+              },
+            }}
+          >
+            {React.Children.map(children, (child) => {
               if (React.isValidElement(child) && child.type === SelectContent) {
-                return child
+                return child;
               }
-              return null
+              return null;
             })}
           </SelectContext.Provider>
         </PopoverContent>
       </Popover>
-    )
+    );
   }
-)
-SelectTrigger.displayName = "SelectTrigger"
+);
+SelectTrigger.displayName = "SelectTrigger";
 
 const SelectValue = ({ placeholder }: { placeholder?: string }) => {
-  const { value } = React.useContext(SelectContext)
-  return <span>{value || placeholder}</span>
-}
+  const { value } = React.useContext(SelectContext);
+  return <span>{value || placeholder}</span>;
+};
 
-const SelectContent = ({ children, className }: { children: React.ReactNode; className?: string }) => {
+const SelectContent = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
   return (
-    <div className={cn("max-h-96 overflow-auto", className)}>
-      {children}
-    </div>
-  )
-}
+    <div className={cn("max-h-96 overflow-auto", className)}>{children}</div>
+  );
+};
 
 interface SelectItemProps extends React.HTMLAttributes<HTMLDivElement> {
-  value: string
+  value: string;
 }
 
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
   ({ className, children, value: itemValue, ...props }, ref) => {
-    const { value, onValueChange } = React.useContext(SelectContext)
-    const isSelected = value === itemValue
+    const { value, onValueChange } = React.useContext(SelectContext);
+    const isSelected = value === itemValue;
 
     return (
       <div
@@ -119,16 +137,9 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           </svg>
         )}
       </div>
-    )
+    );
   }
-)
-SelectItem.displayName = "SelectItem"
+);
+SelectItem.displayName = "SelectItem";
 
-export {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-}
-
+export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };

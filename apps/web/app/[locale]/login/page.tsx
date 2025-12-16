@@ -14,9 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { signIn } from "next-auth/react";
-import { LanguageSelector } from "@/components/language-selector";
 import { ModalWallet } from "@/components/wallet/modal-wallet";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -38,11 +36,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 dark:bg-[#004D73] p-4">
-      {/* Language Selector - Top Right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <ThemeToggle />
-        <LanguageSelector />
-      </div>
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8 animate-fade-in">

@@ -1,107 +1,169 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { 
-  ShoppingCart, Trash2, Plus, Minus, ArrowLeft, 
-  CreditCard, Truck, CheckCircle2, Wallet,
-  Coins, Smartphone, Check, Package, User
-} from "lucide-react"
-import { useCart } from "@/hooks"
-import { useCardanoWallet } from "@/hooks"
-import { ModalWallet } from "@/components/wallet/modal-wallet"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  ShoppingCart,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowLeft,
+  CreditCard,
+  Truck,
+  CheckCircle2,
+  Wallet,
+  Coins,
+  Smartphone,
+  Check,
+  Package,
+  User,
+} from "lucide-react";
+import { useCart } from "@/hooks";
+import { useCardanoWallet } from "@/hooks";
+import { ModalWallet } from "@/components/wallet/modal-wallet";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-type PaymentMethod = "ada" | "airtel" | "orange" | "vodacom" | null
-type ShippingOption = "buyer-choice" | "seller-choice"
+type PaymentMethod = "ada" | "airtel" | "orange" | "vodacom" | null;
+type ShippingOption = "buyer-choice" | "seller-choice";
 
 const TRANSPORT_COMPANIES = [
-  { id: "dhl", name: "DHL Express", logo: "🚚", description: "Livraison express internationale" },
-  { id: "fedex", name: "FedEx", logo: "📦", description: "Service de livraison rapide" },
-  { id: "ups", name: "UPS", logo: "🚛", description: "Transport et logistique" },
-  { id: "tnt", name: "TNT Express", logo: "📮", description: "Livraison express" },
-  { id: "local-1", name: "Transport Congo Express", logo: "🚐", description: "Transport local RDC" },
-  { id: "local-2", name: "Kinshasa Logistics", logo: "🚚", description: "Logistique locale" },
-  { id: "local-3", name: "Congo Transport", logo: "🚛", description: "Transport national" },
-]
+  {
+    id: "dhl",
+    name: "DHL Express",
+    logo: "🚚",
+    description: "Livraison express internationale",
+  },
+  {
+    id: "fedex",
+    name: "FedEx",
+    logo: "📦",
+    description: "Service de livraison rapide",
+  },
+  {
+    id: "ups",
+    name: "UPS",
+    logo: "🚛",
+    description: "Transport et logistique",
+  },
+  {
+    id: "tnt",
+    name: "TNT Express",
+    logo: "📮",
+    description: "Livraison express",
+  },
+  {
+    id: "local-1",
+    name: "Transport Congo Express",
+    logo: "🚐",
+    description: "Transport local RDC",
+  },
+  {
+    id: "local-2",
+    name: "Kinshasa Logistics",
+    logo: "🚚",
+    description: "Logistique locale",
+  },
+  {
+    id: "local-3",
+    name: "Congo Transport",
+    logo: "🚛",
+    description: "Transport national",
+  },
+];
 
 export default function CartPage() {
-  const router = useRouter()
-  const { cart, updateQuantity, removeFromCart, clearCart, getTotal, getItemCount } = useCart()
-  const { connected } = useCardanoWallet()
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(null)
-  const [mobileMoneyPhone, setMobileMoneyPhone] = useState("")
-  const [shippingOption, setShippingOption] = useState<ShippingOption>("seller-choice")
-  const [selectedTransportCompany, setSelectedTransportCompany] = useState<string | null>(null)
+  const router = useRouter();
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    getTotal,
+    getItemCount,
+  } = useCart();
+  const { connected } = useCardanoWallet();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethod>(null);
+  const [mobileMoneyPhone, setMobileMoneyPhone] = useState("");
+  const [shippingOption, setShippingOption] =
+    useState<ShippingOption>("seller-choice");
+  const [selectedTransportCompany, setSelectedTransportCompany] = useState<
+    string | null
+  >(null);
 
   const handleCheckout = () => {
     if (cart.length === 0) {
-      toast.error("Votre panier est vide")
-      return
+      toast.error("Votre panier est vide");
+      return;
     }
 
     if (!selectedPaymentMethod) {
       toast.error("Mode de paiement requis", {
         description: "Veuillez sélectionner un mode de paiement",
-      })
-      return
+      });
+      return;
     }
 
     if (selectedPaymentMethod === "ada" && !connected) {
       toast.error("Wallet non connecté", {
-        description: "Veuillez connecter votre wallet Cardano pour procéder au paiement",
-      })
-      return
+        description:
+          "Veuillez connecter votre wallet Cardano pour procéder au paiement",
+      });
+      return;
     }
 
     if (selectedPaymentMethod !== "ada" && !mobileMoneyPhone.trim()) {
       toast.error("Numéro de téléphone requis", {
         description: "Veuillez entrer votre numéro de téléphone Mobile Money",
-      })
-      return
+      });
+      return;
     }
 
     if (shippingOption === "buyer-choice" && !selectedTransportCompany) {
       toast.error("Entreprise de transport requise", {
         description: "Veuillez sélectionner une entreprise de transport",
-      })
-      return
+      });
+      return;
     }
 
-    setIsProcessing(true)
-    
+    setIsProcessing(true);
+
     // Simuler la création de commande
     setTimeout(() => {
-      const methodName = 
-        selectedPaymentMethod === "ada" ? "ADA (Cardano)" :
-        selectedPaymentMethod === "airtel" ? "Airtel Money" :
-        selectedPaymentMethod === "orange" ? "Orange Money" :
-        "Vodacom M-Pesa"
-      
-      const shippingInfo = shippingOption === "buyer-choice" && selectedTransportCompany
-        ? `Transport: ${TRANSPORT_COMPANIES.find(c => c.id === selectedTransportCompany)?.name || "Inconnu"}`
-        : "Transport: Le vendeur choisira"
-      
+      const methodName =
+        selectedPaymentMethod === "ada"
+          ? "ADA (Cardano)"
+          : selectedPaymentMethod === "airtel"
+            ? "Airtel Money"
+            : selectedPaymentMethod === "orange"
+              ? "Orange Money"
+              : "Vodacom M-Pesa";
+
+      const shippingInfo =
+        shippingOption === "buyer-choice" && selectedTransportCompany
+          ? `Transport: ${TRANSPORT_COMPANIES.find((c) => c.id === selectedTransportCompany)?.name || "Inconnu"}`
+          : "Transport: Le vendeur choisira";
+
       toast.success("Commande créée avec succès!", {
         description: `Votre commande de ${getItemCount()} article(s) a été enregistrée. Paiement: ${methodName}. ${shippingInfo}`,
-      })
-      clearCart()
-      setIsProcessing(false)
-      setSelectedPaymentMethod(null)
-      setMobileMoneyPhone("")
-      setShippingOption("seller-choice")
-      setSelectedTransportCompany(null)
-      router.push("/dashboard")
-    }, 1500)
-  }
+      });
+      clearCart();
+      setIsProcessing(false);
+      setSelectedPaymentMethod(null);
+      setMobileMoneyPhone("");
+      setShippingOption("seller-choice");
+      setSelectedTransportCompany(null);
+      router.push("/dashboard");
+    }, 1500);
+  };
 
   if (cart.length === 0) {
     return (
@@ -124,7 +186,7 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -149,7 +211,10 @@ export default function CartPage() {
           {/* Liste des articles */}
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item) => (
-              <Card key={item.productId} className="bg-white dark:bg-[#003D5C] border-[#004D73]/20 dark:border-white/20">
+              <Card
+                key={item.productId}
+                className="bg-white dark:bg-[#003D5C] border-[#004D73]/20 dark:border-white/20"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-lg bg-linear-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center shrink-0">
@@ -169,7 +234,9 @@ export default function CartPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() =>
+                            updateQuantity(item.productId, item.quantity - 1)
+                          }
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </Button>
@@ -180,7 +247,9 @@ export default function CartPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() =>
+                            updateQuantity(item.productId, item.quantity + 1)
+                          }
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </Button>
@@ -190,8 +259,8 @@ export default function CartPage() {
                         size="icon"
                         className="h-9 w-9 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
                         onClick={() => {
-                          removeFromCart(item.productId)
-                          toast.success("Article retiré du panier")
+                          removeFromCart(item.productId);
+                          toast.success("Article retiré du panier");
                         }}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -199,7 +268,8 @@ export default function CartPage() {
                     </div>
                     <div className="text-right min-w-[100px]">
                       <p className="font-bold text-lg text-[#3A8F4C] dark:text-[#3A8F4C]">
-                        {(item.price * item.quantity).toLocaleString()} {item.currency}
+                        {(item.price * item.quantity).toLocaleString()}{" "}
+                        {item.currency}
                       </p>
                     </div>
                   </div>
@@ -212,7 +282,9 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <Card className="bg-white dark:bg-[#003D5C] border-[#004D73]/20 dark:border-white/20 sticky top-24">
               <CardHeader>
-                <CardTitle className="text-[#5A3E36] dark:text-white">Résumé de la commande</CardTitle>
+                <CardTitle className="text-[#5A3E36] dark:text-white">
+                  Résumé de la commande
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Sélection du mode de paiement */}
@@ -220,16 +292,15 @@ export default function CartPage() {
                   <Label className="text-sm font-semibold text-[#5A3E36] dark:text-white">
                     Mode de paiement
                   </Label>
-                  
+
                   {/* ADA (Cardano) */}
-                  <button
-                    type="button"
+                  <div
                     onClick={() => {
-                      setSelectedPaymentMethod("ada")
-                      setMobileMoneyPhone("")
+                      setSelectedPaymentMethod("ada");
+                      setMobileMoneyPhone("");
                     }}
                     className={cn(
-                      "w-full p-4 rounded-lg border-2 transition-all text-left",
+                      "w-full p-4 rounded-lg border-2 transition-all text-left cursor-pointer",
                       selectedPaymentMethod === "ada"
                         ? "border-[#3A8F4C] bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20"
                         : "border-[#004D73]/20 dark:border-white/20 hover:border-[#3A8F4C]/50"
@@ -237,16 +308,22 @@ export default function CartPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "p-2 rounded-lg",
-                          selectedPaymentMethod === "ada"
-                            ? "bg-[#3A8F4C]"
-                            : "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20"
-                        )}>
-                          <Coins className={cn(
-                            "w-5 h-5",
-                            selectedPaymentMethod === "ada" ? "text-white" : "text-[#3A8F4C]"
-                          )} />
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg",
+                            selectedPaymentMethod === "ada"
+                              ? "bg-[#3A8F4C]"
+                              : "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20"
+                          )}
+                        >
+                          <Coins
+                            className={cn(
+                              "w-5 h-5",
+                              selectedPaymentMethod === "ada"
+                                ? "text-white"
+                                : "text-[#3A8F4C]"
+                            )}
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -269,7 +346,10 @@ export default function CartPage() {
                       )}
                     </div>
                     {selectedPaymentMethod === "ada" && !connected && (
-                      <div className="mt-3 pt-3 border-t border-[#004D73]/10 dark:border-white/10">
+                      <div
+                        className="mt-3 pt-3 border-t border-[#004D73]/10 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <ModalWallet
                           triggerClassName="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white text-sm font-medium h-9"
                           triggerTextClassName="text-white"
@@ -285,7 +365,7 @@ export default function CartPage() {
                         </div>
                       </div>
                     )}
-                  </button>
+                  </div>
 
                   {/* Mobile Money Options */}
                   <div className="space-y-2">
@@ -300,8 +380,8 @@ export default function CartPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedPaymentMethod("airtel")
-                        if (!mobileMoneyPhone) setMobileMoneyPhone("")
+                        setSelectedPaymentMethod("airtel");
+                        if (!mobileMoneyPhone) setMobileMoneyPhone("");
                       }}
                       className={cn(
                         "w-full p-3 rounded-lg border-2 transition-all text-left",
@@ -312,16 +392,24 @@ export default function CartPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded flex items-center justify-center",
-                            selectedPaymentMethod === "airtel"
-                              ? "bg-[#E60012]"
-                              : "bg-[#E60012]/10 dark:bg-[#E60012]/20"
-                          )}>
-                            <span className={cn(
-                              "text-xs font-bold",
-                              selectedPaymentMethod === "airtel" ? "text-white" : "text-[#E60012]"
-                            )}>A</span>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex items-center justify-center",
+                              selectedPaymentMethod === "airtel"
+                                ? "bg-[#E60012]"
+                                : "bg-[#E60012]/10 dark:bg-[#E60012]/20"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "text-xs font-bold",
+                                selectedPaymentMethod === "airtel"
+                                  ? "text-white"
+                                  : "text-[#E60012]"
+                              )}
+                            >
+                              A
+                            </span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -341,8 +429,8 @@ export default function CartPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedPaymentMethod("orange")
-                        if (!mobileMoneyPhone) setMobileMoneyPhone("")
+                        setSelectedPaymentMethod("orange");
+                        if (!mobileMoneyPhone) setMobileMoneyPhone("");
                       }}
                       className={cn(
                         "w-full p-3 rounded-lg border-2 transition-all text-left",
@@ -353,16 +441,24 @@ export default function CartPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded flex items-center justify-center",
-                            selectedPaymentMethod === "orange"
-                              ? "bg-[#FF6600]"
-                              : "bg-[#FF6600]/10 dark:bg-[#FF6600]/20"
-                          )}>
-                            <span className={cn(
-                              "text-xs font-bold",
-                              selectedPaymentMethod === "orange" ? "text-white" : "text-[#FF6600]"
-                            )}>O</span>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex items-center justify-center",
+                              selectedPaymentMethod === "orange"
+                                ? "bg-[#FF6600]"
+                                : "bg-[#FF6600]/10 dark:bg-[#FF6600]/20"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "text-xs font-bold",
+                                selectedPaymentMethod === "orange"
+                                  ? "text-white"
+                                  : "text-[#FF6600]"
+                              )}
+                            >
+                              O
+                            </span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -382,8 +478,8 @@ export default function CartPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedPaymentMethod("vodacom")
-                        if (!mobileMoneyPhone) setMobileMoneyPhone("")
+                        setSelectedPaymentMethod("vodacom");
+                        if (!mobileMoneyPhone) setMobileMoneyPhone("");
                       }}
                       className={cn(
                         "w-full p-3 rounded-lg border-2 transition-all text-left",
@@ -394,16 +490,24 @@ export default function CartPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded flex items-center justify-center",
-                            selectedPaymentMethod === "vodacom"
-                              ? "bg-[#E60000]"
-                              : "bg-[#E60000]/10 dark:bg-[#E60000]/20"
-                          )}>
-                            <span className={cn(
-                              "text-xs font-bold",
-                              selectedPaymentMethod === "vodacom" ? "text-white" : "text-[#E60000]"
-                            )}>V</span>
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex items-center justify-center",
+                              selectedPaymentMethod === "vodacom"
+                                ? "bg-[#E60000]"
+                                : "bg-[#E60000]/10 dark:bg-[#E60000]/20"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "text-xs font-bold",
+                                selectedPaymentMethod === "vodacom"
+                                  ? "text-white"
+                                  : "text-[#E60000]"
+                              )}
+                            >
+                              V
+                            </span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -423,7 +527,10 @@ export default function CartPage() {
                   {/* Input téléphone pour Mobile Money */}
                   {selectedPaymentMethod && selectedPaymentMethod !== "ada" && (
                     <div className="pt-2 space-y-2">
-                      <Label htmlFor="mobile-phone" className="text-xs text-[#004D73] dark:text-white/70">
+                      <Label
+                        htmlFor="mobile-phone"
+                        className="text-xs text-[#004D73] dark:text-white/70"
+                      >
                         Numéro de téléphone Mobile Money
                       </Label>
                       <Input
@@ -445,13 +552,13 @@ export default function CartPage() {
                   <Label className="text-sm font-semibold text-[#5A3E36] dark:text-white">
                     Entreprise de transport
                   </Label>
-                  
+
                   {/* Option: Laisser le vendeur choisir */}
                   <button
                     type="button"
                     onClick={() => {
-                      setShippingOption("seller-choice")
-                      setSelectedTransportCompany(null)
+                      setShippingOption("seller-choice");
+                      setSelectedTransportCompany(null);
                     }}
                     className={cn(
                       "w-full p-4 rounded-lg border-2 transition-all text-left",
@@ -462,16 +569,22 @@ export default function CartPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "p-2 rounded-lg",
-                          shippingOption === "seller-choice"
-                            ? "bg-[#3A8F4C]"
-                            : "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20"
-                        )}>
-                          <User className={cn(
-                            "w-5 h-5",
-                            shippingOption === "seller-choice" ? "text-white" : "text-[#3A8F4C]"
-                          )} />
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg",
+                            shippingOption === "seller-choice"
+                              ? "bg-[#3A8F4C]"
+                              : "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20"
+                          )}
+                        >
+                          <User
+                            className={cn(
+                              "w-5 h-5",
+                              shippingOption === "seller-choice"
+                                ? "text-white"
+                                : "text-[#3A8F4C]"
+                            )}
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -483,7 +596,8 @@ export default function CartPage() {
                             )}
                           </div>
                           <p className="text-xs text-[#004D73] dark:text-white/70 mt-0.5">
-                            Le vendeur sélectionnera l'entreprise de transport
+                            Le vendeur sélectionnera &apos;l&apos;entreprise de
+                            transport
                           </p>
                         </div>
                       </div>
@@ -494,9 +608,9 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setShippingOption("buyer-choice")
+                      setShippingOption("buyer-choice");
                       if (!selectedTransportCompany) {
-                        setSelectedTransportCompany(TRANSPORT_COMPANIES[0].id)
+                        setSelectedTransportCompany(TRANSPORT_COMPANIES[0].id);
                       }
                     }}
                     className={cn(
@@ -508,23 +622,27 @@ export default function CartPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "p-2 rounded-lg",
-                          shippingOption === "buyer-choice"
-                            ? "bg-[#004D73] dark:bg-white/20"
-                            : "bg-[#004D73]/10 dark:bg-white/10"
-                        )}>
-                          <Package className={cn(
-                            "w-5 h-5",
-                            shippingOption === "buyer-choice" 
-                              ? "text-white dark:text-[#004D73]" 
-                              : "text-[#004D73] dark:text-white/70"
-                          )} />
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg",
+                            shippingOption === "buyer-choice"
+                              ? "bg-[#004D73] dark:bg-white/20"
+                              : "bg-[#004D73]/10 dark:bg-white/10"
+                          )}
+                        >
+                          <Package
+                            className={cn(
+                              "w-5 h-5",
+                              shippingOption === "buyer-choice"
+                                ? "text-white dark:text-[#004D73]"
+                                : "text-[#004D73] dark:text-white/70"
+                            )}
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-[#5A3E36] dark:text-white">
-                              Je choisis l'entreprise
+                              Je choisis &apos;l&apos;entreprise
                             </p>
                             {shippingOption === "buyer-choice" && (
                               <Check className="w-4 h-4 text-[#004D73] dark:text-white" />
@@ -545,7 +663,9 @@ export default function CartPage() {
                         <button
                           key={company.id}
                           type="button"
-                          onClick={() => setSelectedTransportCompany(company.id)}
+                          onClick={() =>
+                            setSelectedTransportCompany(company.id)
+                          }
                           className={cn(
                             "w-full p-3 rounded-lg border-2 transition-all text-left",
                             selectedTransportCompany === company.id
@@ -581,18 +701,26 @@ export default function CartPage() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#004D73] dark:text-white/70">Sous-total</span>
+                    <span className="text-[#004D73] dark:text-white/70">
+                      Sous-total
+                    </span>
                     <span className="text-[#5A3E36] dark:text-white font-medium">
                       {getTotal().toLocaleString()} USD
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#004D73] dark:text-white/70">Livraison</span>
-                    <span className="text-[#5A3E36] dark:text-white font-medium">Gratuite</span>
+                    <span className="text-[#004D73] dark:text-white/70">
+                      Livraison
+                    </span>
+                    <span className="text-[#5A3E36] dark:text-white font-medium">
+                      Gratuite
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
-                    <span className="text-[#5A3E36] dark:text-white">Total</span>
+                    <span className="text-[#5A3E36] dark:text-white">
+                      Total
+                    </span>
                     <span className="text-[#3A8F4C] dark:text-[#3A8F4C]">
                       {getTotal().toLocaleString()} USD
                     </span>
@@ -602,16 +730,20 @@ export default function CartPage() {
                 <Button
                   className={cn(
                     "w-full h-12 text-base font-semibold",
-                    selectedPaymentMethod && 
-                    (selectedPaymentMethod === "ada" ? connected : mobileMoneyPhone.trim())
+                    selectedPaymentMethod &&
+                      (selectedPaymentMethod === "ada"
+                        ? connected
+                        : mobileMoneyPhone.trim())
                       ? "bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
                       : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                   )}
                   onClick={handleCheckout}
                   disabled={
-                    isProcessing || 
+                    isProcessing ||
                     !selectedPaymentMethod ||
-                    (selectedPaymentMethod === "ada" ? !connected : !mobileMoneyPhone.trim())
+                    (selectedPaymentMethod === "ada"
+                      ? !connected
+                      : !mobileMoneyPhone.trim())
                   }
                 >
                   {isProcessing ? (
@@ -629,7 +761,8 @@ export default function CartPage() {
                       <Wallet className="w-5 h-5 mr-2" />
                       Connecter le wallet
                     </>
-                  ) : selectedPaymentMethod !== "ada" && !mobileMoneyPhone.trim() ? (
+                  ) : selectedPaymentMethod !== "ada" &&
+                    !mobileMoneyPhone.trim() ? (
                     <>
                       <Smartphone className="w-5 h-5 mr-2" />
                       Entrer le numéro de téléphone
@@ -652,11 +785,13 @@ export default function CartPage() {
                     Le paiement ADA nécessite une connexion wallet
                   </p>
                 )}
-                {selectedPaymentMethod && selectedPaymentMethod !== "ada" && !mobileMoneyPhone.trim() && (
-                  <p className="text-xs text-center text-amber-600 dark:text-amber-400">
-                    Veuillez entrer votre numéro de téléphone Mobile Money
-                  </p>
-                )}
+                {selectedPaymentMethod &&
+                  selectedPaymentMethod !== "ada" &&
+                  !mobileMoneyPhone.trim() && (
+                    <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+                      Veuillez entrer votre numéro de téléphone Mobile Money
+                    </p>
+                  )}
 
                 <div className="pt-4 space-y-2 text-xs text-[#004D73] dark:text-white/60">
                   <div className="flex items-center gap-2">
@@ -674,6 +809,5 @@ export default function CartPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

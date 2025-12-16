@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Globe, ChevronDown, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { Globe, ChevronDown, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 const languages = [
   { code: "ln", name: "Lingala", flag: "🇨🇩" },
@@ -20,32 +20,38 @@ const languages = [
   { code: "lua", name: "TChiluba", flag: "🇨🇩" },
   { code: "fr", name: "Français", flag: "🇫🇷" },
   { code: "en", name: "Anglais", flag: "🇬🇧" },
-]
+];
 
 export function LanguageSelector() {
-  const [selectedLanguage, setSelectedLanguage] = useState("ln")
-  const [isOpen, setIsOpen] = useState(false)
+  const [selectedLanguage, setSelectedLanguage] = useState("ln");
+  const [isOpen, setIsOpen] = useState(false);
 
   // Charger la langue depuis localStorage au montage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedLanguage = localStorage.getItem("preferred-language")
-      if (savedLanguage && languages.some(lang => lang.code === savedLanguage)) {
-        setSelectedLanguage(savedLanguage)
+      const savedLanguage = localStorage.getItem("preferred-language");
+      if (
+        savedLanguage &&
+        languages.some((lang) => lang.code === savedLanguage)
+      ) {
+        setTimeout(() => {
+          setSelectedLanguage(savedLanguage);
+        }, 0);
       }
     }
-  }, [])
+  }, []);
 
-  const currentLang = languages.find((lang) => lang.code === selectedLanguage) || languages[0]
+  const currentLang =
+    languages.find((lang) => lang.code === selectedLanguage) || languages[0];
 
   const handleLanguageChange = (code: string) => {
-    setSelectedLanguage(code)
-    setIsOpen(false)
+    setSelectedLanguage(code);
+    setIsOpen(false);
     // TODO: Implement language change logic (i18n, context, etc.)
     if (typeof window !== "undefined") {
-      localStorage.setItem("preferred-language", code)
+      localStorage.setItem("preferred-language", code);
     }
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -92,7 +98,7 @@ export function LanguageSelector() {
         </DialogHeader>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2 max-h-[400px] overflow-y-auto">
           {languages.map((language) => {
-            const isSelected = selectedLanguage === language.code
+            const isSelected = selectedLanguage === language.code;
             return (
               <button
                 key={language.code}
@@ -105,27 +111,33 @@ export function LanguageSelector() {
                     : "border-[#004D73]/20 dark:border-white/20 hover:border-[#3A8F4C]/40 dark:hover:border-[#3A8F4C]/50 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                 )}
               >
-                <div className={cn(
-                  "flex items-center justify-center size-10 rounded-lg text-2xl transition-all",
-                  isSelected && "scale-110"
-                )}>
+                <div
+                  className={cn(
+                    "flex items-center justify-center size-10 rounded-lg text-2xl transition-all",
+                    isSelected && "scale-110"
+                  )}
+                >
                   {language.flag}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <div className={cn(
-                    "font-semibold text-sm mb-0.5",
-                    isSelected 
-                      ? "text-[#3A8F4C] dark:text-[#3A8F4C]" 
-                      : "text-[#5A3E36] dark:text-white/90"
-                  )}>
+                  <div
+                    className={cn(
+                      "font-semibold text-sm mb-0.5",
+                      isSelected
+                        ? "text-[#3A8F4C] dark:text-[#3A8F4C]"
+                        : "text-[#5A3E36] dark:text-white/90"
+                    )}
+                  >
                     {language.name}
                   </div>
-                  <div className={cn(
-                    "text-xs font-medium",
-                    isSelected
-                      ? "text-[#3A8F4C]/70 dark:text-[#3A8F4C]/80"
-                      : "text-[#004D73]/60 dark:text-white/60"
-                  )}>
+                  <div
+                    className={cn(
+                      "text-xs font-medium",
+                      isSelected
+                        ? "text-[#3A8F4C]/70 dark:text-[#3A8F4C]/80"
+                        : "text-[#004D73]/60 dark:text-white/60"
+                    )}
+                  >
                     {language.code.toUpperCase()}
                   </div>
                 </div>
@@ -140,11 +152,10 @@ export function LanguageSelector() {
                   </div>
                 )}
               </button>
-            )
+            );
           })}
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

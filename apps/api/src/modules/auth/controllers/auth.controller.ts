@@ -32,6 +32,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Public } from '../decorators/public.decorator';
 import { UserEntity } from '../entities/user.entity';
+import { UserRole } from '../interfaces/iuser';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -43,7 +44,7 @@ export class AuthController {
   @ApiOperation({
     summary: "S'inscrire",
     description:
-      'Crée un nouveau compte utilisateur et retourne les tokens JWT',
+      "Crée un nouveau compte utilisateur et retourne les tokens JWT. Si aucun admin n'existe, permet de créer le premier compte admin.",
   })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
@@ -55,8 +56,64 @@ export class AuthController {
     status: HttpStatus.CONFLICT,
     description: 'Email ou téléphone déjà utilisé',
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description:
+      'Tentative de créer un compte admin alors que des admins existent déjà',
+  })
   async register(@Body() dto: RegisterDto): Promise<LoginResponseDto> {
+    // Si l'utilisateur essaie de créer un compte admin, vérifier s'il n'y a pas encore d'admin
+    if (dto.role === UserRole.ADMIN) {
+      return this.authService.createFirstAdmin(dto);
+    }
     return this.authService.register(dto);
+  }
+
+  @Public()
+  @Get('admin/check')
+  @ApiOperation({
+    summary: 'Vérifier si des admins existent',
+    description:
+      "Vérifie s'il existe des comptes administrateur dans le système.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Statut de l'existence des admins",
+    schema: {
+      type: 'object',
+      properties: {
+        hasAdmins: { type: 'boolean' },
+      },
+    },
+  })
+  async checkAdmins(): Promise<{ hasAdmins: boolean }> {
+    const hasAdmins = await this.authService.hasAdmins();
+    return { hasAdmins };
+  }
+
+  @Public()
+  @Post('admin/first')
+  @ApiOperation({
+    summary: 'Créer le premier compte administrateur',
+    description:
+      "Crée le premier compte administrateur. Ne fonctionne que s'il n'existe aucun admin dans le système.",
+  })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Premier compte admin créé avec succès',
+    type: LoginResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Des comptes admin existent déjà',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Email ou téléphone déjà utilisé',
+  })
+  async createFirstAdmin(@Body() dto: RegisterDto): Promise<LoginResponseDto> {
+    return this.authService.createFirstAdmin(dto);
   }
 
   @Public()
@@ -179,6 +236,35 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
   ): Promise<void> {
     return this.authService.changePassword(user.id, dto);
+  }
+
+  @Post('admin/create')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Créer un compte administrateur',
+    description:
+      'Crée un nouveau compte administrateur. Accessible uniquement aux administrateurs existants.',
+  })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Compte administrateur créé avec succès',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Seuls les administrateurs peuvent créer des comptes admin',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Email ou téléphone déjà utilisé',
+  })
+  async createAdminAccount(
+    @CurrentUser() currentAdmin: UserEntity,
+    @Body() dto: RegisterDto,
+  ): Promise<UserResponseDto> {
+    return this.authService.createAdminAccount(currentAdmin, dto);
   }
 
   @Public()

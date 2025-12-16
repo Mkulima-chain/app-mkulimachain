@@ -1,55 +1,73 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useMutation } from "@tanstack/react-query"
-import { LogIn, Mail, Lock, BookOpen } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { api } from "@/lib/api-client"
-import { saveAuth } from "@/lib/auth-storage"
-import { toast } from "sonner"
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { LogIn, Mail, Lock, BookOpen } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api-client";
+import { saveAuth } from "@/lib/auth-storage";
+import { toast } from "sonner";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [identifier, setIdentifier] = React.useState("")
-  const [password, setPassword] = React.useState("")
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const router = useRouter();
+  const [identifier, setIdentifier] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   const loginMutation = useMutation({
     mutationFn: (payload: { identifier: string; password: string }) =>
       api.post<{
-        accessToken: string
-        refreshToken: string
-        user: { 
-          id: string
-          email: string
-          firstName: string
-          lastName: string
-          role: string
-        }
+        accessToken: string;
+        refreshToken: string;
+        user: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          role: string;
+        };
       }>("/auth/login", payload),
     onSuccess: (data) => {
-      // Sauvegarder l'authentification et rediriger (uniquement identifiants valides)
-      saveAuth(data)
-      toast.success("Connexion réussie")
-      setErrorMessage(null)
-      router.push("/")
+      // Vérifier que l'utilisateur a un rôle autorisé (admin, farmer, ou cooperative)
+      const allowedRoles = ["admin", "farmer", "cooperative"];
+      const userRole = data.user?.role;
+
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        const message = "Votre compte n'a pas accès à cette application";
+        setErrorMessage(message);
+        toast.error(message);
+        return;
+      }
+
+      // Sauvegarder l'authentification et rediriger
+      saveAuth(data);
+      toast.success("Connexion réussie");
+      setErrorMessage(null);
+      router.push("/");
     },
-    onError: (error: any) => {
-      const message = error?.message || "Identifiants invalides"
-      setErrorMessage(message)
-      toast.error(message)
+    onError: (error: unknown) => {
+      const message =
+        (error as { message?: string })?.message || "Identifiants invalides";
+      setErrorMessage(message);
+      toast.error(message);
     },
     retry: false,
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    loginMutation.mutate({ identifier, password })
-  }
+    e.preventDefault();
+    loginMutation.mutate({ identifier, password });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8F5E9] via-white to-[#E3F2FD] dark:from-[#003D5C] dark:via-[#004D73] dark:to-[#003D5C] p-4">
@@ -74,7 +92,7 @@ export default function LoginPage() {
             </div>
             <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
             <CardDescription>
-              Connectez-vous à votre panneau d'administration
+              Connectez-vous à votre panneau &apos;administration
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -122,7 +140,10 @@ export default function LoginPage() {
                     id="remember"
                     className="h-4 w-4 rounded border-gray-300"
                   />
-                  <label htmlFor="remember" className="text-sm text-muted-foreground">
+                  <label
+                    htmlFor="remember"
+                    className="text-sm text-muted-foreground"
+                  >
                     Se souvenir de moi
                   </label>
                 </div>
@@ -134,9 +155,11 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-            {errorMessage && (
-              <p className="text-sm text-red-600 text-center">{errorMessage}</p>
-            )}
+              {errorMessage && (
+                <p className="text-sm text-red-600 text-center">
+                  {errorMessage}
+                </p>
+              )}
 
               <Button
                 type="submit"
@@ -149,7 +172,7 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Vous n'avez pas de compte?{" "}
+                Vous n&apos;avez pas de compte?{" "}
                 <Link
                   href="/register"
                   className="text-[#3A8F4C] hover:underline font-medium"
@@ -166,6 +189,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }
-

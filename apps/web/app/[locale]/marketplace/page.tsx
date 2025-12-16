@@ -1,53 +1,71 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Separator } from "@/components/ui/separator"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Search, Filter, SlidersHorizontal, ShoppingCart, Star, MapPin, TrendingUp,
-  Package, Users, Grid3x3, List, X, Heart, Share2,
-  ChevronLeft, ChevronRight, Minus, Plus, MessageCircle
-} from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { AuthMenu } from "@/components/auth-menu"
-import { LanguageSelector } from "@/components/language-selector"
-import { ProductCard } from "@/components/product-card"
-import { StatusBadge } from "@/components/status-badge"
-import { ImageGallery } from "@/components/image-gallery"
-import { ProductLocationMap } from "@/components/product-location-map"
-import { ProductTraceability } from "@/components/product-traceability"
-import { ProductChat } from "@/components/product-chat"
-import { useCart } from "@/hooks"
-import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import {
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ShoppingCart,
+  Star,
+  MapPin,
+  TrendingUp,
+  Package,
+  Users,
+  Grid3x3,
+  List,
+  X,
+  Heart,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
+  MessageCircle,
+} from "lucide-react";
+import { ProductCard } from "@/components/product-card";
+import { StatusBadge } from "@/components/status-badge";
+import { ImageGallery } from "@/components/image-gallery";
+import { ProductLocationMap } from "@/components/product-location-map";
+import { ProductTraceability } from "@/components/product-traceability";
+import { ProductChat } from "@/components/product-chat";
+import { useCart } from "@/hooks";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Types de produits
-type ProductCategory = "all" | "cacao" | "cafe" | "manioc" | "autres"
-type SortOption = "recent" | "price-asc" | "price-desc" | "popular"
+type ProductCategory = "all" | "cacao" | "cafe" | "manioc" | "autres";
+type SortOption = "recent" | "price-asc" | "price-desc" | "popular";
 
 interface Product {
-  id: string
-  name: string
-  category: ProductCategory
-  price: number
-  currency: string
-  images: string[]
-  description: string
-  producer: string
-  location: string
-  latitude: number
-  longitude: number
-  rating: number
-  reviews: number
-  stock: number
-  certified: boolean
-  blockchainHash?: string
+  id: string;
+  name: string;
+  category: ProductCategory;
+  price: number;
+  currency: string;
+  images: string[];
+  description: string;
+  producer: string;
+  location: string;
+  latitude: number;
+  longitude: number;
+  rating: number;
+  reviews: number;
+  stock: number;
+  certified: boolean;
+  blockchainHash?: string;
 }
 
 // Données de démonstration
@@ -68,7 +86,7 @@ const mockProducts: Product[] = [
     reviews: 124,
     stock: 250,
     certified: true,
-    blockchainHash: "0x1234...5678"
+    blockchainHash: "0x1234...5678",
   },
   {
     id: "2",
@@ -86,7 +104,7 @@ const mockProducts: Product[] = [
     reviews: 89,
     stock: 180,
     certified: true,
-    blockchainHash: "0x2345...6789"
+    blockchainHash: "0x2345...6789",
   },
   {
     id: "3",
@@ -95,16 +113,17 @@ const mockProducts: Product[] = [
     price: 1200,
     currency: "USD",
     images: ["🍠", "🍠", "🍠", "🍠", "🍠"],
-    description: "Manioc séché de première qualité, conditionné en sacs de 50kg",
+    description:
+      "Manioc séché de première qualité, conditionné en sacs de 50kg",
     producer: "Association Paysanne",
     location: "Kasaï, RDC",
-    latitude: -5.8500,
+    latitude: -5.85,
     longitude: 22.4333,
     rating: 4.6,
     reviews: 67,
     stock: 500,
     certified: true,
-    blockchainHash: "0x3456...7890"
+    blockchainHash: "0x3456...7890",
   },
   {
     id: "4",
@@ -117,12 +136,12 @@ const mockProducts: Product[] = [
     producer: "Coopérative Equateur",
     location: "Équateur, RDC",
     latitude: 0.0517,
-    longitude: 18.2600,
+    longitude: 18.26,
     rating: 4.7,
     reviews: 156,
     stock: 320,
     certified: true,
-    blockchainHash: "0x4567...8901"
+    blockchainHash: "0x4567...8901",
   },
   {
     id: "5",
@@ -135,12 +154,12 @@ const mockProducts: Product[] = [
     producer: "Ferme Bio Congo",
     location: "Bas-Congo, RDC",
     latitude: -5.1833,
-    longitude: 13.5000,
+    longitude: 13.5,
     rating: 5.0,
     reviews: 203,
     stock: 150,
     certified: true,
-    blockchainHash: "0x5678...9012"
+    blockchainHash: "0x5678...9012",
   },
   {
     id: "6",
@@ -158,7 +177,7 @@ const mockProducts: Product[] = [
     reviews: 92,
     stock: 220,
     certified: true,
-    blockchainHash: "0x6789...0123"
+    blockchainHash: "0x6789...0123",
   },
   {
     id: "7",
@@ -176,7 +195,7 @@ const mockProducts: Product[] = [
     reviews: 45,
     stock: 400,
     certified: false,
-    blockchainHash: "0x7890...1234"
+    blockchainHash: "0x7890...1234",
   },
   {
     id: "8",
@@ -194,211 +213,142 @@ const mockProducts: Product[] = [
     reviews: 178,
     stock: 120,
     certified: true,
-    blockchainHash: "0x8901...2345"
-  }
-]
+    blockchainHash: "0x8901...2345",
+  },
+];
 
 export default function MarketplacePage() {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory>("all")
-  const [sortBy, setSortBy] = useState<SortOption>("recent")
-  const [showFilters, setShowFilters] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
-  const [currentPage, setCurrentPage] = useState(1)
-  const productsPerPage = 12
-  const [quantity, setQuantity] = useState(1)
-  const [isChatOpen, setIsChatOpen] = useState(false)
-  
-  // Panier
-  const { addToCart, getItemCount } = useCart()
-  
-  // Filtres avancés
-  const [minPrice, setMinPrice] = useState("")
-  const [maxPrice, setMaxPrice] = useState("")
-  const [onlyCertified, setOnlyCertified] = useState(false)
-  const [selectedLocation, setSelectedLocation] = useState<string>("all")
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] =
+    useState<ProductCategory>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 12;
+  const [quantity, setQuantity] = useState(1);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+  // Panier
+  const { addToCart } = useCart();
+
+  // Filtres avancés
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [onlyCertified, setOnlyCertified] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   // Obtenir toutes les localisations uniques
-  const locations = Array.from(new Set(mockProducts.map(p => p.location)))
+  const locations = Array.from(new Set(mockProducts.map((p) => p.location)));
 
   // Filtrer et trier les produits
   const filteredProducts = mockProducts
-    .filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.producer.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
-      const matchesPrice = (!minPrice || product.price >= Number(minPrice)) &&
-                          (!maxPrice || product.price <= Number(maxPrice))
-      const matchesCertified = !onlyCertified || product.certified
-      const matchesLocation = selectedLocation === "all" || product.location === selectedLocation
-      return matchesSearch && matchesCategory && matchesPrice && matchesCertified && matchesLocation
+    .filter((product) => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.producer.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "all" || product.category === selectedCategory;
+      const matchesPrice =
+        (!minPrice || product.price >= Number(minPrice)) &&
+        (!maxPrice || product.price <= Number(maxPrice));
+      const matchesCertified = !onlyCertified || product.certified;
+      const matchesLocation =
+        selectedLocation === "all" || product.location === selectedLocation;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesPrice &&
+        matchesCertified &&
+        matchesLocation
+      );
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
-          return a.price - b.price
+          return a.price - b.price;
         case "price-desc":
-          return b.price - a.price
+          return b.price - a.price;
         case "popular":
-          return b.reviews - a.reviews
+          return b.reviews - a.reviews;
         default:
-          return 0
+          return 0;
       }
-    })
+    });
 
   // Pagination
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * productsPerPage,
     currentPage * productsPerPage
-  )
+  );
 
   // Réinitialiser la page quand les filtres changent
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, selectedCategory, sortBy, minPrice, maxPrice, onlyCertified, selectedLocation])
+    setTimeout(() => {
+      setCurrentPage(1);
+    }, 0);
+  }, [
+    searchQuery,
+    selectedCategory,
+    sortBy,
+    minPrice,
+    maxPrice,
+    onlyCertified,
+    selectedLocation,
+  ]);
 
   const toggleFavorite = (productId: string) => {
-    setFavorites(prev => {
-      const newSet = new Set(prev)
+    setFavorites((prev) => {
+      const newSet = new Set(prev);
       if (newSet.has(productId)) {
-        newSet.delete(productId)
+        newSet.delete(productId);
       } else {
-        newSet.add(productId)
+        newSet.add(productId);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const openProductModal = (product: Product) => {
-    setSelectedProduct(product)
-    setIsProductModalOpen(true)
-    setQuantity(1) // Réinitialiser la quantité à chaque ouverture
-  }
+    setSelectedProduct(product);
+    setIsProductModalOpen(true);
+    setQuantity(1); // Réinitialiser la quantité à chaque ouverture
+  };
 
-  const categories: { value: ProductCategory; label: string; icon: string }[] = [
-    { value: "all", label: "Tous", icon: "📦" },
-    { value: "cacao", label: "Cacao", icon: "🌰" },
-    { value: "cafe", label: "Café", icon: "☕" },
-    { value: "manioc", label: "Manioc", icon: "🍠" },
-    { value: "autres", label: "Autres", icon: "🌾" }
-  ]
+  const categories: { value: ProductCategory; label: string; icon: string }[] =
+    [
+      { value: "all", label: "Tous", icon: "📦" },
+      { value: "cacao", label: "Cacao", icon: "🌰" },
+      { value: "cafe", label: "Café", icon: "☕" },
+      { value: "manioc", label: "Manioc", icon: "🍠" },
+      { value: "autres", label: "Autres", icon: "🌾" },
+    ];
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: "recent", label: "Plus récent" },
     { value: "price-asc", label: "Prix croissant" },
     { value: "price-desc", label: "Prix décroissant" },
-    { value: "popular", label: "Plus populaire" }
-  ]
+    { value: "popular", label: "Plus populaire" },
+  ];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#004D73]">
-      {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled 
-          ? "bg-white/98 dark:bg-[#004D73]/98 backdrop-blur-md border-b border-[#004D73]/20 dark:border-white/20 shadow-lg shadow-[#004D73]/5 dark:shadow-white/5" 
-          : "bg-white/95 dark:bg-[#004D73]/95 backdrop-blur-sm border-b border-[#004D73]/10 dark:border-white/10 shadow-sm"
-      }`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#3A8F4C] to-[#2E7D32] flex items-center justify-center shadow-lg shadow-[#3A8F4C]/30 group-hover:shadow-xl group-hover:shadow-[#3A8F4C]/40 transition-all duration-300 group-hover:scale-105">
-                <svg
-                  className="w-7 h-7 text-white transition-transform group-hover:rotate-12 duration-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-[#5A3E36] dark:text-white group-hover:text-[#3A8F4C] dark:group-hover:text-[#3A8F4C] transition-colors duration-300">
-                  Mkulima Chain
-                </span>
-                <span className="text-[10px] text-[#004D73]/70 dark:text-white/70 font-medium -mt-1">
-                  Terra Congo
-                </span>
-              </div>
-            </Link>
-            
-            {/* Desktop Navigation Links */}
-            <div className="hidden lg:flex items-center gap-1">
-              <Link 
-                href="/" 
-                className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
-              >
-                Accueil
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link 
-                href="/marketplace" 
-                className="relative px-4 py-2 text-[#3A8F4C] dark:text-[#3A8F4C] font-medium text-sm group"
-              >
-                Marketplace
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32]"></span>
-              </Link>
-              <Link 
-                href="#about" 
-                className="relative px-4 py-2 text-[#5A3E36] dark:text-white/90 hover:text-[#3A8F4C] dark:hover:text-[#3A8F4C] transition-colors duration-300 font-medium text-sm group"
-              >
-                À propos
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[#3A8F4C] to-[#2E7D32] group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <Link href="/cart">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative h-9 w-9"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  {getItemCount() > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#3A8F4C] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {getItemCount()}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-              <LanguageSelector />
-              <ThemeToggle />
-              <AuthMenu />
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
-      <section className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-[#3A8F4C]/10 to-[#004D73]/10 dark:from-[#3A8F4C]/20 dark:to-[#004D73]/30">
+      <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-[#3A8F4C]/10 to-[#004D73]/10 dark:from-[#3A8F4C]/20 dark:to-[#004D73]/30">
         <div className="container mx-auto max-w-7xl">
           <div className="text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-bold text-[#5A3E36] dark:text-white mb-4">
               Marketplace Agricole
             </h1>
             <p className="text-xl text-[#004D73] dark:text-white/80 max-w-2xl mx-auto">
-              Découvrez et achetez directement des produits agricoles certifiés de producteurs congolais
+              Découvrez et achetez directement des produits agricoles certifiés
+              de producteurs congolais
             </p>
           </div>
 
@@ -423,7 +373,9 @@ export default function MarketplacePage() {
               {categories.map((cat) => (
                 <Button
                   key={cat.value}
-                  variant={selectedCategory === cat.value ? "default" : "outline"}
+                  variant={
+                    selectedCategory === cat.value ? "default" : "outline"
+                  }
                   onClick={() => setSelectedCategory(cat.value)}
                   className={cn(
                     "rounded-lg px-4 py-2 text-sm font-medium transition-all",
@@ -448,8 +400,8 @@ export default function MarketplacePage() {
                   onClick={() => setViewMode("grid")}
                   className={cn(
                     "h-8 w-8",
-                    viewMode === "grid" 
-                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]" 
+                    viewMode === "grid"
+                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]"
                       : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                   )}
                 >
@@ -461,8 +413,8 @@ export default function MarketplacePage() {
                   onClick={() => setViewMode("list")}
                   className={cn(
                     "h-8 w-8",
-                    viewMode === "list" 
-                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]" 
+                    viewMode === "list"
+                      ? "bg-[#3A8F4C] text-white hover:bg-[#2E7D32]"
                       : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                   )}
                 >
@@ -476,8 +428,8 @@ export default function MarketplacePage() {
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   "rounded-lg px-4 py-2 text-sm font-medium transition-all border-[#004D73]/20 dark:border-white/20",
-                  showFilters 
-                    ? "bg-[#3A8F4C] text-white border-[#3A8F4C]" 
+                  showFilters
+                    ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
                     : "text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                 )}
               >
@@ -508,7 +460,9 @@ export default function MarketplacePage() {
             <Card className="mb-8 bg-white/90 dark:bg-[#003D5C]/90 border-[#004D73]/20 dark:border-white/20 backdrop-blur-sm animate-slide-up">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-[#5A3E36] dark:text-white">Filtres avancés</h3>
+                  <h3 className="text-lg font-semibold text-[#5A3E36] dark:text-white">
+                    Filtres avancés
+                  </h3>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -521,7 +475,9 @@ export default function MarketplacePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Price Range */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">Prix (USD)</Label>
+                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
+                      Prix (USD)
+                    </Label>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -530,7 +486,9 @@ export default function MarketplacePage() {
                         onChange={(e) => setMinPrice(e.target.value)}
                         className="border-[#004D73]/20 dark:border-white/20 bg-white dark:bg-[#004D73] text-[#5A3E36] dark:text-white/90"
                       />
-                      <span className="text-[#004D73] dark:text-white/70">-</span>
+                      <span className="text-[#004D73] dark:text-white/70">
+                        -
+                      </span>
                       <Input
                         type="number"
                         placeholder="Max"
@@ -543,7 +501,9 @@ export default function MarketplacePage() {
 
                   {/* Location */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">Localisation</Label>
+                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
+                      Localisation
+                    </Label>
                     <select
                       value={selectedLocation}
                       onChange={(e) => setSelectedLocation(e.target.value)}
@@ -551,14 +511,18 @@ export default function MarketplacePage() {
                     >
                       <option value="all">Toutes les localisations</option>
                       {locations.map((loc) => (
-                        <option key={loc} value={loc}>{loc}</option>
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   {/* Certification */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">Certification</Label>
+                    <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
+                      Certification
+                    </Label>
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -567,7 +531,10 @@ export default function MarketplacePage() {
                         onChange={(e) => setOnlyCertified(e.target.checked)}
                         className="h-4 w-4 rounded border-[#004D73]/20 text-[#3A8F4C] focus:ring-[#3A8F4C]"
                       />
-                      <Label htmlFor="certified" className="text-sm text-[#5A3E36] dark:text-white/90 cursor-pointer">
+                      <Label
+                        htmlFor="certified"
+                        className="text-sm text-[#5A3E36] dark:text-white/90 cursor-pointer"
+                      >
                         Produits certifiés uniquement
                       </Label>
                     </div>
@@ -582,29 +549,45 @@ export default function MarketplacePage() {
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <Package className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{mockProducts.length}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Produits</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {mockProducts.length}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Produits
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <Users className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">{new Set(mockProducts.map(p => p.producer)).size}</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Producteurs</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  {new Set(mockProducts.map((p) => p.producer)).size}
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Producteurs
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <TrendingUp className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">100%</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Traçable</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  100%
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Traçable
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-white/80 dark:bg-[#003D5C]/80 border-[#004D73]/20 dark:border-white/20">
               <CardContent className="p-4 text-center">
                 <Star className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">4.7</p>
-                <p className="text-xs text-[#004D73] dark:text-white/70">Note moyenne</p>
+                <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
+                  4.7
+                </p>
+                <p className="text-xs text-[#004D73] dark:text-white/70">
+                  Note moyenne
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -617,7 +600,10 @@ export default function MarketplacePage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                {filteredProducts.length} {filteredProducts.length === 1 ? "produit trouvé" : "produits trouvés"}
+                {filteredProducts.length}{" "}
+                {filteredProducts.length === 1
+                  ? "produit trouvé"
+                  : "produits trouvés"}
               </h2>
               {filteredProducts.length > 0 && (
                 <p className="text-sm text-[#004D73] dark:text-white/70 mt-1">
@@ -639,12 +625,12 @@ export default function MarketplacePage() {
                 </p>
                 <Button
                   onClick={() => {
-                    setSearchQuery("")
-                    setSelectedCategory("all")
-                    setMinPrice("")
-                    setMaxPrice("")
-                    setOnlyCertified(false)
-                    setSelectedLocation("all")
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                    setMinPrice("");
+                    setMaxPrice("");
+                    setOnlyCertified(false);
+                    setSelectedLocation("all");
                   }}
                   className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white"
                 >
@@ -655,11 +641,13 @@ export default function MarketplacePage() {
           ) : (
             <>
               {/* Products Grid/List */}
-              <div className={cn(
-                viewMode === "grid" 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                  : "space-y-4"
-              )}>
+              <div
+                className={cn(
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    : "space-y-4"
+                )}
+              >
                 {paginatedProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -677,42 +665,60 @@ export default function MarketplacePage() {
                 <div className="flex items-center justify-center gap-2 mt-8">
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                     className="border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          onClick={() => setCurrentPage(page)}
-                          className={cn(
-                            currentPage === page
-                              ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
-                              : "border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
-                          )}
-                        >
-                          {page}
-                        </Button>
-                      )
-                    } else if (page === currentPage - 2 || page === currentPage + 2) {
-                      return <span key={page} className="text-[#004D73] dark:text-white/70">...</span>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                              currentPage === page
+                                ? "bg-[#3A8F4C] text-white border-[#3A8F4C]"
+                                : "border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
+                            )}
+                          >
+                            {page}
+                          </Button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span
+                            key={page}
+                            className="text-[#004D73] dark:text-white/70"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
                     }
-                    return null
-                  })}
-                  
+                  )}
+
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90"
                   >
@@ -752,7 +758,12 @@ export default function MarketplacePage() {
                           : "text-[#5A3E36] dark:text-white/90"
                       )}
                     >
-                      <Heart className={cn("w-5 h-5", favorites.has(selectedProduct.id) && "fill-current")} />
+                      <Heart
+                        className={cn(
+                          "w-5 h-5",
+                          favorites.has(selectedProduct.id) && "fill-current"
+                        )}
+                      />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                       <Share2 className="w-5 h-5" />
@@ -777,27 +788,41 @@ export default function MarketplacePage() {
                   <div className="space-y-4">
                     <Card className="bg-muted/30 dark:bg-white/5 border-[#004D73]/20 dark:border-white/20">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">Informations</h3>
+                        <h3 className="font-semibold text-[#5A3E36] dark:text-white mb-3">
+                          Informations
+                        </h3>
                         <div className="space-y-3">
                           <div className="flex items-center gap-3">
                             <Users className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Producteur</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{selectedProduct.producer}</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Producteur
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                {selectedProduct.producer}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <MapPin className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Localisation</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{selectedProduct.location}</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Localisation
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                {selectedProduct.location}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <Package className="w-4 h-4 text-[#004D73] dark:text-white/70" />
                             <div>
-                              <p className="text-xs text-[#004D73] dark:text-white/60">Stock disponible</p>
-                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">{selectedProduct.stock} unités</p>
+                              <p className="text-xs text-[#004D73] dark:text-white/60">
+                                Stock disponible
+                              </p>
+                              <p className="text-sm font-medium text-[#5A3E36] dark:text-white">
+                                {selectedProduct.stock} unités
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -822,7 +847,9 @@ export default function MarketplacePage() {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-3">
                           <MapPin className="w-4 h-4 text-[#3A8F4C]" />
-                          <h3 className="font-semibold text-[#5A3E36] dark:text-white">Localisation</h3>
+                          <h3 className="font-semibold text-[#5A3E36] dark:text-white">
+                            Localisation
+                          </h3>
                         </div>
                         <ProductLocationMap
                           latitude={selectedProduct.latitude}
@@ -842,9 +869,12 @@ export default function MarketplacePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-3xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                              {selectedProduct.price.toLocaleString()} {selectedProduct.currency}
+                              {selectedProduct.price.toLocaleString()}{" "}
+                              {selectedProduct.currency}
                             </p>
-                            <p className="text-sm text-[#004D73] dark:text-white/70">Prix par unité</p>
+                            <p className="text-sm text-[#004D73] dark:text-white/70">
+                              Prix par unité
+                            </p>
                           </div>
                         </div>
 
@@ -874,22 +904,35 @@ export default function MarketplacePage() {
 
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <Label className="text-sm text-[#5A3E36] dark:text-white/90">Quantité</Label>
+                            <Label className="text-sm text-[#5A3E36] dark:text-white/90">
+                              Quantité
+                            </Label>
                             <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="icon" 
+                              <Button
+                                variant="outline"
+                                size="icon"
                                 className="h-8 w-8"
-                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                onClick={() =>
+                                  setQuantity(Math.max(1, quantity - 1))
+                                }
                               >
                                 <Minus className="w-4 h-4" />
                               </Button>
-                              <span className="w-12 text-center font-semibold text-[#5A3E36] dark:text-white">{quantity}</span>
-                              <Button 
-                                variant="outline" 
-                                size="icon" 
+                              <span className="w-12 text-center font-semibold text-[#5A3E36] dark:text-white">
+                                {quantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="icon"
                                 className="h-8 w-8"
-                                onClick={() => setQuantity(Math.min(selectedProduct.stock, quantity + 1))}
+                                onClick={() =>
+                                  setQuantity(
+                                    Math.min(
+                                      selectedProduct.stock,
+                                      quantity + 1
+                                    )
+                                  )
+                                }
                               >
                                 <Plus className="w-4 h-4" />
                               </Button>
@@ -900,7 +943,7 @@ export default function MarketplacePage() {
                             variant="outline"
                             className="w-full border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white hover:bg-[#004D73]/10 dark:hover:bg-white/10 h-11 text-base font-semibold"
                             onClick={() => {
-                              setIsChatOpen(true)
+                              setIsChatOpen(true);
                             }}
                           >
                             <MessageCircle className="w-5 h-5 mr-2" />
@@ -911,17 +954,23 @@ export default function MarketplacePage() {
                             className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white h-11 text-base font-semibold"
                             onClick={() => {
                               if (selectedProduct) {
-                                addToCart({
-                                  productId: selectedProduct.id,
-                                  productName: selectedProduct.name,
-                                  productImage: selectedProduct.images[0],
-                                  price: selectedProduct.price,
-                                  currency: selectedProduct.currency,
-                                }, quantity)
-                                toast.success(`${selectedProduct.name} ajouté au panier`, {
-                                  description: `Quantité: ${quantity}`,
-                                })
-                                setQuantity(1)
+                                addToCart(
+                                  {
+                                    productId: selectedProduct.id,
+                                    productName: selectedProduct.name,
+                                    productImage: selectedProduct.images[0],
+                                    price: selectedProduct.price,
+                                    currency: selectedProduct.currency,
+                                  },
+                                  quantity
+                                );
+                                toast.success(
+                                  `${selectedProduct.name} ajouté au panier`,
+                                  {
+                                    description: `Quantité: ${quantity}`,
+                                  }
+                                );
+                                setQuantity(1);
                               }
                             }}
                           >
@@ -934,19 +983,22 @@ export default function MarketplacePage() {
                             className="w-full border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white/90 hover:bg-[#E8F5E9] dark:hover:bg-white/10"
                             onClick={() => {
                               if (selectedProduct) {
-                                addToCart({
-                                  productId: selectedProduct.id,
-                                  productName: selectedProduct.name,
-                                  productImage: selectedProduct.images[0],
-                                  price: selectedProduct.price,
-                                  currency: selectedProduct.currency,
-                                }, quantity)
+                                addToCart(
+                                  {
+                                    productId: selectedProduct.id,
+                                    productName: selectedProduct.name,
+                                    productImage: selectedProduct.images[0],
+                                    price: selectedProduct.price,
+                                    currency: selectedProduct.currency,
+                                  },
+                                  quantity
+                                );
                                 toast.success("Produit ajouté au panier", {
                                   description: "Redirection vers le panier...",
-                                })
-                                setQuantity(1)
-                                setIsProductModalOpen(false)
-                                router.push("/cart")
+                                });
+                                setQuantity(1);
+                                setIsProductModalOpen(false);
+                                router.push("/cart");
                               }
                             }}
                           >
@@ -974,6 +1026,5 @@ export default function MarketplacePage() {
         />
       )}
     </div>
-  )
+  );
 }
-

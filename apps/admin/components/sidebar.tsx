@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -19,11 +19,19 @@ import {
   Settings,
   Menu,
   X,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+  Shield,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
-const menuItems = [
+type MenuItem = {
+  title: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: string[]; // Si défini, seuls ces rôles peuvent voir cet élément
+};
+
+const menuItems: MenuItem[] = [
   {
     title: "Tableau de bord",
     href: "/",
@@ -33,11 +41,13 @@ const menuItems = [
     title: "Agriculteurs",
     href: "/farmers",
     icon: Users,
+    roles: ["admin"], // Seuls les admins peuvent voir la gestion des agriculteurs
   },
   {
     title: "Coopératives",
     href: "/cooperatives",
     icon: Network,
+    roles: ["admin"], // Seuls les admins peuvent voir la gestion des coopératives
   },
   {
     title: "Produits",
@@ -73,11 +83,13 @@ const menuItems = [
     title: "Finance",
     href: "/finance",
     icon: Coins,
+    roles: ["admin"], // Seuls les admins peuvent voir la finance globale
   },
   {
     title: "Portefeuilles",
     href: "/wallet",
     icon: Wallet,
+    roles: ["admin"], // Seuls les admins peuvent voir la gestion des portefeuilles
   },
   {
     title: "Chaîne d'approvisionnement",
@@ -88,17 +100,39 @@ const menuItems = [
     title: "Fonds scolaires",
     href: "/school-fund",
     icon: School,
+    roles: ["admin"], // Seuls les admins peuvent voir les fonds scolaires
   },
   {
     title: "Paramètres",
     href: "/settings",
     icon: Settings,
+    roles: ["admin"], // Seuls les admins peuvent voir les paramètres système
   },
-]
+  {
+    title: "Administrateurs",
+    href: "/admins",
+    icon: Shield,
+    roles: ["admin"], // Seuls les admins peuvent créer d'autres admins
+  },
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+  const pathname = usePathname();
+  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const { user } = useAuth();
+  const userRole = user?.role;
+
+  // Filtrer les éléments du menu selon le rôle
+  const filteredMenuItems = React.useMemo(() => {
+    return menuItems.filter((item) => {
+      // Si aucun rôle n'est spécifié, l'élément est accessible à tous
+      if (!item.roles) {
+        return true;
+      }
+      // Si des rôles sont spécifiés, vérifier que l'utilisateur a l'un de ces rôles
+      return userRole && item.roles.includes(userRole);
+    });
+  }, [userRole]);
 
   return (
     <>
@@ -108,7 +142,11 @@ export function Sidebar() {
         className="lg:hidden fixed top-4 left-4 z-50 h-10 w-10 flex items-center justify-center rounded-lg bg-card border hover:bg-accent transition-colors"
         aria-label="Toggle menu"
       >
-        {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {isMobileOpen ? (
+          <X className="h-5 w-5" />
+        ) : (
+          <Menu className="h-5 w-5" />
+        )}
       </button>
 
       {/* Sidebar */}
@@ -127,16 +165,20 @@ export function Sidebar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold text-foreground">Admin</span>
-                <span className="text-xs text-muted-foreground">Mkulima Chain</span>
+                <span className="text-xs text-muted-foreground">
+                  Mkulima Chain
+                </span>
               </div>
             </Link>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-            {menuItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
+            {filteredMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/" && pathname?.startsWith(item.href));
 
               return (
                 <Link
@@ -153,7 +195,7 @@ export function Sidebar() {
                   <Icon className="h-5 w-5" />
                   <span>{item.title}</span>
                 </Link>
-              )
+              );
             })}
           </nav>
 
@@ -174,7 +216,5 @@ export function Sidebar() {
         />
       )}
     </>
-  )
+  );
 }
-
-
