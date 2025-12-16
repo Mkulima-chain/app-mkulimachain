@@ -2,9 +2,11 @@ import { IFarmer } from '@/modules/farmers/interfaces/ifarmers';
 
 export enum LoanStatus {
   PENDING = 'pending',
+  APPROVED = 'approved',
   ACTIVE = 'active',
   REPAID = 'repaid',
   DEFAULTED = 'defaulted',
+  REJECTED = 'rejected',
 }
 
 export interface IMicroLoan {
@@ -18,6 +20,9 @@ export interface IMicroLoan {
   startDate?: Date;
   dueDate?: Date;
   repaidAt?: Date;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

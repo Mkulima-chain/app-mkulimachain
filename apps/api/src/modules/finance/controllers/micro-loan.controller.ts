@@ -24,6 +24,11 @@ import {
   GetMicroLoanDto,
   MicroLoanResponseDto,
   RepaymentAmountDto,
+  ApproveLoanDto,
+  RejectLoanDto,
+  LoanStatsDto,
+  EligibilityCheckDto,
+  EligibilityResponseDto,
 } from '../dto/micro-loan.dto';
 import { MicroLoanEntity } from '../entities/micro-loan.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
@@ -32,7 +37,7 @@ import { Public } from '@/modules/auth/decorators/public.decorator';
 @Controller('loans')
 @Public() // À sécuriser quand l'auth sera activée côté admin
 export class MicroLoanController {
-  constructor(private readonly service: MicroLoanService) {}
+  constructor(private readonly service: MicroLoanService) { }
 
   @Post()
   @ApiOperation({
@@ -57,7 +62,7 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts',
-    type: [MicroLoanResponseDto],
+    type: [ MicroLoanResponseDto ],
   })
   async findAll(@Query() query: GetMicroLoanDto): Promise<MicroLoanEntity[]> {
     return this.service.findAll(query);
@@ -71,10 +76,24 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts en retard',
-    type: [MicroLoanResponseDto],
+    type: [ MicroLoanResponseDto ],
   })
   async findOverdueLoans(): Promise<MicroLoanEntity[]> {
     return this.service.findOverdueLoans();
+  }
+
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Statistiques des prêts',
+    description: 'Récupère les statistiques globales des prêts',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statistiques',
+    type: LoanStatsDto,
+  })
+  async getStats(): Promise<LoanStatsDto> {
+    return this.service.getStats();
   }
 
   @Get('farmer/:farmerId')
@@ -90,7 +109,7 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts',
-    type: [MicroLoanResponseDto],
+    type: [ MicroLoanResponseDto ],
   })
   async findByFarmerId(
     @Param('farmerId', ParseUUIDPipe) farmerId: string,
@@ -221,5 +240,60 @@ export class MicroLoanController {
   })
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Post(':id/approve')
+  @ApiOperation({
+    summary: 'Approuver un prêt',
+    description: 'Approuve une demande de prêt en attente',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiBody({ type: ApproveLoanDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Prêt approuvé',
+    type: MicroLoanResponseDto,
+  })
+  async approve(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApproveLoanDto,
+  ): Promise<MicroLoanEntity> {
+    return this.service.approve(id, dto.approvedBy);
+  }
+
+  @Post(':id/reject')
+  @ApiOperation({
+    summary: 'Rejeter un prêt',
+    description: 'Rejette une demande de prêt en attente',
+  })
+  @ApiParam({ name: 'id', description: 'ID du prêt' })
+  @ApiBody({ type: RejectLoanDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Prêt rejeté',
+    type: MicroLoanResponseDto,
+  })
+  async reject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectLoanDto,
+  ): Promise<MicroLoanEntity> {
+    return this.service.reject(id, dto.reason, dto.rejectedBy);
+  }
+
+  @Post('eligibility')
+  @ApiOperation({
+    summary: "Vérifier l'éligibilité",
+    description: "Vérifie si un agriculteur est éligible pour un prêt",
+  })
+  @ApiBody({ type: EligibilityCheckDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Résultat de l\'éligibilité',
+    type: EligibilityResponseDto,
+  })
+  async checkEligibility(
+    @Body() dto: EligibilityCheckDto,
+  ): Promise<EligibilityResponseDto> {
+    return this.service.checkEligibility(dto.farmerId, dto.amountADA);
   }
 }

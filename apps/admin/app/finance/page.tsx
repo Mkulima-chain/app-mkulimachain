@@ -2,49 +2,64 @@
 
 import * as React from "react";
 import {
-  Coins,
-  TrendingUp,
-  DollarSign,
-  CreditCard,
-  Plus,
-  Edit,
-  Trash2,
-  MoreVertical,
-  Loader2,
+    Coins,
+    TrendingUp,
+    DollarSign, Plus,
+    Edit,
+    Trash2,
+    MoreVertical,
+    Loader2,
+    CheckCircle,
+    XCircle,
+    Play,
+    AlertTriangle,
+    Eye,
+    Search,
+    Filter,
+    RefreshCw
 } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { useApiMutation } from "@/hooks/use-api-mutation";
 
 enum LoanStatus {
   PENDING = "pending",
+  APPROVED = "approved",
   ACTIVE = "active",
   REPAID = "repaid",
   DEFAULTED = "defaulted",
+  REJECTED = "rejected",
 }
 
 type MicroLoan = {
@@ -61,7 +76,48 @@ type MicroLoan = {
   startDate?: string;
   dueDate?: string;
   repaidAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
   createdAt: string;
+};
+
+type Farmer = {
+  id: string;
+  name: string;
+  phone: string;
+  city: string;
+};
+
+type CreditScore = {
+  id: string;
+  farmer: Farmer;
+  score: number;
+  harvestCount: number;
+  totalHarvestValue: number;
+  loanRepaymentRate: number;
+};
+
+type LoanStats = {
+  totalLoans: number;
+  pendingLoans: number;
+  approvedLoans: number;
+  activeLoans: number;
+  repaidLoans: number;
+  defaultedLoans: number;
+  rejectedLoans: number;
+  totalAmountLent: number;
+  totalAmountRepaid: number;
+  repaymentRate: number;
+};
+
+type EligibilityResponse = {
+  eligible: boolean;
+  creditScore: number;
+  minimumScoreRequired: number;
+  maxAmountAllowed: number;
+  reason?: string;
+  activeLoansCount: number;
 };
 
 type CreateMicroLoanDto = {
@@ -81,9 +137,14 @@ export default function FinancePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = React.useState(false);
   const [selectedLoan, setSelectedLoan] = React.useState<MicroLoan | null>(
     null
   );
+  const [rejectionReason, setRejectionReason] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [formData, setFormData] = React.useState<CreateMicroLoanDto>({
     farmerId: "",
     amountADA: 0,
@@ -94,6 +155,8 @@ export default function FinancePage() {
   const [updateData, setUpdateData] = React.useState<UpdateMicroLoanDto>({
     status: LoanStatus.PENDING,
   });
+  const [eligibility, setEligibility] = React.useState<EligibilityResponse | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = React.useState(false);
 
   // Fetch loans
   const {
@@ -102,15 +165,26 @@ export default function FinancePage() {
     refetch,
   } = useApiQuery<MicroLoan[]>(["loans"], "/loans");
 
+  // Fetch farmers for selection
+  const { data: farmers = [] } = useApiQuery<Farmer[]>(["farmers"], "/farmers");
+
+  // Fetch stats
+  const { data: stats, refetch: refetchStats } = useApiQuery<LoanStats>(
+    ["loans-stats"],
+    "/loans/stats"
+  );
+
   // Create mutation
   const createMutation = useApiMutation<MicroLoan, CreateMicroLoanDto>(
     "/loans",
     "POST",
     {
       onSuccess: () => {
-        toast.success("Micro-prêt ajouté avec succès");
+        toast.success("Micro-prêt créé avec succès");
         setIsAddDialogOpen(false);
+        setEligibility(null);
         refetch();
+        refetchStats();
       },
     }
   );
@@ -125,6 +199,7 @@ export default function FinancePage() {
         setIsEditDialogOpen(false);
         setSelectedLoan(null);
         refetch();
+        refetchStats();
       },
     }
   );
@@ -139,9 +214,110 @@ export default function FinancePage() {
         setIsDeleteDialogOpen(false);
         setSelectedLoan(null);
         refetch();
+        refetchStats();
       },
     }
   );
+
+  // Approve mutation
+  const approveMutation = useApiMutation<MicroLoan, { approvedBy?: string }>(
+    () => `/loans/${selectedLoan?.id}/approve`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Prêt approuvé avec succès");
+        setSelectedLoan(null);
+        refetch();
+        refetchStats();
+      },
+    }
+  );
+
+  // Reject mutation
+  const rejectMutation = useApiMutation<
+    MicroLoan,
+    { reason: string; rejectedBy?: string }
+  >(
+    () => `/loans/${selectedLoan?.id}/reject`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Prêt rejeté");
+        setIsRejectDialogOpen(false);
+        setRejectionReason("");
+        setSelectedLoan(null);
+        refetch();
+        refetchStats();
+      },
+    }
+  );
+
+  // Activate mutation
+  const activateMutation = useApiMutation<MicroLoan, void>(
+    () => `/loans/${selectedLoan?.id}/activate`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Prêt activé avec succès");
+        setSelectedLoan(null);
+        refetch();
+        refetchStats();
+      },
+    }
+  );
+
+  // Repay mutation
+  const repayMutation = useApiMutation<MicroLoan, void>(
+    () => `/loans/${selectedLoan?.id}/repay`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Prêt remboursé avec succès");
+        setSelectedLoan(null);
+        refetch();
+        refetchStats();
+      },
+    }
+  );
+
+  // Default mutation
+  const defaultMutation = useApiMutation<MicroLoan, void>(
+    () => `/loans/${selectedLoan?.id}/default`,
+    "POST",
+    {
+      onSuccess: () => {
+        toast.success("Prêt marqué en défaut");
+        setSelectedLoan(null);
+        refetch();
+        refetchStats();
+      },
+    }
+  );
+
+  // Check eligibility
+  const checkEligibility = async (farmerId: string, amount: number) => {
+    if (!farmerId || amount <= 0) {
+      setEligibility(null);
+      return;
+    }
+    setCheckingEligibility(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/loans/eligibility`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ farmerId, amountADA: amount }),
+        }
+      );
+      const data = await response.json();
+      setEligibility(data);
+    } catch (error) {
+      console.error("Error checking eligibility:", error);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  };
 
   const handleAdd = () => {
     setFormData({
@@ -151,6 +327,7 @@ export default function FinancePage() {
       durationDays: 90,
       loanContractHash: "",
     });
+    setEligibility(null);
     setIsAddDialogOpen(true);
   };
 
@@ -166,6 +343,36 @@ export default function FinancePage() {
   const handleDelete = (loan: MicroLoan) => {
     setSelectedLoan(loan);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleViewDetails = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleApprove = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    approveMutation.mutate({});
+  };
+
+  const handleReject = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleActivate = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    activateMutation.mutate(undefined);
+  };
+
+  const handleRepay = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    repayMutation.mutate(undefined);
+  };
+
+  const handleDefault = (loan: MicroLoan) => {
+    setSelectedLoan(loan);
+    defaultMutation.mutate(undefined);
   };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
@@ -189,11 +396,16 @@ export default function FinancePage() {
     deleteMutation.mutate(undefined);
   };
 
+  const handleConfirmReject = () => {
+    if (!selectedLoan || !rejectionReason) return;
+    rejectMutation.mutate({ reason: rejectionReason });
+  };
+
   const getStatusBadge = (status: LoanStatus) => {
     const variants: Record<
       LoanStatus,
       {
-        variant: "default" | "secondary" | "outline";
+        variant: "default" | "secondary" | "outline" | "destructive";
         className: string;
         label: string;
       }
@@ -203,6 +415,11 @@ export default function FinancePage() {
         className: "bg-[#3A8F4C] text-white",
         label: "Actif",
       },
+      [LoanStatus.APPROVED]: {
+        variant: "default",
+        className: "bg-blue-500 text-white",
+        label: "Approuvé",
+      },
       [LoanStatus.REPAID]: {
         variant: "secondary",
         className: "bg-[#5A3E36] text-white",
@@ -210,20 +427,39 @@ export default function FinancePage() {
       },
       [LoanStatus.PENDING]: {
         variant: "outline",
-        className: "",
+        className: "bg-yellow-100 text-yellow-800 border-yellow-300",
         label: "En attente",
       },
       [LoanStatus.DEFAULTED]: {
-        variant: "outline",
+        variant: "destructive",
         className: "bg-red-500 text-white",
         label: "En défaut",
+      },
+      [LoanStatus.REJECTED]: {
+        variant: "outline",
+        className: "bg-gray-100 text-gray-600 border-gray-300",
+        label: "Rejeté",
       },
     };
     return variants[status] || variants[LoanStatus.PENDING];
   };
 
-  const activeLoans = microLoans.filter((l) => l.status === LoanStatus.ACTIVE);
-  const totalActive = activeLoans.reduce((sum, l) => sum + l.amountADA, 0);
+  const calculateRepaymentAmount = (loan: MicroLoan) => {
+    const principal = Number(loan.amountADA);
+    const rate = Number(loan.interestRate) / 100;
+    return principal + principal * rate;
+  };
+
+  // Filter loans
+  const filteredLoans = microLoans.filter((loan) => {
+    const matchesStatus =
+      statusFilter === "all" || loan.status === statusFilter;
+    const matchesSearch =
+      !searchQuery ||
+      loan.farmer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      loan.id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -234,10 +470,22 @@ export default function FinancePage() {
             Gérez les micro-prêts, scores de crédit et transactions
           </p>
         </div>
-        <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter un micro-prêt
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              refetch();
+              refetchStats();
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
+          <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau prêt
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -245,16 +493,32 @@ export default function FinancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Micro-prêts actifs
+              Prêts actifs
             </CardTitle>
             <Coins className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : `₳ ${totalActive.toFixed(2)}`}
+              {isLoading ? "..." : `₳ ${(stats?.totalAmountLent || 0).toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {isLoading ? "..." : `${activeLoans.length} prêts actifs`}
+              {isLoading ? "..." : `${stats?.activeLoans || 0} prêts actifs`}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              En attente
+            </CardTitle>
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : stats?.pendingLoans || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Demandes à traiter
             </p>
           </CardContent>
         </Card>
@@ -269,24 +533,11 @@ export default function FinancePage() {
             <div className="text-2xl font-bold">
               {isLoading
                 ? "..."
-                : `₳ ${microLoans
-                    .filter((l) => l.status === LoanStatus.REPAID)
-                    .reduce((sum, l) => sum + l.amountADA, 0)
-                    .toFixed(2)}`}
+                : `₳ ${(stats?.totalAmountRepaid || 0).toFixed(2)}`}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">+18% ce mois</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <CreditCard className="h-5 w-5 text-[#004D73]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? "..." : microLoans.length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Ce mois</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats?.repaidLoans || 0} prêts remboursés
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -297,10 +548,42 @@ export default function FinancePage() {
             <TrendingUp className="h-5 w-5 text-[#F2C94C]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">94.5%</div>
-            <p className="text-xs text-muted-foreground mt-1">+2.3% ce mois</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? "..." : `${stats?.repaymentRate || 0}%`}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats?.defaultedLoans || 0} en défaut
+            </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher par agriculteur..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filtrer par statut" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value={LoanStatus.PENDING}>En attente</SelectItem>
+            <SelectItem value={LoanStatus.APPROVED}>Approuvé</SelectItem>
+            <SelectItem value={LoanStatus.ACTIVE}>Actif</SelectItem>
+            <SelectItem value={LoanStatus.REPAID}>Remboursé</SelectItem>
+            <SelectItem value={LoanStatus.DEFAULTED}>En défaut</SelectItem>
+            <SelectItem value={LoanStatus.REJECTED}>Rejeté</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Micro Loans */}
@@ -308,7 +591,7 @@ export default function FinancePage() {
         <CardHeader>
           <CardTitle>Micro-prêts</CardTitle>
           <CardDescription>
-            Liste des micro-prêts en cours et remboursés
+            Liste des micro-prêts ({filteredLoans.length} résultats)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -329,13 +612,13 @@ export default function FinancePage() {
                         Montant
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Taux d'intérêt
+                        Taux
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Durée
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Date d'échéance
+                        Échéance
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Statut
@@ -346,7 +629,7 @@ export default function FinancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {microLoans.length === 0 ? (
+                    {filteredLoans.length === 0 ? (
                       <tr>
                         <td
                           colSpan={7}
@@ -356,7 +639,7 @@ export default function FinancePage() {
                         </td>
                       </tr>
                     ) : (
-                      microLoans.map((loan) => {
+                      filteredLoans.map((loan) => {
                         const statusBadge = getStatusBadge(loan.status);
                         return (
                           <tr key={loan.id} className="hover:bg-muted/50">
@@ -364,7 +647,7 @@ export default function FinancePage() {
                               {loan.farmer?.name || "N/A"}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              ₳ {loan.amountADA.toFixed(2)}
+                              ₳ {Number(loan.amountADA).toFixed(2)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {loan.interestRate}%
@@ -386,34 +669,101 @@ export default function FinancePage() {
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
+                              <div className="flex items-center gap-1">
+                                {/* Quick Actions based on status */}
+                                {loan.status === LoanStatus.PENDING && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleApprove(loan)}
+                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      title="Approuver"
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleReject(loan)}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      title="Rejeter"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {(loan.status === LoanStatus.APPROVED ||
+                                  loan.status === LoanStatus.PENDING) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleActivate(loan)}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    title="Activer"
+                                  >
+                                    <Play className="h-4 w-4" />
                                   </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  align="end"
-                                  className="w-48 p-2"
-                                >
-                                  <div className="space-y-1">
-                                    <button
-                                      onClick={() => handleEdit(loan)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                )}
+                                {loan.status === LoanStatus.ACTIVE && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRepay(loan)}
+                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      title="Marquer remboursé"
                                     >
-                                      <Edit className="h-4 w-4" />
-                                      Modifier
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(loan)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDefault(loan)}
+                                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                      title="Marquer en défaut"
                                     >
-                                      <Trash2 className="h-4 w-4" />
-                                      Supprimer
-                                    </button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
+                                      <AlertTriangle className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {/* More actions menu */}
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    align="end"
+                                    className="w-48 p-2"
+                                  >
+                                    <div className="space-y-1">
+                                      <button
+                                        onClick={() => handleViewDetails(loan)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                        Voir détails
+                                      </button>
+                                      <button
+                                        onClick={() => handleEdit(loan)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                        Modifier
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(loan)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        Supprimer
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -429,26 +779,37 @@ export default function FinancePage() {
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Ajouter un micro-prêt</DialogTitle>
+            <DialogTitle>Nouveau micro-prêt</DialogTitle>
             <DialogDescription>
-              Remplissez les informations pour ajouter un nouveau micro-prêt
+              Créez une nouvelle demande de micro-prêt
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="farmerId">ID de l'agriculteur *</Label>
-                <Input
-                  id="farmerId"
+                <Label htmlFor="farmerId">Agriculteur *</Label>
+                <Select
                   value={formData.farmerId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, farmerId: e.target.value })
-                  }
-                  placeholder="UUID de l'agriculteur"
-                  required
-                />
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, farmerId: value });
+                    if (formData.amountADA > 0) {
+                      checkEligibility(value, formData.amountADA);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un agriculteur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {farmers.map((farmer) => (
+                      <SelectItem key={farmer.id} value={farmer.id}>
+                        {farmer.name} - {farmer.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="amountADA">Montant (ADA) *</Label>
@@ -458,49 +819,112 @@ export default function FinancePage() {
                   step="0.01"
                   min="1"
                   value={formData.amountADA}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      amountADA: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  onChange={(e) => {
+                    const amount = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, amountADA: amount });
+                    if (formData.farmerId) {
+                      checkEligibility(formData.farmerId, amount);
+                    }
+                  }}
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="interestRate">Taux d'intérêt (%) *</Label>
-                <Input
-                  id="interestRate"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={formData.interestRate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      interestRate: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="durationDays">Durée (jours) *</Label>
-                <Input
-                  id="durationDays"
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={formData.durationDays}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      durationDays: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  required
-                />
+
+              {/* Eligibility Check Display */}
+              {formData.farmerId && formData.amountADA > 0 && (
+                <div
+                  className={`p-4 rounded-lg border ${
+                    checkingEligibility
+                      ? "bg-gray-50"
+                      : eligibility?.eligible
+                      ? "bg-green-50 border-green-200"
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  {checkingEligibility ? (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Vérification de l'éligibilité...
+                    </div>
+                  ) : eligibility ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {eligibility.eligible ? (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-600" />
+                        )}
+                        <span
+                          className={`font-medium ${
+                            eligibility.eligible
+                              ? "text-green-700"
+                              : "text-red-700"
+                          }`}
+                        >
+                          {eligibility.eligible
+                            ? "Éligible pour ce prêt"
+                            : "Non éligible"}
+                        </span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p>
+                          Score de crédit: <strong>{eligibility.creditScore}</strong>{" "}
+                          (minimum: {eligibility.minimumScoreRequired})
+                        </p>
+                        <p>
+                          Montant max autorisé:{" "}
+                          <strong>₳ {eligibility.maxAmountAllowed}</strong>
+                        </p>
+                        <p>
+                          Prêts actifs: {eligibility.activeLoansCount}
+                        </p>
+                        {eligibility.reason && (
+                          <p className="text-red-600 mt-2">
+                            ⚠️ {eligibility.reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="interestRate">Taux d'intérêt (%) *</Label>
+                  <Input
+                    id="interestRate"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.interestRate}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        interestRate: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="durationDays">Durée (jours) *</Label>
+                  <Input
+                    id="durationDays"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={formData.durationDays}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        durationDays: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    required
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="loanContractHash">
@@ -537,10 +961,10 @@ export default function FinancePage() {
                 {createMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
+                    Création...
                   </>
                 ) : (
-                  "Ajouter"
+                  "Créer le prêt"
                 )}
               </Button>
             </DialogFooter>
@@ -561,22 +985,24 @@ export default function FinancePage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-status">Statut</Label>
-                <select
-                  id="edit-status"
+                <Select
                   value={updateData.status}
-                  onChange={(e) =>
-                    setUpdateData({
-                      ...updateData,
-                      status: e.target.value as LoanStatus,
-                    })
+                  onValueChange={(value) =>
+                    setUpdateData({ ...updateData, status: value as LoanStatus })
                   }
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                 >
-                  <option value={LoanStatus.PENDING}>En attente</option>
-                  <option value={LoanStatus.ACTIVE}>Actif</option>
-                  <option value={LoanStatus.REPAID}>Remboursé</option>
-                  <option value={LoanStatus.DEFAULTED}>En défaut</option>
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={LoanStatus.PENDING}>En attente</SelectItem>
+                    <SelectItem value={LoanStatus.APPROVED}>Approuvé</SelectItem>
+                    <SelectItem value={LoanStatus.ACTIVE}>Actif</SelectItem>
+                    <SelectItem value={LoanStatus.REPAID}>Remboursé</SelectItem>
+                    <SelectItem value={LoanStatus.DEFAULTED}>En défaut</SelectItem>
+                    <SelectItem value={LoanStatus.REJECTED}>Rejeté</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-loanContractHash">
@@ -623,6 +1049,131 @@ export default function FinancePage() {
         </DialogContent>
       </Dialog>
 
+      {/* Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails du prêt</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur le micro-prêt
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLoan && (
+            <div className="space-y-6">
+              {/* Farmer Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h4 className="font-medium mb-2">Agriculteur</h4>
+                <p className="text-lg">{selectedLoan.farmer?.name || "N/A"}</p>
+              </div>
+
+              {/* Loan Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Montant</p>
+                  <p className="text-xl font-bold">
+                    ₳ {Number(selectedLoan.amountADA).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">À rembourser</p>
+                  <p className="text-xl font-bold text-[#3A8F4C]">
+                    ₳ {calculateRepaymentAmount(selectedLoan).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Taux d'intérêt</p>
+                  <p className="font-medium">{selectedLoan.interestRate}%</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Durée</p>
+                  <p className="font-medium">{selectedLoan.durationDays} jours</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Statut</p>
+                  <Badge
+                    variant={getStatusBadge(selectedLoan.status).variant}
+                    className={getStatusBadge(selectedLoan.status).className}
+                  >
+                    {getStatusBadge(selectedLoan.status).label}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Date d'échéance</p>
+                  <p className="font-medium">
+                    {selectedLoan.dueDate
+                      ? new Date(selectedLoan.dueDate).toLocaleDateString()
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-2">Historique</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Créé le</span>
+                    <span>
+                      {new Date(selectedLoan.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  {selectedLoan.approvedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Approuvé le</span>
+                      <span>
+                        {new Date(selectedLoan.approvedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {selectedLoan.startDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Activé le</span>
+                      <span>
+                        {new Date(selectedLoan.startDate).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {selectedLoan.repaidAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Remboursé le</span>
+                      <span>
+                        {new Date(selectedLoan.repaidAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Rejection reason */}
+              {selectedLoan.rejectionReason && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-medium text-red-700 mb-1">
+                    Raison du rejet
+                  </h4>
+                  <p className="text-red-600">{selectedLoan.rejectionReason}</p>
+                </div>
+              )}
+
+              {/* Contract Hash */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-2">Smart Contract</h4>
+                <code className="text-xs bg-muted px-2 py-1 rounded break-all">
+                  {selectedLoan.loanContractHash}
+                </code>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDetailsDialogOpen(false)}
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -654,6 +1205,56 @@ export default function FinancePage() {
                 </>
               ) : (
                 "Supprimer"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rejeter le prêt</DialogTitle>
+            <DialogDescription>
+              Indiquez la raison du rejet du prêt de{" "}
+              <strong>{selectedLoan?.farmer?.name || "N/A"}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="rejectionReason">Raison du rejet *</Label>
+            <textarea
+              id="rejectionReason"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="mt-2 w-full min-h-[100px] px-3 py-2 border rounded-md text-sm"
+              placeholder="Ex: Score de crédit insuffisant, trop de prêts actifs..."
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectionReason("");
+              }}
+              disabled={rejectMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmReject}
+              disabled={rejectMutation.isPending || !rejectionReason}
+            >
+              {rejectMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rejet...
+                </>
+              ) : (
+                "Rejeter"
               )}
             </Button>
           </DialogFooter>

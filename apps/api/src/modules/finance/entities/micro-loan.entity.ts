@@ -46,6 +46,15 @@ export class MicroLoanEntity implements IMicroLoan {
   @Column({ type: 'timestamp', nullable: true })
   repaidAt?: Date;
 
+  @Column({ type: 'uuid', nullable: true })
+  approvedBy?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  approvedAt?: Date;
+
+  @Column({ type: 'text', nullable: true })
+  rejectionReason?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

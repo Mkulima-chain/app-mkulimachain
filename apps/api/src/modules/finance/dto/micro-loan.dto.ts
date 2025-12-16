@@ -162,3 +162,103 @@ export class RepaymentAmountDto {
   })
   amount!: number;
 }
+
+export class ApproveLoanDto {
+  @ApiPropertyOptional({
+    description: "ID de l'admin qui approuve",
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsOptional()
+  approvedBy?: string;
+}
+
+export class RejectLoanDto {
+  @ApiProperty({
+    description: 'Raison du rejet',
+    example: 'Score de crédit insuffisant',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+
+  @ApiPropertyOptional({
+    description: "ID de l'admin qui rejette",
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsOptional()
+  rejectedBy?: string;
+}
+
+export class LoanStatsDto {
+  @ApiProperty({ description: 'Nombre total de prêts' })
+  totalLoans!: number;
+
+  @ApiProperty({ description: 'Prêts en attente' })
+  pendingLoans!: number;
+
+  @ApiProperty({ description: 'Prêts approuvés' })
+  approvedLoans!: number;
+
+  @ApiProperty({ description: 'Prêts actifs' })
+  activeLoans!: number;
+
+  @ApiProperty({ description: 'Prêts remboursés' })
+  repaidLoans!: number;
+
+  @ApiProperty({ description: 'Prêts en défaut' })
+  defaultedLoans!: number;
+
+  @ApiProperty({ description: 'Prêts rejetés' })
+  rejectedLoans!: number;
+
+  @ApiProperty({ description: 'Montant total prêté (ADA)' })
+  totalAmountLent!: number;
+
+  @ApiProperty({ description: 'Montant total remboursé (ADA)' })
+  totalAmountRepaid!: number;
+
+  @ApiProperty({ description: 'Taux de remboursement (%)' })
+  repaymentRate!: number;
+}
+
+export class EligibilityCheckDto {
+  @ApiProperty({
+    description: "ID de l'agriculteur",
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  farmerId!: string;
+
+  @ApiProperty({
+    description: 'Montant souhaité (ADA)',
+    example: 500,
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(1)
+  amountADA!: number;
+}
+
+export class EligibilityResponseDto {
+  @ApiProperty({ description: 'Éligible pour le prêt' })
+  eligible!: boolean;
+
+  @ApiProperty({ description: 'Score de crédit actuel' })
+  creditScore!: number;
+
+  @ApiProperty({ description: 'Score minimum requis' })
+  minimumScoreRequired!: number;
+
+  @ApiProperty({ description: 'Montant maximum autorisé (ADA)' })
+  maxAmountAllowed!: number;
+
+  @ApiPropertyOptional({ description: "Raison de l'inéligibilité" })
+  reason?: string;
+
+  @ApiProperty({ description: 'Prêts actifs actuels' })
+  activeLoansCount!: number;
+}
