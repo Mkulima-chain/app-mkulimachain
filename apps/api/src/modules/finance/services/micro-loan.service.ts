@@ -25,7 +25,7 @@ export class MicroLoanService {
   constructor(
     private readonly repository: MicroLoanRepository,
     private readonly creditScoreRepository: CreditScoreRepository,
-  ) { }
+  ) {}
 
   async create(dto: CreateMicroLoanDto): Promise<MicroLoanEntity> {
     return this.repository.create(dto);
@@ -59,10 +59,16 @@ export class MicroLoanService {
     return loan;
   }
 
-  async activate(id: string, transactionHash?: string): Promise<MicroLoanEntity> {
+  async activate(
+    id: string,
+    transactionHash?: string,
+  ): Promise<MicroLoanEntity> {
     const loan = await this.findById(id);
 
-    if (loan.status !== LoanStatus.PENDING && loan.status !== LoanStatus.APPROVED) {
+    if (
+      loan.status !== LoanStatus.PENDING &&
+      loan.status !== LoanStatus.APPROVED
+    ) {
       throw new BadRequestException(
         `Loan can only be activated from pending or approved status. Current: ${loan.status}`,
       );

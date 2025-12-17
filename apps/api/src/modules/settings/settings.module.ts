@@ -19,4 +19,3 @@ import { CurrencyController } from './controllers/currency.controller';
   exports: [CategoryService, UnitService, CurrencyService],
 })
 export class SettingsModule {}
-

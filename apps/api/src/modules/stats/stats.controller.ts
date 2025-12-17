@@ -6,7 +6,7 @@ import { Public } from '@/modules/auth/decorators/public.decorator';
 @ApiTags('stats')
 @Controller('stats')
 export class StatsController {
-  constructor(private readonly statsService: StatsService) { }
+  constructor(private readonly statsService: StatsService) {}
 
   @Get('summary')
   @Public() // À sécuriser avec JWT quand l'admin enverra le token
@@ -23,4 +23,3 @@ export class StatsController {
     return this.statsService.getRecentActivities();
   }
 }
-

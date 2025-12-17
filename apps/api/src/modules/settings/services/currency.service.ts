@@ -16,7 +16,10 @@ export class CurrencyService {
     return this.currencyRepository.save(newCurrency);
   }
 
-  async update(id: string, currency: UpdateCurrencyDto): Promise<CurrencyEntity> {
+  async update(
+    id: string,
+    currency: UpdateCurrencyDto,
+  ): Promise<CurrencyEntity> {
     const updatedCurrency = await this.currencyRepository.preload({
       id,
       ...currency,
@@ -43,4 +46,3 @@ export class CurrencyService {
     await this.currencyRepository.softDelete(id);
   }
 }
-

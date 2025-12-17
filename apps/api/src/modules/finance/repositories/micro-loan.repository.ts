@@ -17,7 +17,7 @@ export class MicroLoanRepository {
     private readonly repository: Repository<MicroLoanEntity>,
     @InjectRepository(FarmerEntity)
     private readonly farmerRepository: Repository<FarmerEntity>,
-  ) { }
+  ) {}
 
   async create(dto: CreateMicroLoanDto): Promise<MicroLoanEntity> {
     const farmer = await this.farmerRepository.findOneBy({ id: dto.farmerId });
@@ -44,7 +44,7 @@ export class MicroLoanRepository {
   async findById(id: string): Promise<MicroLoanEntity | null> {
     return this.repository.findOne({
       where: { id },
-      relations: [ 'farmer' ],
+      relations: ['farmer'],
     });
   }
 
@@ -65,7 +65,7 @@ export class MicroLoanRepository {
   async findByFarmerId(farmerId: string): Promise<MicroLoanEntity[]> {
     return this.repository.find({
       where: { farmer: { id: farmerId } },
-      relations: [ 'farmer' ],
+      relations: ['farmer'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -76,7 +76,7 @@ export class MicroLoanRepository {
         status: LoanStatus.ACTIVE,
         dueDate: LessThan(new Date()),
       },
-      relations: [ 'farmer' ],
+      relations: ['farmer'],
     });
   }
 
@@ -88,7 +88,10 @@ export class MicroLoanRepository {
     return this.findById(id);
   }
 
-  async activate(id: string, transactionHash?: string): Promise<MicroLoanEntity | null> {
+  async activate(
+    id: string,
+    transactionHash?: string,
+  ): Promise<MicroLoanEntity | null> {
     const loan = await this.findById(id);
     if (!loan) return null;
 

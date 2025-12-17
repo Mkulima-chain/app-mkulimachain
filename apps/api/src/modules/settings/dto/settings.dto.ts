@@ -17,7 +17,10 @@ export class CreateCategoryDto {
   @MaxLength(100)
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Description', example: 'Produits de cacao' })
+  @ApiPropertyOptional({
+    description: 'Description',
+    example: 'Produits de cacao',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(500)
@@ -51,7 +54,7 @@ export class UpdateCategoryDto {
 
 // Unit DTOs
 export class CreateUnitDto {
-  @ApiProperty({ description: 'Nom de l\'unité', example: 'Kilogramme' })
+  @ApiProperty({ description: "Nom de l'unité", example: 'Kilogramme' })
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
@@ -64,7 +67,10 @@ export class CreateUnitDto {
   @MaxLength(10)
   symbol!: string;
 
-  @ApiPropertyOptional({ description: 'Description', example: 'Unité de masse' })
+  @ApiPropertyOptional({
+    description: 'Description',
+    example: 'Unité de masse',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(500)
@@ -77,7 +83,7 @@ export class CreateUnitDto {
 }
 
 export class UpdateUnitDto {
-  @ApiPropertyOptional({ description: 'Nom de l\'unité' })
+  @ApiPropertyOptional({ description: "Nom de l'unité" })
   @IsString()
   @IsOptional()
   @MinLength(2)
@@ -152,4 +158,3 @@ export class UpdateCurrencyDto {
   @IsOptional()
   isActive?: boolean;
 }
-

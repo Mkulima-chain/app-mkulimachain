@@ -30,4 +30,3 @@ export class CategoryEntity {
   @DeleteDateColumn()
   deletedAt?: Date;
 }
-

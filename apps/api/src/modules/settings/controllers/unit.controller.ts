@@ -61,7 +61,9 @@ export class UnitController {
   @ApiOperation({ summary: 'Lister les unités' })
   @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
   @ApiResponse({ status: HttpStatus.OK, type: [UnitEntity] })
-  async findAll(@Query('activeOnly') activeOnly?: string): Promise<UnitEntity[]> {
+  async findAll(
+    @Query('activeOnly') activeOnly?: string,
+  ): Promise<UnitEntity[]> {
     return this.unitService.findAll(activeOnly === 'true');
   }
 
@@ -73,4 +75,3 @@ export class UnitController {
     return this.unitService.delete(id);
   }
 }
-

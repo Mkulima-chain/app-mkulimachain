@@ -16,7 +16,10 @@ export class CategoryService {
     return this.categoryRepository.save(newCategory);
   }
 
-  async update(id: string, category: UpdateCategoryDto): Promise<CategoryEntity> {
+  async update(
+    id: string,
+    category: UpdateCategoryDto,
+  ): Promise<CategoryEntity> {
     const updatedCategory = await this.categoryRepository.preload({
       id,
       ...category,
@@ -43,4 +46,3 @@ export class CategoryService {
     await this.categoryRepository.softDelete(id);
   }
 }
-

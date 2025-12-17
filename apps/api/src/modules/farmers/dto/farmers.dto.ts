@@ -119,7 +119,7 @@ export class CreateFarmerDto {
   cooperativeId?: string;
 }
 
-export class UpdateFarmerDto extends PartialType(CreateFarmerDto) { }
+export class UpdateFarmerDto extends PartialType(CreateFarmerDto) {}
 
 export class GetFarmerDto {
   @ApiPropertyOptional({

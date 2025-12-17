@@ -43,4 +43,3 @@ export class UnitService {
     await this.unitRepository.softDelete(id);
   }
 }
-

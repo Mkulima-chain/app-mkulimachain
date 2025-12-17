@@ -33,7 +33,9 @@ export class CurrencyController {
   @ApiOperation({ summary: 'Créer une devise' })
   @ApiBody({ type: CreateCurrencyDto })
   @ApiResponse({ status: HttpStatus.CREATED, type: CurrencyEntity })
-  async create(@Body() createCurrencyDto: CreateCurrencyDto): Promise<CurrencyEntity> {
+  async create(
+    @Body() createCurrencyDto: CreateCurrencyDto,
+  ): Promise<CurrencyEntity> {
     return this.currencyService.create(createCurrencyDto);
   }
 
@@ -53,7 +55,9 @@ export class CurrencyController {
   @ApiOperation({ summary: 'Obtenir une devise' })
   @ApiParam({ name: 'id', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, type: CurrencyEntity })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<CurrencyEntity> {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<CurrencyEntity> {
     return this.currencyService.findOne(id);
   }
 
@@ -61,7 +65,9 @@ export class CurrencyController {
   @ApiOperation({ summary: 'Lister les devises' })
   @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
   @ApiResponse({ status: HttpStatus.OK, type: [CurrencyEntity] })
-  async findAll(@Query('activeOnly') activeOnly?: string): Promise<CurrencyEntity[]> {
+  async findAll(
+    @Query('activeOnly') activeOnly?: string,
+  ): Promise<CurrencyEntity[]> {
     return this.currencyService.findAll(activeOnly === 'true');
   }
 
@@ -73,4 +79,3 @@ export class CurrencyController {
     return this.currencyService.delete(id);
   }
 }
-

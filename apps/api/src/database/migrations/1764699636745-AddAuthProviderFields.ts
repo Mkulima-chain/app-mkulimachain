@@ -8,7 +8,10 @@ import {
 export class AddAuthProviderFields1764699636745 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Helper function to check if column exists
-    const columnExists = async (tableName: string, columnName: string): Promise<boolean> => {
+    const columnExists = async (
+      tableName: string,
+      columnName: string,
+    ): Promise<boolean> => {
       const result = await queryRunner.query(
         `SELECT column_name
          FROM information_schema.columns
@@ -28,7 +31,10 @@ export class AddAuthProviderFields1764699636745 implements MigrationInterface {
     };
 
     // Helper function to check if index exists
-    const indexExists = async (tableName: string, indexName: string): Promise<boolean> => {
+    const indexExists = async (
+      tableName: string,
+      indexName: string,
+    ): Promise<boolean> => {
       const result = await queryRunner.query(
         `SELECT indexname FROM pg_indexes WHERE tablename = $1 AND indexname = $2`,
         [tableName, indexName],

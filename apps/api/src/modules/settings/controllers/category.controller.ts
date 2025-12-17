@@ -19,10 +19,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { CategoryService } from '../services/category.service';
-import {
-  CreateCategoryDto,
-  UpdateCategoryDto,
-} from '../dto/settings.dto';
+import { CreateCategoryDto, UpdateCategoryDto } from '../dto/settings.dto';
 import { CategoryEntity } from '../entities/category.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 
@@ -36,7 +33,9 @@ export class CategoryController {
   @ApiOperation({ summary: 'Créer une catégorie' })
   @ApiBody({ type: CreateCategoryDto })
   @ApiResponse({ status: HttpStatus.CREATED, type: CategoryEntity })
-  async create(@Body() createCategoryDto: CreateCategoryDto): Promise<CategoryEntity> {
+  async create(
+    @Body() createCategoryDto: CreateCategoryDto,
+  ): Promise<CategoryEntity> {
     return this.categoryService.create(createCategoryDto);
   }
 
@@ -56,7 +55,9 @@ export class CategoryController {
   @ApiOperation({ summary: 'Obtenir une catégorie' })
   @ApiParam({ name: 'id', type: 'string' })
   @ApiResponse({ status: HttpStatus.OK, type: CategoryEntity })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<CategoryEntity> {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<CategoryEntity> {
     return this.categoryService.findOne(id);
   }
 
@@ -64,7 +65,9 @@ export class CategoryController {
   @ApiOperation({ summary: 'Lister les catégories' })
   @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
   @ApiResponse({ status: HttpStatus.OK, type: [CategoryEntity] })
-  async findAll(@Query('activeOnly') activeOnly?: string): Promise<CategoryEntity[]> {
+  async findAll(
+    @Query('activeOnly') activeOnly?: string,
+  ): Promise<CategoryEntity[]> {
     return this.categoryService.findAll(activeOnly === 'true');
   }
 
@@ -76,4 +79,3 @@ export class CategoryController {
     return this.categoryService.delete(id);
   }
 }
-

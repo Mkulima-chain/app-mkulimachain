@@ -33,4 +33,3 @@ export class UnitEntity {
   @DeleteDateColumn()
   deletedAt?: Date;
 }
-

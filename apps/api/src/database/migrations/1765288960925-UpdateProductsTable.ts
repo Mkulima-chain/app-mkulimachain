@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableIndex } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  TableColumn,
+  TableIndex,
+} from 'typeorm';
 
 export class UpdateProductsTable1765288960925 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -190,4 +195,3 @@ export class UpdateProductsTable1765288960925 implements MigrationInterface {
     );
   }
 }
-

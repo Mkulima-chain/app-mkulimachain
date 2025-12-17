@@ -1,7 +1,15 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProductEntity } from '../entities/entities';
 import { Repository } from 'typeorm';
-import { CreateProductDto, UpdateProductDto, GetProductDto } from '../dto/products.dto';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  GetProductDto,
+} from '../dto/products.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IProduct } from '../interfaces/iproducts';
 import { Like } from 'typeorm';
@@ -57,9 +65,13 @@ export class ServicesService {
     if (product.id) qb.andWhere('product.id = :id', { id: product.id });
     if (product.sku) qb.andWhere('product.sku = :sku', { sku: product.sku });
     if (product.category)
-      qb.andWhere('product.category = :category', { category: product.category });
+      qb.andWhere('product.category = :category', {
+        category: product.category,
+      });
     if (product.isActive !== undefined)
-      qb.andWhere('product.isActive = :isActive', { isActive: product.isActive });
+      qb.andWhere('product.isActive = :isActive', {
+        isActive: product.isActive,
+      });
     if (product.originCountry)
       qb.andWhere('product.originCountry = :originCountry', {
         originCountry: product.originCountry,

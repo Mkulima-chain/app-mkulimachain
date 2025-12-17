@@ -9,12 +9,14 @@ import { CreateOrderDto, UpdateOrderDto, GetOrderDto } from '../dto/order.dto';
 import { OrderStatus } from '../interfaces/iorder';
 import { MarketplaceItemService } from './marketplace-item.service';
 import { MarketplaceItemStatus } from '../interfaces/imarketplace-item';
+import { NotificationService } from '../../notifications/notification.service';
 
 @Injectable()
 export class OrderService {
   constructor(
     private readonly repository: OrderRepository,
     private readonly itemService: MarketplaceItemService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<OrderEntity> {
@@ -34,6 +36,14 @@ export class OrderService {
 
     // Reserve stock
     await this.itemService.reduceStock(dto.itemId, dto.quantityKg);
+
+    // Notify buyer
+    this.notificationService.notifyUser(
+      order.buyerId,
+      'Commande créée',
+      `Votre commande #${order.id.slice(0, 8)} a été créée avec succès.`,
+      'success',
+    );
 
     return order;
   }
@@ -63,6 +73,15 @@ export class OrderService {
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    if (dto.status) {
+      this.notificationService.notifyOrderUpdate(
+        order.buyerId,
+        order.id,
+        dto.status,
+      );
+    }
+
     return order;
   }
 
@@ -79,6 +98,14 @@ export class OrderService {
     if (!paid) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    this.notificationService.notifyUser(
+      paid.buyerId,
+      'Paiement reçu',
+      `Le paiement pour la commande #${paid.id.slice(0, 8)} a été confirmé.`,
+      'success',
+    );
+
     return paid;
   }
 
@@ -95,6 +122,14 @@ export class OrderService {
     if (!shipped) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    this.notificationService.notifyUser(
+      shipped.buyerId,
+      'Commande expédiée',
+      `Votre commande #${shipped.id.slice(0, 8)} est en route! Suivi: ${trackingNumber}`,
+      'info',
+    );
+
     return shipped;
   }
 
@@ -111,6 +146,14 @@ export class OrderService {
     if (!completed) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    this.notificationService.notifyUser(
+      completed.buyerId,
+      'Commande livrée',
+      `Votre commande #${completed.id.slice(0, 8)} a été livrée. Merci de votre confiance!`,
+      'success',
+    );
+
     return completed;
   }
 
@@ -133,6 +176,14 @@ export class OrderService {
     if (!cancelled) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    this.notificationService.notifyUser(
+      cancelled.buyerId,
+      'Commande annulée',
+      `La commande #${cancelled.id.slice(0, 8)} a été annulée.`,
+      'warning',
+    );
+
     return cancelled;
   }
 

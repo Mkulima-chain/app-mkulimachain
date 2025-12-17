@@ -5,23 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, MessageCircle, X, User } from "lucide-react"
+import { Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSession } from "next-auth/react"
-
-interface Message {
-  id: string
-  sender: "buyer" | "seller"
-  content: string
-  timestamp: Date
-  senderName: string
-  senderAvatar?: string
-}
+import { useChat } from "@/hooks/use-chat"
 
 interface ProductChatProps {
   productId: string
   productName: string
   sellerName: string
+  sellerId: string
   sellerAvatar?: string
   isOpen: boolean
   onClose: () => void
@@ -31,35 +24,34 @@ export function ProductChat({
   productId,
   productName,
   sellerName,
+  sellerId,
   sellerAvatar,
   isOpen,
   onClose,
 }: ProductChatProps) {
   const { data: session } = useSession()
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      sender: "seller",
-      content: `Bonjour ! Merci de votre intérêt pour "${productName}". Comment puis-je vous aider ?`,
-      timestamp: new Date(Date.now() - 3600000),
-      senderName: sellerName,
-      senderAvatar: sellerAvatar,
-    },
-  ])
   const [newMessage, setNewMessage] = useState("")
-  const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const buyerName = session?.user?.name || "Acheteur"
-  const buyerAvatar = session?.user?.image
+  const { messages, sendMessage, isConnected, initializeConversation } = useChat({
+    productId,
+    sellerId,
+  });
 
-  // Auto-scroll vers le bas quand de nouveaux messages arrivent
+  // Init conversation when open
+  useEffect(() => {
+    if (isOpen) {
+      initializeConversation();
+    }
+  }, [isOpen, initializeConversation]);
+
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, isOpen])
 
-  // Focus sur l'input quand le chat s'ouvre
+  // Focus
   useEffect(() => {
     if (isOpen && inputRef.current) {
       setTimeout(() => {
@@ -69,37 +61,10 @@ export function ProductChat({
   }, [isOpen])
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || isSending) return
+    if (!newMessage.trim()) return
 
-    const messageContent = newMessage.trim()
+    sendMessage(newMessage.trim())
     setNewMessage("")
-    setIsSending(true)
-
-    // Créer le message de l'acheteur
-    const buyerMessage: Message = {
-      id: Date.now().toString(),
-      sender: "buyer",
-      content: messageContent,
-      timestamp: new Date(),
-      senderName: buyerName,
-      senderAvatar: buyerAvatar || undefined,
-    }
-
-    setMessages((prev) => [...prev, buyerMessage])
-
-    // Simuler une réponse du vendeur après 1-2 secondes
-    setTimeout(() => {
-      const sellerResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "seller",
-        content: getAutoResponse(messageContent),
-        timestamp: new Date(),
-        senderName: sellerName,
-        senderAvatar: sellerAvatar,
-      }
-      setMessages((prev) => [...prev, sellerResponse])
-      setIsSending(false)
-    }, 1000 + Math.random() * 1000)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -130,6 +95,11 @@ export function ProductChat({
                 À propos de: {productName}
               </p>
             </div>
+            {isConnected ? (
+              <span className="flex h-2 w-2 rounded-full bg-green-500" title="Connecté" />
+            ) : (
+              <span className="flex h-2 w-2 rounded-full bg-red-500" title="Déconnecté" />
+            )}
           </div>
           <Button
             variant="ghost"
@@ -145,33 +115,32 @@ export function ProductChat({
           <div className="flex-1 px-4 py-4 overflow-y-auto">
             <div className="space-y-4">
               {messages.map((message) => {
-                const isBuyer = message.sender === "buyer"
+                const isMe = message.senderId === session?.user?.id
                 return (
                   <div
                     key={message.id}
                     className={cn(
                       "flex items-start gap-3",
-                      isBuyer ? "flex-row-reverse" : "flex-row"
+                      isMe ? "flex-row-reverse" : "flex-row"
                     )}
                   >
                     <Avatar className="w-8 h-8 shrink-0">
-                      <AvatarImage src={message.senderAvatar} alt={message.senderName} />
                       <AvatarFallback className={cn(
                         "text-xs",
-                        isBuyer 
+                        isMe 
                           ? "bg-[#004D73] text-white" 
                           : "bg-[#3A8F4C] text-white"
                       )}>
-                        {message.senderName.charAt(0).toUpperCase()}
+                        {isMe ? "Moi" : sellerName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className={cn(
                       "flex flex-col max-w-[70%]",
-                      isBuyer ? "items-end" : "items-start"
+                      isMe ? "items-end" : "items-start"
                     )}>
                       <div className={cn(
                         "px-4 py-2 rounded-2xl",
-                        isBuyer
+                        isMe
                           ? "bg-[#004D73] text-white rounded-br-sm"
                           : "bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 text-[#5A3E36] dark:text-white rounded-bl-sm"
                       )}>
@@ -180,7 +149,7 @@ export function ProductChat({
                         </p>
                       </div>
                       <p className="text-xs text-[#004D73] dark:text-white/60 mt-1 px-1">
-                        {message.timestamp.toLocaleTimeString("fr-FR", {
+                        {new Date(message.createdAt).toLocaleTimeString("fr-FR", {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -189,22 +158,6 @@ export function ProductChat({
                   </div>
                 )
               })}
-              {isSending && (
-                <div className="flex items-start gap-3">
-                  <Avatar className="w-8 h-8 shrink-0 bg-[#3A8F4C]">
-                    <AvatarFallback className="text-white text-xs">
-                      {sellerName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 px-4 py-2 rounded-2xl rounded-bl-sm">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-[#3A8F4C] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-[#3A8F4C] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-[#3A8F4C] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -218,11 +171,10 @@ export function ProductChat({
                 onKeyPress={handleKeyPress}
                 placeholder="Tapez votre message..."
                 className="flex-1 bg-white dark:bg-[#004D73] border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white placeholder:text-[#004D73]/50 dark:placeholder:text-white/50"
-                disabled={isSending}
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!newMessage.trim() || isSending}
+                disabled={!newMessage.trim()}
                 className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white shrink-0"
                 size="icon"
               >
@@ -233,38 +185,4 @@ export function ProductChat({
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-// Fonction pour générer des réponses automatiques (simulation)
-function getAutoResponse(userMessage: string): string {
-  const lowerMessage = userMessage.toLowerCase()
-  
-  if (lowerMessage.includes("prix") || lowerMessage.includes("coût") || lowerMessage.includes("tarif")) {
-    return "Le prix indiqué est le prix unitaire. Pour les commandes en gros, je peux vous proposer une remise. Souhaitez-vous discuter des quantités ?"
-  }
-  
-  if (lowerMessage.includes("livraison") || lowerMessage.includes("expédition") || lowerMessage.includes("shipping")) {
-    return "La livraison est gratuite pour les commandes supérieures à 100 USD. Les délais de livraison varient selon votre localisation. Où souhaitez-vous recevoir la commande ?"
-  }
-  
-  if (lowerMessage.includes("qualité") || lowerMessage.includes("certifié") || lowerMessage.includes("bio")) {
-    return "Tous nos produits sont certifiés biologiques et traçables via la blockchain. Je peux vous fournir tous les certificats nécessaires. Souhaitez-vous plus d'informations ?"
-  }
-  
-  if (lowerMessage.includes("quantité") || lowerMessage.includes("stock") || lowerMessage.includes("disponible")) {
-    return "Le stock disponible est indiqué sur la fiche produit. Pour les grandes quantités, je peux vérifier la disponibilité avec notre entrepôt. Quelle quantité vous intéresse ?"
-  }
-  
-  if (lowerMessage.includes("bonjour") || lowerMessage.includes("salut") || lowerMessage.includes("hello")) {
-    return "Bonjour ! Je suis ravi de vous aider. Avez-vous des questions sur ce produit ?"
-  }
-  
-  if (lowerMessage.includes("merci") || lowerMessage.includes("remercie")) {
-    return "De rien ! N'hésitez pas si vous avez d'autres questions. Je suis là pour vous aider."
-  }
-  
-  // Réponse par défaut
-  return "Merci pour votre message. Je vais examiner votre demande et vous répondre dans les plus brefs délais. Y a-t-il autre chose que je puisse vous aider ?"
-}
-
+  )}

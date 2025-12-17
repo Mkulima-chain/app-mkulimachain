@@ -18,6 +18,8 @@ import { NFTModule } from './modules/nft/nft.module';
 import { SchoolFundModule } from './modules/school-fund/school-fund.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { NotificationModule } from './modules/notifications/notification.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { SettingsModule } from './modules/settings/settings.module';
     SchoolFundModule,
     StatsModule,
     SettingsModule,
+    ChatModule,
+    NotificationModule,
   ],
   controllers: [],
   providers: [
@@ -65,4 +69,4 @@ import { SettingsModule } from './modules/settings/settings.module';
     SettingsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

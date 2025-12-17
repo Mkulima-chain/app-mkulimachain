@@ -4,9 +4,10 @@ import {
   IsOptional,
   IsUUID,
   IsEnum,
-  IsNumber, MaxLength,
+  IsNumber,
+  MaxLength,
   Min,
-  IsArray
+  IsArray,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { MarketplaceItemStatus } from '../interfaces/imarketplace-item';
@@ -67,8 +68,8 @@ export class CreateMarketplaceItemDto {
   stockKg!: number;
 
   @ApiPropertyOptional({
-    description: "URLs des images du produit",
-    example: [ 'https://cdn.mkulimachain.com/products/cacao-kasai.jpg' ],
+    description: 'URLs des images du produit',
+    example: ['https://cdn.mkulimachain.com/products/cacao-kasai.jpg'],
   })
   @IsArray()
   @IsString({ each: true })
@@ -184,7 +185,7 @@ export class MarketplaceItemResponseDto {
   status!: MarketplaceItemStatus;
 
   @ApiPropertyOptional({
-    example: [ 'https://cdn.mkulimachain.com/products/cacao.jpg' ],
+    example: ['https://cdn.mkulimachain.com/products/cacao.jpg'],
   })
   imageUrls?: string[];
 

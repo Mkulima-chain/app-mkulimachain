@@ -14,4 +14,3 @@ import { OrderEntity } from '../marketplace/entities/order.entity';
   providers: [StatsService],
 })
 export class StatsModule {}
-

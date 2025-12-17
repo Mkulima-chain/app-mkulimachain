@@ -1,13 +1,14 @@
-import {
-  MigrationInterface,
-  QueryRunner,
-  TableColumn,
-} from 'typeorm';
+import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class RemoveNullableConstraints1765400000001 implements MigrationInterface {
+export class RemoveNullableConstraints1765400000001
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Helper function to check if column exists
-    const columnExists = async (tableName: string, columnName: string): Promise<boolean> => {
+    const columnExists = async (
+      tableName: string,
+      columnName: string,
+    ): Promise<boolean> => {
       const result = await queryRunner.query(
         `SELECT column_name
          FROM information_schema.columns
@@ -124,4 +125,3 @@ export class RemoveNullableConstraints1765400000001 implements MigrationInterfac
     );
   }
 }
-

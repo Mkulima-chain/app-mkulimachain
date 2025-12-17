@@ -1,10 +1,8 @@
-import {
-  MigrationInterface,
-  QueryRunner,
-  TableColumn,
-} from 'typeorm';
+import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class FixWalletAddressNullable1765400000000 implements MigrationInterface {
+export class FixWalletAddressNullable1765400000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Vérifier si la colonne existe et si elle est nullable
     const columnInfo = await queryRunner.query(
@@ -62,4 +60,3 @@ export class FixWalletAddressNullable1765400000000 implements MigrationInterface
     // Pas besoin de rollback spécifique
   }
 }
-

@@ -53,6 +53,7 @@ type SortOption = "recent" | "price-asc" | "price-desc" | "popular";
 
 interface Product {
   id: string;
+  sellerId?: string;
   name: string;
   category: ProductCategory;
   price: number;
@@ -258,6 +259,7 @@ export default function MarketplacePage() {
 
     return {
       id: item.id,
+      sellerId: item.farmerId,
       name: item.title,
       category: category as ProductCategory,
       price: item.priceADA,
@@ -1102,6 +1104,7 @@ export default function MarketplacePage() {
           productId={selectedProduct.id}
           productName={selectedProduct.name}
           sellerName={selectedProduct.producer}
+          sellerId={selectedProduct.sellerId || "mock-seller-id"}
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
         />

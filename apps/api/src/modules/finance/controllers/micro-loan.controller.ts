@@ -14,7 +14,8 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiParam, ApiBody
+  ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { MicroLoanService } from '../services/micro-loan.service';
 import {
@@ -25,8 +26,9 @@ import {
   RepaymentAmountDto,
   ApproveLoanDto,
   RejectLoanDto,
-  LoanStatsDto, EligibilityResponseDto,
-  ActivateLoanDto
+  LoanStatsDto,
+  EligibilityResponseDto,
+  ActivateLoanDto,
 } from '../dto/micro-loan.dto';
 import { MicroLoanEntity } from '../entities/micro-loan.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
@@ -35,7 +37,7 @@ import { Public } from '@/modules/auth/decorators/public.decorator';
 @Controller('loans')
 @Public() // À sécuriser quand l'auth sera activée côté admin
 export class MicroLoanController {
-  constructor(private readonly service: MicroLoanService) { }
+  constructor(private readonly service: MicroLoanService) {}
 
   @Post()
   @ApiOperation({
@@ -60,7 +62,7 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts',
-    type: [ MicroLoanResponseDto ],
+    type: [MicroLoanResponseDto],
   })
   async findAll(@Query() query: GetMicroLoanDto): Promise<MicroLoanEntity[]> {
     return this.service.findAll(query);
@@ -74,7 +76,7 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts en retard',
-    type: [ MicroLoanResponseDto ],
+    type: [MicroLoanResponseDto],
   })
   async findOverdueLoans(): Promise<MicroLoanEntity[]> {
     return this.service.findOverdueLoans();
@@ -107,7 +109,7 @@ export class MicroLoanController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des prêts',
-    type: [ MicroLoanResponseDto ],
+    type: [MicroLoanResponseDto],
   })
   async findByFarmerId(
     @Param('farmerId', ParseUUIDPipe) farmerId: string,

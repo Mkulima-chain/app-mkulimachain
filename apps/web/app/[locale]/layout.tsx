@@ -12,6 +12,7 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { WalletAutoReconnect } from "@/components/providers/wallet-auto-reconnect";
 import { Toaster } from "@/components/ui/sonner";
 import { WalletProvider } from "@/wallet/wallet-provider";
+import { NotificationListener } from "@/components/notification-listener";
 import { NavBar } from "@/components/common/nav-bar";
 import { Footer } from "@/components/common/footer";
 
@@ -73,6 +74,7 @@ export default async function LocaleLayout({
                 >
                   <MeshProviderComponent>
                     <WalletAutoReconnect />
+                    <NotificationListener />
                     <NavBar />
                     {children}
                     <Footer />

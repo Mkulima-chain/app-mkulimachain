@@ -10,6 +10,11 @@ import {
   Trash2,
   MoreVertical,
   Loader2,
+  List,
+  Calendar,
+  Users,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Card,
@@ -91,6 +96,8 @@ export default function OrdersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
+  const [viewMode, setViewMode] = React.useState<"list" | "by-client" | "by-date">("list");
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
   const [formData, setFormData] = React.useState<CreateOrderDto>({
     buyerId: "",
     itemId: "",
@@ -100,6 +107,69 @@ export default function OrdersPage() {
   const [updateData, setUpdateData] = React.useState<UpdateOrderDto>({
     status: OrderStatus.PENDING,
   });
+
+  // Grouping types
+  type OrderGroup = {
+    key: string;
+    label: string;
+    orders: Order[];
+    totalAmount: number;
+  };
+
+  // Group orders by client
+  const groupOrdersByClient = (orders: Order[]): OrderGroup[] => {
+    const groups = new Map<string, Order[]>();
+    orders.forEach((order) => {
+      const key = order.buyerId;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(order);
+    });
+    return Array.from(groups.entries()).map(([key, orders]) => ({
+      key,
+      label: `Client #${key.slice(0, 8)}...`,
+      orders,
+      totalAmount: orders.reduce((sum, o) => sum + Number(o.totalADA || 0), 0),
+    }));
+  };
+
+  // Group orders by date
+  const groupOrdersByDate = (orders: Order[]): OrderGroup[] => {
+    const groups = new Map<string, Order[]>();
+    orders.forEach((order) => {
+      const date = new Date(order.createdAt).toLocaleDateString("fr-FR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      if (!groups.has(date)) {
+        groups.set(date, []);
+      }
+      groups.get(date)!.push(order);
+    });
+    return Array.from(groups.entries())
+      .map(([key, orders]) => ({
+        key,
+        label: key,
+        orders,
+        totalAmount: orders.reduce((sum, o) => sum + Number(o.totalADA || 0), 0),
+      }))
+      .sort((a, b) => new Date(b.orders[0].createdAt).getTime() - new Date(a.orders[0].createdAt).getTime());
+  };
+
+  // Toggle group expansion
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   // Fetch orders
   const {
@@ -348,6 +418,35 @@ export default function OrdersPage() {
               <Filter className="h-4 w-4 mr-2" />
               Filtrer
             </Button>
+            <div className="flex items-center gap-1 border rounded-lg p-1">
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className={viewMode === "list" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+              >
+                <List className="h-4 w-4 mr-1" />
+                Liste
+              </Button>
+              <Button
+                variant={viewMode === "by-client" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("by-client")}
+                className={viewMode === "by-client" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Par Client
+              </Button>
+              <Button
+                variant={viewMode === "by-date" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("by-date")}
+                className={viewMode === "by-date" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Par Date
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -355,112 +454,201 @@ export default function OrdersPage() {
               <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
           ) : (
-            <div className="rounded-lg border">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Commande
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Produit
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Agriculteur
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Quantité
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Montant
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {orders.length === 0 ? (
+            viewMode === "list" ? (
+              /* LIST VIEW - Original table */
+              <div className="rounded-lg border">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted">
                       <tr>
-                        <td
-                          colSpan={7}
-                          className="px-6 py-8 text-center text-muted-foreground"
-                        >
-                          Aucune commande trouvée
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Commande
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Produit
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Agriculteur
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Quantité
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Montant
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Statut
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
-                    ) : (
-                      orders.map((order) => {
-                        const statusBadge = getStatusBadge(order.status);
-                        return (
-                          <tr key={order.id} className="hover:bg-muted/50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium">
-                                #{order.id.slice(0, 8)}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {order.item?.title || "N/A"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {order.item?.farmer?.name || "N/A"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {order.quantityKg} kg
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              ₳ {order.totalADA.toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <Badge
-                                variant={statusBadge.variant}
-                                className={statusBadge.className}
-                              >
-                                {statusBadge.label}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  align="end"
-                                  className="w-48 p-2"
+                    </thead>
+                    <tbody className="divide-y">
+                      {orders.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-6 py-8 text-center text-muted-foreground"
+                          >
+                            Aucune commande trouvée
+                          </td>
+                        </tr>
+                      ) : (
+                        orders.map((order) => {
+                          const statusBadge = getStatusBadge(order.status);
+                          return (
+                            <tr key={order.id} className="hover:bg-muted/50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium">
+                                  #{order.id.slice(0, 8)}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {order.item?.title || "N/A"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {order.item?.farmer?.name || "N/A"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {order.quantityKg} kg
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                ₳ {Number(order.totalADA || 0).toFixed(2)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <Badge
+                                  variant={statusBadge.variant}
+                                  className={statusBadge.className}
                                 >
-                                  <div className="space-y-1">
-                                    <button
-                                      onClick={() => handleEdit(order)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                      Modifier
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(order)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Supprimer
-                                    </button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                                  {statusBadge.label}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    align="end"
+                                    className="w-48 p-2"
+                                  >
+                                    <div className="space-y-1">
+                                      <button
+                                        onClick={() => handleEdit(order)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                        Modifier
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(order)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        Supprimer
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* GROUPED VIEW */
+              <div className="space-y-4">
+                {(viewMode === "by-client" ? groupOrdersByClient(orders) : groupOrdersByDate(orders)).map((group) => (
+                  <div key={group.key} className="rounded-lg border">
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {expandedGroups.has(group.key) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        {viewMode === "by-client" ? (
+                          <Users className="h-4 w-4 text-[#004D73]" />
+                        ) : (
+                          <Calendar className="h-4 w-4 text-[#004D73]" />
+                        )}
+                        <span className="font-medium">{group.label}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground">
+                          {group.orders.length} commande{group.orders.length > 1 ? "s" : ""}
+                        </span>
+                        <span className="font-medium text-[#3A8F4C]">
+                          ₳ {group.totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </button>
+                    {expandedGroups.has(group.key) && (
+                      <div className="divide-y">
+                        {group.orders.map((order) => {
+                          const statusBadge = getStatusBadge(order.status);
+                          return (
+                            <div key={order.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30">
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm font-medium">#{order.id.slice(0, 8)}</span>
+                                <span className="text-sm text-muted-foreground">{order.item?.title || "N/A"}</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm">{order.quantityKg} kg</span>
+                                <span className="text-sm font-medium">₳ {Number(order.totalADA || 0).toFixed(2)}</span>
+                                <Badge variant={statusBadge.variant} className={statusBadge.className}>
+                                  {statusBadge.label}
+                                </Badge>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent align="end" className="w-48 p-2">
+                                    <div className="space-y-1">
+                                      <button
+                                        onClick={() => handleEdit(order)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                        Modifier
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(order)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        Supprimer
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {orders.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucune commande trouvée
+                  </div>
+                )}
+              </div>
+            )
           )}
         </CardContent>
       </Card>

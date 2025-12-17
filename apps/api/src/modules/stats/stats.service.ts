@@ -14,11 +14,11 @@ export class StatsService {
     private readonly productRepo: Repository<ProductEntity>,
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
-  ) { }
+  ) {}
 
   async getSummary() {
     try {
-      const [ farmers, products, orders ] = await Promise.all([
+      const [farmers, products, orders] = await Promise.all([
         this.farmerRepo.count(),
         this.productRepo.count(),
         this.orderRepo.count(),
@@ -36,29 +36,29 @@ export class StatsService {
         orders,
         revenueAda: Number(revenueAda) || 0,
         systemStatus: [
-          { name: "API", status: "online", value: "99.9%" },
-          { name: "Base de données", status: "online", value: "100%" },
-          { name: "Blockchain", status: "online", value: "Mocked" },
-          { name: "Marketplace", status: "online", value: "100%" },
-        ]
+          { name: 'API', status: 'online', value: '99.9%' },
+          { name: 'Base de données', status: 'online', value: '100%' },
+          { name: 'Blockchain', status: 'online', value: 'Mocked' },
+          { name: 'Marketplace', status: 'online', value: '100%' },
+        ],
       };
     } catch (error) {
-      console.error("Error in StatsService.getSummary:", error);
+      console.error('Error in StatsService.getSummary:', error);
       throw error;
     }
   }
 
   async getRecentActivities() {
-    const [ recentOrders, recentProducts, recentFarmers ] = await Promise.all([
+    const [recentOrders, recentProducts, recentFarmers] = await Promise.all([
       this.orderRepo.find({
         order: { createdAt: 'DESC' },
         take: 5,
-        relations: [ 'item' ],
+        relations: ['item'],
       }),
       this.productRepo.find({
         order: { createdAt: 'DESC' },
         take: 5,
-        relations: [ 'harvest', 'harvest.farmer' ],
+        relations: ['harvests', 'harvests.farmer'],
       }),
       this.farmerRepo.find({
         order: { createdAt: 'DESC' },
@@ -99,4 +99,3 @@ export class StatsService {
       .slice(0, 10);
   }
 }
-

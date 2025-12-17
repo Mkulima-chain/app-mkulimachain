@@ -73,9 +73,7 @@ export class ServicesService {
     const updatedHarvest = await this.harvestRepository.preload({
       id,
       ...harvest,
-      harvestAt: harvest.harvestAt
-        ? new Date(harvest.harvestAt)
-        : undefined,
+      harvestAt: harvest.harvestAt ? new Date(harvest.harvestAt) : undefined,
       farmer: harvest.farmerId ? ({ id: harvest.farmerId } as any) : undefined,
       product: harvest.productId
         ? ({ id: harvest.productId } as any)

@@ -33,4 +33,3 @@ export class CurrencyEntity {
   @DeleteDateColumn()
   deletedAt?: Date;
 }
-
