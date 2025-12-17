@@ -4,7 +4,8 @@ import * as React from "react";
 import {
   Coins,
   TrendingUp,
-  DollarSign, Plus,
+  DollarSign,
+  Plus,
   Edit,
   Trash2,
   MoreVertical,
@@ -16,7 +17,7 @@ import {
   Eye,
   Search,
   Filter,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -52,8 +53,12 @@ import {
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { useApiMutation } from "@/hooks/use-api-mutation";
+import { api } from "@/lib/api-client";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FileUpload } from "@/components/ui/file-upload";
+import { useWalletAtom } from "@/hooks/useWalletAtom";
+import { Transaction } from "@meshsdk/core";
+import { WalletConnectDialog } from "@/components/wallet-connect-dialog";
 
 enum LoanStatus {
   PENDING = "pending",
@@ -66,10 +71,7 @@ enum LoanStatus {
 
 type MicroLoan = {
   id: string;
-  farmer: {
-    id: string;
-    name: string;
-  };
+  farmer: Farmer;
   amountADA: number;
   interestRate: number;
   durationDays: number;
@@ -81,6 +83,7 @@ type MicroLoan = {
   approvedAt?: string;
   approvedBy?: string;
   rejectionReason?: string;
+  transactionHash?: string;
   // Documents
   identificationNumber?: string;
   idCardPhotoUrl?: string;
@@ -95,6 +98,7 @@ type Farmer = {
   name: string;
   phone: string;
   city: string;
+  walletAddress?: string;
 };
 
 type CreditScore = {
@@ -149,6 +153,8 @@ type UpdateMicroLoanDto = {
 };
 
 export default function FinancePage() {
+  const { connected, wallet } = useWalletAtom();
+  const [isWalletDialogOpen, setIsWalletDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -174,11 +180,14 @@ export default function FinancePage() {
     guaranteeDocumentUrl: undefined,
     loanPurpose: "",
   });
-  const [selectedDueDate, setSelectedDueDate] = React.useState<Date | undefined>(undefined);
+  const [selectedDueDate, setSelectedDueDate] = React.useState<
+    Date | undefined
+  >(undefined);
   const [updateData, setUpdateData] = React.useState<UpdateMicroLoanDto>({
     status: LoanStatus.PENDING,
   });
-  const [eligibility, setEligibility] = React.useState<EligibilityResponse | null>(null);
+  const [eligibility, setEligibility] =
+    React.useState<EligibilityResponse | null>(null);
   const [checkingEligibility, setCheckingEligibility] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(1);
 
@@ -266,34 +275,16 @@ export default function FinancePage() {
   const rejectMutation = useApiMutation<
     MicroLoan,
     { reason: string; rejectedBy?: string }
-  >(
-    () => `/loans/${selectedLoan?.id}/reject`,
-    "POST",
-    {
-      onSuccess: () => {
-        toast.success("Prêt rejeté");
-        setIsRejectDialogOpen(false);
-        setRejectionReason("");
-        setSelectedLoan(null);
-        refetch();
-        refetchStats();
-      },
-    }
-  );
-
-  // Activate mutation
-  const activateMutation = useApiMutation<MicroLoan, void>(
-    () => `/loans/${selectedLoan?.id}/activate`,
-    "POST",
-    {
-      onSuccess: () => {
-        toast.success("Prêt activé avec succès");
-        setSelectedLoan(null);
-        refetch();
-        refetchStats();
-      },
-    }
-  );
+  >(() => `/loans/${selectedLoan?.id}/reject`, "POST", {
+    onSuccess: () => {
+      toast.success("Prêt rejeté");
+      setIsRejectDialogOpen(false);
+      setRejectionReason("");
+      setSelectedLoan(null);
+      refetch();
+      refetchStats();
+    },
+  });
 
   // Repay mutation
   const repayMutation = useApiMutation<MicroLoan, void>(
@@ -331,15 +322,13 @@ export default function FinancePage() {
     }
     setCheckingEligibility(true);
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5600/api";
-      const response = await fetch(
-        `${API_BASE_URL}/loans/eligibility`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ farmerId, amountADA: amount }),
-        }
-      );
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5600/api";
+      const response = await fetch(`${API_BASE_URL}/loans/eligibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ farmerId, amountADA: amount }),
+      });
       if (response.ok) {
         const data = await response.json();
         setEligibility(data);
@@ -405,9 +394,94 @@ export default function FinancePage() {
     setIsRejectDialogOpen(true);
   };
 
-  const handleActivate = (loan: MicroLoan) => {
-    setSelectedLoan(loan);
-    activateMutation.mutate(undefined);
+  const handleActivate = async (loan: MicroLoan) => {
+    if (!connected || !wallet) {
+      toast.info("Connexion requise", {
+        description: "Veuillez connecter votre wallet pour activer le prêt.",
+      });
+      setIsWalletDialogOpen(true);
+      return;
+    }
+
+    if (!loan.farmer.walletAddress) {
+      toast.error(
+        "Impossible d'activer le prêt : Adresse wallet de l'agriculteur manquante."
+      );
+      return;
+    }
+
+    try {
+      const tx = new Transaction({ initiator: wallet });
+
+      // Verification du réseau de l'adresse
+      const isMainnetAddress = loan.farmer.walletAddress.startsWith("addr1");
+      const networkName =
+        (await wallet.getNetworkId()) === 1 ? "Mainnet" : "Testnet";
+
+      // Simple validation pour éviter l'erreur "Network Mismatch"
+      // Si on est sur Testnet/Preprod (qui attend addr_test1...) et qu'on envoie à addr1...
+      if (networkName === "Testnet" && isMainnetAddress) {
+        throw new Error(
+          `Conflit de réseau : Vous êtes connecté au Testnet mais l'adresse du destinataire est Mainnet (${loan.farmer.walletAddress.slice(0, 15)}...).`
+        );
+      }
+
+      // Convert ADA to Lovelace (1 ADA = 1,000,000 Lovelace)
+      const amountLovelace = (loan.amountADA * 1000000).toString();
+
+      tx.sendLovelace(loan.farmer.walletAddress, amountLovelace);
+
+      const unsignedTx = await tx.build();
+
+      // Signer la transaction avec gestion du refus utilisateur
+  
+       const signedTx = await wallet.signTx(unsignedTx);
+      const txHash = await wallet.submitTx(signedTx);
+    
+
+      // const txHash = await wallet.submitTx(signedTx);
+
+      toast.success("Transaction soumise avec succès", {
+        description: `Hash: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
+      });
+
+      setSelectedLoan(loan);
+
+      // Call API directly to avoid 'id' in body issue with useApiMutation
+      await api.post(`/loans/${loan.id}/activate`, { transactionHash: txHash });
+
+      toast.success("Prêt activé avec succès");
+      setIsDetailsDialogOpen(false);
+      refetch();
+      refetchStats();
+      setSelectedLoan(null);
+    } catch (error) {
+      console.error("Erreur lors de la transaction:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorMessageLower = errorMessage.toLowerCase();
+
+      // Gestion spécifique pour l'annulation utilisateur (double vérification)
+      if (
+        errorMessageLower.includes("declined") ||
+        errorMessageLower.includes("cancelled") ||
+        errorMessageLower.includes("refused") ||
+        errorMessageLower.includes("rejected") ||
+        errorMessageLower.includes("user declined") ||
+        errorMessageLower.includes("user canceled") ||
+        errorMessageLower.includes("sign tx")
+      ) {
+        toast.info("Transaction annulée", {
+          description: "Vous avez annulé la signature de la transaction.",
+        });
+        return;
+      }
+
+      toast.error("Erreur lors du transfert de fonds", {
+        description: errorMessage,
+      });
+    }
   };
 
   const handleRepay = (loan: MicroLoan) => {
@@ -422,17 +496,21 @@ export default function FinancePage() {
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Handle Step 1 transition (allow Enter key to move to next step)
     if (currentStep === 1) {
-       const isStep1Valid = formData.farmerId && formData.amountADA > 0 && 
-                            formData.interestRate !== undefined && formData.interestRate !== null && 
-                            formData.durationDays > 0 && formData.loanContractHash;
-       
-       if (isStep1Valid) {
-         setCurrentStep(2);
-       }
-       return;
+      const isStep1Valid =
+        formData.farmerId &&
+        formData.amountADA > 0 &&
+        formData.interestRate !== undefined &&
+        formData.interestRate !== null &&
+        formData.durationDays > 0 &&
+        formData.loanContractHash;
+
+      if (isStep1Valid) {
+        setCurrentStep(2);
+      }
+      return;
     }
 
     createMutation.mutate({
@@ -540,7 +618,10 @@ export default function FinancePage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
+          <Button
+            onClick={handleAdd}
+            className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Nouveau prêt
           </Button>
@@ -551,14 +632,14 @@ export default function FinancePage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Prêts actifs
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Prêts actifs</CardTitle>
             <Coins className="h-5 w-5 text-[#3A8F4C]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? "..." : `₳ ${(stats?.totalAmountLent || 0).toFixed(2)}`}
+              {isLoading
+                ? "..."
+                : `₳ ${(stats?.totalAmountLent || 0).toFixed(2)}`}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {isLoading ? "..." : `${stats?.activeLoans || 0} prêts actifs`}
@@ -567,9 +648,7 @@ export default function FinancePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              En attente
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">En attente</CardTitle>
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
           </CardHeader>
           <CardContent>
@@ -842,7 +921,8 @@ export default function FinancePage() {
           <DialogHeader>
             <DialogTitle>Nouveau micro-prêt</DialogTitle>
             <DialogDescription>
-              Étapes {currentStep} sur {steps.length}: {steps[currentStep-1].title}
+              Étapes {currentStep} sur {steps.length}:{" "}
+              {steps[currentStep - 1].title}
             </DialogDescription>
           </DialogHeader>
 
@@ -856,8 +936,8 @@ export default function FinancePage() {
                       currentStep === step.number
                         ? "border-[#3A8F4C] bg-[#3A8F4C] text-white"
                         : currentStep > step.number
-                        ? "border-[#3A8F4C] bg-[#3A8F4C] text-white"
-                        : "border-muted-foreground text-muted-foreground"
+                          ? "border-[#3A8F4C] bg-[#3A8F4C] text-white"
+                          : "border-muted-foreground text-muted-foreground"
                     }`}
                   >
                     {currentStep > step.number ? (
@@ -943,8 +1023,8 @@ export default function FinancePage() {
                         checkingEligibility
                           ? "bg-gray-50"
                           : eligibility?.eligible
-                          ? "bg-green-50 border-green-200"
-                          : "bg-red-50 border-red-200"
+                            ? "bg-green-50 border-green-200"
+                            : "bg-red-50 border-red-200"
                       }`}
                     >
                       {checkingEligibility ? (
@@ -974,16 +1054,15 @@ export default function FinancePage() {
                           </div>
                           <div className="text-sm space-y-1">
                             <p>
-                              Score de crédit: <strong>{eligibility.creditScore}</strong>{" "}
+                              Score de crédit:{" "}
+                              <strong>{eligibility.creditScore}</strong>{" "}
                               (minimum: {eligibility.minimumScoreRequired})
                             </p>
                             <p>
                               Montant max autorisé:{" "}
                               <strong>₳ {eligibility.maxAmountAllowed}</strong>
                             </p>
-                            <p>
-                              Prêts actifs: {eligibility.activeLoansCount}
-                            </p>
+                            <p>Prêts actifs: {eligibility.activeLoansCount}</p>
                             {eligibility.reason && (
                               <p className="text-red-600 mt-2">
                                 ⚠️ {eligibility.reason}
@@ -1059,9 +1138,14 @@ export default function FinancePage() {
                           // Calculate duration in days from today
                           const today = new Date();
                           const diffTime = date.getTime() - today.getTime();
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          const diffDays = Math.ceil(
+                            diffTime / (1000 * 60 * 60 * 24)
+                          );
                           if (diffDays > 0) {
-                            setFormData({ ...formData, durationDays: diffDays });
+                            setFormData({
+                              ...formData,
+                              durationDays: diffDays,
+                            });
                           }
                         }
                       }}
@@ -1069,7 +1153,8 @@ export default function FinancePage() {
                       minDate={new Date()}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Si non sélectionnée, l'échéance sera calculée à partir de la durée
+                      Si non sélectionnée, l'échéance sera calculée à partir de
+                      la durée
                     </p>
                   </div>
                 </div>
@@ -1079,7 +1164,9 @@ export default function FinancePage() {
               {currentStep === 2 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                   <div className="grid gap-2">
-                    <Label htmlFor="identificationNumber">Numéro d'identification</Label>
+                    <Label htmlFor="identificationNumber">
+                      Numéro d'identification
+                    </Label>
                     <Input
                       id="identificationNumber"
                       value={formData.identificationNumber || ""}
@@ -1092,7 +1179,7 @@ export default function FinancePage() {
                       placeholder="CNI, Passeport, etc."
                     />
                   </div>
-                  
+
                   <div className="grid gap-2">
                     <Label htmlFor="loanPurpose">Objet du prêt</Label>
                     <Input
@@ -1128,7 +1215,7 @@ export default function FinancePage() {
                       placeholder="Justificatif"
                     />
                   </div>
-                  
+
                   <FileUpload
                     label="Garantie / Caution"
                     value={formData.guaranteeDocumentUrl}
@@ -1141,7 +1228,7 @@ export default function FinancePage() {
                 </div>
               )}
             </div>
-            
+
             <DialogFooter className="flex justify-between sm:justify-between">
               {currentStep > 1 ? (
                 <Button
@@ -1167,7 +1254,13 @@ export default function FinancePage() {
                   onClick={() => setCurrentStep(currentStep + 1)}
                   className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
                   disabled={
-                    currentStep === 1 && (!formData.farmerId || formData.amountADA <= 0 || formData.interestRate === undefined || formData.interestRate === null || !formData.durationDays || !formData.loanContractHash)
+                    currentStep === 1 &&
+                    (!formData.farmerId ||
+                      formData.amountADA <= 0 ||
+                      formData.interestRate === undefined ||
+                      formData.interestRate === null ||
+                      !formData.durationDays ||
+                      !formData.loanContractHash)
                   }
                 >
                   Suivant
@@ -1209,18 +1302,27 @@ export default function FinancePage() {
                 <Select
                   value={updateData.status}
                   onValueChange={(value) =>
-                    setUpdateData({ ...updateData, status: value as LoanStatus })
+                    setUpdateData({
+                      ...updateData,
+                      status: value as LoanStatus,
+                    })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={LoanStatus.PENDING}>En attente</SelectItem>
-                    <SelectItem value={LoanStatus.APPROVED}>Approuvé</SelectItem>
+                    <SelectItem value={LoanStatus.PENDING}>
+                      En attente
+                    </SelectItem>
+                    <SelectItem value={LoanStatus.APPROVED}>
+                      Approuvé
+                    </SelectItem>
                     <SelectItem value={LoanStatus.ACTIVE}>Actif</SelectItem>
                     <SelectItem value={LoanStatus.REPAID}>Remboursé</SelectItem>
-                    <SelectItem value={LoanStatus.DEFAULTED}>En défaut</SelectItem>
+                    <SelectItem value={LoanStatus.DEFAULTED}>
+                      En défaut
+                    </SelectItem>
                     <SelectItem value={LoanStatus.REJECTED}>Rejeté</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1302,12 +1404,16 @@ export default function FinancePage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Taux d'intérêt</p>
+                  <p className="text-sm text-muted-foreground">
+                    Taux d'intérêt
+                  </p>
                   <p className="font-medium">{selectedLoan.interestRate}%</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Durée</p>
-                  <p className="font-medium">{selectedLoan.durationDays} jours</p>
+                  <p className="font-medium">
+                    {selectedLoan.durationDays} jours
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Statut</p>
@@ -1319,7 +1425,9 @@ export default function FinancePage() {
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Date d'échéance</p>
+                  <p className="text-sm text-muted-foreground">
+                    Date d'échéance
+                  </p>
                   <p className="font-medium">
                     {selectedLoan.dueDate
                       ? new Date(selectedLoan.dueDate).toLocaleDateString()
@@ -1356,7 +1464,9 @@ export default function FinancePage() {
                   )}
                   {selectedLoan.repaidAt && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Remboursé le</span>
+                      <span className="text-muted-foreground">
+                        Remboursé le
+                      </span>
                       <span>
                         {new Date(selectedLoan.repaidAt).toLocaleString()}
                       </span>
@@ -1382,6 +1492,21 @@ export default function FinancePage() {
                   {selectedLoan.loanContractHash}
                 </code>
               </div>
+
+              {/* Transaction Hash Link */}
+              {selectedLoan.transactionHash && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-2">Transaction Blockchain</h4>
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => window.open(`https://preprod.cardanoscan.io/transaction/${selectedLoan.transactionHash}`, '_blank')}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Voir sur Cardanoscan
+                  </Button>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
@@ -1431,6 +1556,12 @@ export default function FinancePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Wallet Connect Dialog */}
+      <WalletConnectDialog
+        open={isWalletDialogOpen}
+        onOpenChange={setIsWalletDialogOpen}
+      />
 
       {/* Reject Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>

@@ -7,33 +7,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-  Search,
-  Filter,
-  SlidersHorizontal,
-  ShoppingCart,
-  Star,
-  MapPin,
-  TrendingUp,
-  Package,
-  Users,
-  Grid3x3,
-  List,
-  X,
-  Heart,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-  Minus,
-  Plus,
-  MessageCircle,
+    Search,
+    Filter,
+    SlidersHorizontal,
+    ShoppingCart,
+    Star,
+    MapPin,
+    TrendingUp,
+    Package,
+    Users,
+    Grid3x3,
+    List,
+    X,
+    Heart,
+    Share2,
+    ChevronLeft,
+    ChevronRight,
+    Minus,
+    Plus,
+    MessageCircle,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -41,12 +41,14 @@ import { ImageGallery } from "@/components/image-gallery";
 import { ProductLocationMap } from "@/components/product-location-map";
 import { ProductTraceability } from "@/components/product-traceability";
 import { ProductChat } from "@/components/product-chat";
-import { useCart } from "@/hooks";
+import { useCart, useActiveMarketplaceItems } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { MarketplaceItem } from "@/types/marketplace";
 
 // Types de produits
-type ProductCategory = "all" | "cacao" | "cafe" | "manioc" | "autres";
+// Types de produits
+type ProductCategory = string;
 type SortOption = "recent" | "price-asc" | "price-desc" | "popular";
 
 interface Product {
@@ -236,6 +238,49 @@ export default function MarketplacePage() {
   // Panier
   const { addToCart } = useCart();
 
+  // Récupérer les produits depuis l'API
+  const { data: apiItems, isLoading: isLoadingItems } = useActiveMarketplaceItems();
+
+  // Mapper les items API vers le format Product local
+  const mapApiItemToProduct = (item: MarketplaceItem): Product => {
+    // Déterminer la catégorie basée sur le produit du lot
+    let category = "autres";
+    const productName = item.batch?.harvests?.[0]?.product?.name;
+    
+    if (productName) {
+      // Normaliser le nom pour créer une catégorie (minuscule, sans accents, etc.)
+      const normalized = productName.toLowerCase();
+      if (normalized.includes("cacao")) category = "cacao";
+      else if (normalized.includes("café") || normalized.includes("cafe")) category = "cafe";
+      else if (normalized.includes("manioc")) category = "manioc";
+      else category = normalized; // Utiliser le nom brut comme catégorie si pas de correspondance
+    }
+
+    return {
+      id: item.id,
+      name: item.title,
+      category: category as ProductCategory,
+      price: item.priceADA,
+      currency: "ADA",
+      images: item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls : ["📦"],
+      description: item.description || "Produit du marketplace",
+      producer: item.farmer?.name || "Producteur local",
+      location: item.farmer?.location || "RDC",
+      latitude: -4.0383,
+      longitude: 21.7587,
+      rating: 4.5,
+      reviews: 0,
+      stock: item.stockKg,
+      certified: true,
+      blockchainHash: `0x${item.id.slice(0, 8)}...${item.id.slice(-4)}`,
+    };
+  };
+
+  // utiliser les produits API si disponibles, sinon fallback sur mock
+  const products: Product[] = apiItems && apiItems.length > 0
+    ? apiItems.map(mapApiItemToProduct)
+    : mockProducts;
+
   // Filtres avancés
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -243,10 +288,10 @@ export default function MarketplacePage() {
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   // Obtenir toutes les localisations uniques
-  const locations = Array.from(new Set(mockProducts.map((p) => p.location)));
+  const locations = Array.from(new Set(products.map((p) => p.location)));
 
   // Filtrer et trier les produits
-  const filteredProducts = mockProducts
+  const filteredProducts = products
     .filter((product) => {
       const matchesSearch =
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -321,14 +366,47 @@ export default function MarketplacePage() {
     setQuantity(1); // Réinitialiser la quantité à chaque ouverture
   };
 
-  const categories: { value: ProductCategory; label: string; icon: string }[] =
-    [
-      { value: "all", label: "Tous", icon: "📦" },
-      { value: "cacao", label: "Cacao", icon: "🌰" },
-      { value: "cafe", label: "Café", icon: "☕" },
-      { value: "manioc", label: "Manioc", icon: "🍠" },
-      { value: "autres", label: "Autres", icon: "🌾" },
-    ];
+  // Générer les catégories dynamiquement à partir des produits existants
+  const categories: { value: string; label: string; icon: string }[] = [
+    { value: "all", label: "Tous", icon: "📦" },
+  ];
+
+  // Extraire les catégories uniques des produits
+  const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
+  
+  uniqueCategories.forEach(cat => {
+    if (cat === "all") return;
+    
+    let label = cat.charAt(0).toUpperCase() + cat.slice(1);
+    let icon = "🌾"; // Default icon
+
+    // Custom icons and labels mapping
+    const normalized = cat.toLowerCase();
+    if (normalized.includes("cacao")) {
+      label = "Cacao";
+      icon = "🌰";
+    } else if (normalized.includes("cafe") || normalized.includes("café")) {
+      label = "Café";
+      icon = "☕";
+    } else if (normalized.includes("manioc")) {
+      label = "Manioc";
+      icon = "🍠";
+    } else if (normalized.includes("mais") || normalized.includes("maïs")) {
+      label = "Maïs";
+      icon = "🌽";
+    } else if (normalized.includes("riz")) {
+      label = "Riz";
+      icon = "🍚";
+    } else if (normalized.includes("huile")) {
+      label = "Huile";
+      icon = "🫒";
+    } else if (normalized.includes("miel")) {
+      label = "Miel";
+      icon = "🍯";
+    }
+
+    categories.push({ value: cat, label, icon });
+  });
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: "recent", label: "Plus récent" },
@@ -550,7 +628,7 @@ export default function MarketplacePage() {
               <CardContent className="p-4 text-center">
                 <Package className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
                 <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                  {mockProducts.length}
+                  {products.length}
                 </p>
                 <p className="text-xs text-[#004D73] dark:text-white/70">
                   Produits
@@ -561,7 +639,7 @@ export default function MarketplacePage() {
               <CardContent className="p-4 text-center">
                 <Users className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
                 <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                  {new Set(mockProducts.map((p) => p.producer)).size}
+                  {new Set(products.map((p) => p.producer)).size}
                 </p>
                 <p className="text-xs text-[#004D73] dark:text-white/70">
                   Producteurs
@@ -583,7 +661,10 @@ export default function MarketplacePage() {
               <CardContent className="p-4 text-center">
                 <Star className="w-6 h-6 text-[#3A8F4C] mx-auto mb-2" />
                 <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                  4.7
+                  {(
+                    products.reduce((acc, p) => acc + p.rating, 0) /
+                      products.length || 0
+                  ).toFixed(1)}
                 </p>
                 <p className="text-xs text-[#004D73] dark:text-white/70">
                   Note moyenne

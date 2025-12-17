@@ -3,11 +3,11 @@
 import * as React from "react";
 import { CalendarClock, Loader2, Plus, Search } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,8 @@ type Harvest = {
   id: string;
   farmerId?: string;
   productId?: string;
-  farmer?: { id: string };
-  product?: { id: string };
+  farmer?: { id: string; name?: string };
+  product?: { id: string; name?: string };
   quantity: number;
   harvestAt: string;
   latitude?: number;
@@ -275,15 +275,17 @@ export default function HarvestPage() {
                       harvests.map((harvest) => (
                         <tr key={harvest.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {farmers.find((f) => f.id === harvest.farmerId)
-                              ?.name ||
+                            {harvest.farmer?.name ||
+                              farmers.find((f) => f.id === harvest.farmerId)
+                                ?.name ||
                               harvest.farmerId ||
                               harvest.farmer?.id ||
                               "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {products.find((p) => p.id === harvest.productId)
-                              ?.name ||
+                            {harvest.product?.name ||
+                              products.find((p) => p.id === harvest.productId)
+                                ?.name ||
                               harvest.productId ||
                               harvest.product?.id ||
                               "-"}

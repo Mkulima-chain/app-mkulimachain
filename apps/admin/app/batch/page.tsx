@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  FileText,
   Plus,
   Search,
   Edit,
@@ -10,6 +9,8 @@ import {
   MoreVertical,
   Loader2,
   QrCode,
+  Check,
+  Eye
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -31,22 +32,8 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
-
-type Batch = {
-  id: string
-  qrCode: string
-  batchHash: string
-  status: string
-  harvests?: { id: string }[]
-  createdAt: string
-}
-
-type CreateBatchDto = {
-  harvestIds: string[]
-  qrCode: string
-  batchHash: string
-  status?: string
-}
+import { Batch, CreateBatchDto, BatchStatus } from "@/types/batch"
+import { Harvest } from "@/types/harvest"
 
 const batchStatuses = [
   { value: "created", label: "Créé" },
@@ -58,18 +45,28 @@ export default function BatchPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedBatch, setSelectedBatch] = React.useState<Batch | null>(null)
+  
+  // Utilisation directe du type CreateBatchDto importé
   const [formData, setFormData] = React.useState<CreateBatchDto>({
     harvestIds: [],
     qrCode: "",
     batchHash: "",
-    status: "created",
+    status: BatchStatus.CREATED,
   })
 
-  const { data: batches = [], isLoading, refetch } = useApiQuery<Batch[]>(
+  // Récupération des lots
+  const { data: batches = [], isLoading: isLoadingBatches, refetch } = useApiQuery<Batch[]>(
     ["batches", searchQuery],
     `/batches${searchQuery ? `?qrCode=${encodeURIComponent(searchQuery)}` : ""}`
+  )
+
+  // Récupération des récoltes pour la sélection
+  const { data: harvests = [], isLoading: isLoadingHarvests } = useApiQuery<Harvest[]>(
+    ["harvests"],
+    "/harvests"
   )
 
   const createMutation = useApiMutation<Batch, CreateBatchDto>(
@@ -111,11 +108,13 @@ export default function BatchPage() {
   )
 
   const handleAdd = () => {
+    // Générer un QR code et un hash par défaut pour faciliter la saisie
+    const timestamp = Date.now();
     setFormData({
       harvestIds: [],
-      qrCode: "",
-      batchHash: "",
-      status: "created",
+      qrCode: `BATCH-${timestamp}`,
+      batchHash: `HASH-${timestamp}`,
+      status: BatchStatus.CREATED,
     })
     setIsAddDialogOpen(true)
   }
@@ -126,7 +125,8 @@ export default function BatchPage() {
       harvestIds: batch.harvests?.map((h) => h.id) || [],
       qrCode: batch.qrCode,
       batchHash: batch.batchHash,
-      status: batch.status,
+      // @ts-ignore - Le type status de l'API peut ne pas correspondre exactement à l'enum local si pas strict
+      status: batch.status, 
     })
     setIsEditDialogOpen(true)
   }
@@ -136,8 +136,17 @@ export default function BatchPage() {
     setIsDeleteDialogOpen(true)
   }
 
+  const handleView = (batch: Batch) => {
+    setSelectedBatch(batch)
+    setIsViewDialogOpen(true)
+  }
+
   const handleSubmitAdd = (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.harvestIds.length === 0) {
+      toast.error("Veuillez sélectionner au moins une récolte")
+      return
+    }
     createMutation.mutate(formData)
   }
 
@@ -152,13 +161,60 @@ export default function BatchPage() {
     deleteMutation.mutate(undefined)
   }
 
-  const harvestIdsAsText = (ids: string[]) => ids.join(", ")
+  const toggleHarvestSelection = (harvestId: string) => {
+    setFormData(prev => {
+      const isSelected = prev.harvestIds.includes(harvestId);
+      if (isSelected) {
+        return { ...prev, harvestIds: prev.harvestIds.filter(id => id !== harvestId) };
+      } else {
+        return { ...prev, harvestIds: [...prev.harvestIds, harvestId] };
+      }
+    });
+  }
 
-  const parseHarvestIds = (value: string) =>
-    value
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean)
+  const renderHarvestSelection = () => (
+    <div className="grid gap-2">
+      <Label>Sélectionner les récoltes à inclure *</Label>
+      {isLoadingHarvests ? (
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" /> Chargement des récoltes...
+        </div>
+      ) : harvests.length === 0 ? (
+        <div className="p-4 border rounded-md text-sm text-center text-muted-foreground bg-muted/20">
+          Aucune récolte disponible. Veuillez d'abord ajouter des récoltes.
+        </div>
+      ) : (
+        <div className="max-h-[200px] overflow-y-auto border rounded-md p-2 space-y-2 bg-muted/10">
+          {harvests.map((harvest) => {
+            const isSelected = formData.harvestIds.includes(harvest.id);
+            return (
+              <div 
+                key={harvest.id} 
+                className={`flex items-start gap-3 p-2 rounded cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted"}`}
+                onClick={() => toggleHarvestSelection(harvest.id)}
+              >
+                <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? "bg-[#3A8F4C] border-[#3A8F4C] text-white" : "border-muted-foreground"}`}>
+                  {isSelected && <Check className="h-3 w-3" />}
+                </div>
+                <div className="flex-1 text-sm">
+                  <div className="font-medium text-foreground">
+                    {harvest.quantity}kg - {harvest.product?.name || "Produit inconnu"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Du {new Date(harvest.harvestAt).toLocaleDateString()}
+                    {harvest.farmer?.name && ` • ${harvest.farmer.name}`}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="text-xs text-muted-foreground text-right">
+        {formData.harvestIds.length} récolte(s) sélectionnée(s)
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -166,7 +222,7 @@ export default function BatchPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Lots</h1>
           <p className="text-muted-foreground mt-1">
-            Gérez les lots de produits
+            Gérez les lots de produits (Batches)
           </p>
         </div>
         <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
@@ -201,7 +257,7 @@ export default function BatchPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {isLoadingBatches ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
@@ -218,6 +274,9 @@ export default function BatchPage() {
                         Hash
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Récoltes
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Statut
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -228,21 +287,30 @@ export default function BatchPage() {
                   <tbody className="divide-y">
                     {batches.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
+                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                           Aucun lot trouvé
                         </td>
                       </tr>
                     ) : (
                       batches.map((batch) => (
                         <tr key={batch.id} className="hover:bg-muted/50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
                             {batch.qrCode}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-muted-foreground">
+                            {batch.batchHash.substring(0, 12)}...
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {batch.batchHash}
+                            {batch.harvests?.length || 0} récolte(s)
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm capitalize">
-                            {batch.status}
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              batch.status === 'created' ? 'bg-blue-100 text-blue-800' :
+                              batch.status === 'processed' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {batchStatuses.find(s => s.value === batch.status)?.label || batch.status}
+                            </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <Popover>
@@ -259,6 +327,13 @@ export default function BatchPage() {
                                   >
                                     <Edit className="h-4 w-4" />
                                     Modifier
+                                  </button>
+                                  <button
+                                    onClick={() => handleView(batch)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    Détails
                                   </button>
                                   <button
                                     onClick={() => handleDelete(batch)}
@@ -287,29 +362,21 @@ export default function BatchPage() {
           <DialogHeader>
             <DialogTitle>Créer un lot</DialogTitle>
             <DialogDescription>
-              Renseignez les informations du lot
+              Sélectionnez les récoltes à grouper dans ce lot
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="harvestIds">Harvest IDs (séparés par des virgules) *</Label>
-                <Input
-                  id="harvestIds"
-                  placeholder="uuid1, uuid2"
-                  value={harvestIdsAsText(formData.harvestIds)}
-                  onChange={(e) =>
-                    setFormData({ ...formData, harvestIds: parseHarvestIds(e.target.value) })
-                  }
-                  required
-                />
-              </div>
+              
+              {renderHarvestSelection()}
+              
               <div className="grid gap-2">
                 <Label htmlFor="qrCode">QR Code *</Label>
                 <Input
                   id="qrCode"
                   value={formData.qrCode}
                   onChange={(e) => setFormData({ ...formData, qrCode: e.target.value })}
+                  placeholder="BATCH-..."
                   required
                 />
               </div>
@@ -319,6 +386,7 @@ export default function BatchPage() {
                   id="batchHash"
                   value={formData.batchHash}
                   onChange={(e) => setFormData({ ...formData, batchHash: e.target.value })}
+                  placeholder="Hash unique du lot"
                   required
                 />
               </div>
@@ -326,9 +394,9 @@ export default function BatchPage() {
                 <Label htmlFor="status">Statut</Label>
                 <select
                   id="status"
-                  className="border rounded-md px-3 py-2 bg-background"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                 >
                   {batchStatuses.map((status) => (
                     <option key={status.value} value={status.value}>
@@ -350,7 +418,7 @@ export default function BatchPage() {
               <Button
                 type="submit"
                 className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || formData.harvestIds.length === 0}
               >
                 {createMutation.isPending ? (
                   <>
@@ -358,7 +426,7 @@ export default function BatchPage() {
                     Création...
                   </>
                 ) : (
-                  "Créer"
+                  "Créer le lot"
                 )}
               </Button>
             </DialogFooter>
@@ -376,17 +444,9 @@ export default function BatchPage() {
           </DialogHeader>
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-harvestIds">Harvest IDs (virgules) *</Label>
-                <Input
-                  id="edit-harvestIds"
-                  value={harvestIdsAsText(formData.harvestIds)}
-                  onChange={(e) =>
-                    setFormData({ ...formData, harvestIds: parseHarvestIds(e.target.value) })
-                  }
-                  required
-                />
-              </div>
+              
+              {renderHarvestSelection()}
+
               <div className="grid gap-2">
                 <Label htmlFor="edit-qrCode">QR Code *</Label>
                 <Input
@@ -409,9 +469,9 @@ export default function BatchPage() {
                 <Label htmlFor="edit-status">Statut</Label>
                 <select
                   id="edit-status"
-                  className="border rounded-md px-3 py-2 bg-background"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                 >
                   {batchStatuses.map((status) => (
                     <option key={status.value} value={status.value}>
@@ -478,6 +538,96 @@ export default function BatchPage() {
               ) : (
                 "Supprimer"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails du lot</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur le lot et ses récoltes
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedBatch && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">QR Code</Label>
+                  <div className="font-mono font-medium">{selectedBatch.qrCode}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Statut</Label>
+                  <div className="capitalize">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedBatch.status === 'created' ? 'bg-blue-100 text-blue-800' :
+                      selectedBatch.status === 'processed' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {batchStatuses.find(s => s.value === selectedBatch.status)?.label || selectedBatch.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-muted-foreground">Hash</Label>
+                  <div className="font-mono text-sm break-all">{selectedBatch.batchHash}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Date de création</Label>
+                  <div>{new Date(selectedBatch.createdAt).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <div className="h-4 w-1 bg-[#3A8F4C] rounded-full" />
+                  Récoltes incluses ({selectedBatch.harvests?.length || 0})
+                </h4>
+                
+                <div className="max-h-[250px] overflow-y-auto border rounded-md p-2 space-y-2 bg-muted/10">
+                  {selectedBatch.harvests && selectedBatch.harvests.length > 0 ? (
+                    selectedBatch.harvests.map((harvestRef) => {
+                      // Try to find full harvest details if available in the global list
+                      const harvestDetails = harvests.find(h => h.id === harvestRef.id);
+                      
+                      return (
+                        <div key={harvestRef.id} className="flex items-start gap-3 p-3 bg-background rounded border">
+                          <div className="flex-1 text-sm">
+                            {harvestDetails ? (
+                              <>
+                                <div className="font-medium text-foreground">
+                                  {harvestDetails.quantity}kg - {harvestDetails.product?.name || "Produit inconnu"}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Du {new Date(harvestDetails.harvestAt).toLocaleDateString()}
+                                  {harvestDetails.farmer && ` • ${harvestDetails.farmer.name}`}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-muted-foreground">
+                                ID: {harvestRef.id} (Détails non disponibles)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      Aucune récolte associée
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setIsViewDialogOpen(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>

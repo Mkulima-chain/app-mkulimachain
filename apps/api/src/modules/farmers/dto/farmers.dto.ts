@@ -35,6 +35,23 @@ export class CreateFarmerDto {
   phone!: string;
 
   @ApiPropertyOptional({
+    description: 'Numéro Mobile Money',
+    example: '+243812345678',
+  })
+  @IsString()
+  @IsOptional()
+  @IsPhoneNumber()
+  mobileMoneyNumber?: string;
+
+  @ApiPropertyOptional({
+    description: 'Fournisseur Mobile Money (Airtel, Orange, Vodacom, Africell)',
+    example: 'Airtel',
+  })
+  @IsString()
+  @IsOptional()
+  mobileMoneyProvider?: string;
+
+  @ApiPropertyOptional({
     description: 'Adresse du portefeuille Cardano (ADA)',
     example:
       'addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp',
@@ -102,7 +119,7 @@ export class CreateFarmerDto {
   cooperativeId?: string;
 }
 
-export class UpdateFarmerDto extends PartialType(CreateFarmerDto) {}
+export class UpdateFarmerDto extends PartialType(CreateFarmerDto) { }
 
 export class GetFarmerDto {
   @ApiPropertyOptional({
@@ -163,6 +180,12 @@ export class FarmerResponseDto {
 
   @ApiProperty({ example: '+243812345678' })
   phone!: string;
+
+  @ApiPropertyOptional({ example: '+243812345678' })
+  mobileMoneyNumber?: string;
+
+  @ApiPropertyOptional({ example: 'Airtel' })
+  mobileMoneyProvider?: string;
 
   @ApiPropertyOptional({
     example:

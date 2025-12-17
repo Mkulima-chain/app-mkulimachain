@@ -42,7 +42,15 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
           <div className="flex gap-4 p-4">
             {/* Product Image */}
             <div className="relative w-32 h-32 flex-shrink-0 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 rounded-lg flex items-center justify-center overflow-hidden">
-              <span className="text-5xl">{product.images[0]}</span>
+              {product.images[0].startsWith('http') || product.images[0].startsWith('/') ? (
+                <img 
+                  src={product.images[0]} 
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-5xl">{product.images[0]}</span>
+              )}
               {product.images.length > 1 && (
                 <div className="absolute top-2 left-2 bg-black/50 dark:bg-black/70 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1">
                   <Images className="w-3 h-3" />
@@ -155,7 +163,15 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative h-48 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center rounded-t-lg overflow-hidden">
-          <span className="text-8xl transition-transform duration-300 group-hover:scale-110">{product.images[0]}</span>
+          {product.images[0].startsWith('http') || product.images[0].startsWith('/') ? (
+            <img 
+              src={product.images[0]} 
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            />
+          ) : (
+            <span className="text-8xl transition-transform duration-300 group-hover:scale-110">{product.images[0]}</span>
+          )}
           
           {/* Image count badge */}
           {product.images.length > 1 && (

@@ -3,12 +3,12 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ type CreateFarmerDto = {
   state: string;
   latitude: number;
   longitude: number;
+  mobileMoneyNumber?: string;
+  mobileMoneyProvider?: string;
   cooperativeId?: string;
 };
 
@@ -93,6 +95,35 @@ export function EditFarmerDialog({
                 onChange={(e) => handleChange("walletAddress", e.target.value)}
               />
             </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-mobileMoneyProvider">Réseau Mobile Money</Label>
+                <select
+                  id="edit-mobileMoneyProvider"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={formData.mobileMoneyProvider || ""}
+                  onChange={(e) => handleChange("mobileMoneyProvider", e.target.value)}
+                >
+                  <option value="">Sélectionner...</option>
+                  <option value="Airtel">Airtel Money</option>
+                  <option value="Orange">Orange Money</option>
+                  <option value="Vodacom">M-Pesa</option>
+                  <option value="Africell">Africell Money</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-mobileMoneyNumber">Numéro Mobile Money</Label>
+                <Input
+                  id="edit-mobileMoneyNumber"
+                  type="tel"
+                  placeholder="+243..."
+                  value={formData.mobileMoneyNumber || ""}
+                  onChange={(e) => handleChange("mobileMoneyNumber", e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="edit-address">Adresse *</Label>
               <Input

@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useCartSync } from "./use-cart-sync";
@@ -58,8 +58,12 @@ export function CartDropdown() {
                     key={item.productId}
                     className="flex items-center gap-3 pb-3 border-b border-[#004D73]/10 dark:border-white/10 last:border-0"
                   >
-                    <div className="w-16 h-16 rounded-lg bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 flex items-center justify-center shrink-0">
-                      <span className="text-2xl">{item.productImage}</span>
+                    <div className="w-16 h-16 rounded-lg bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 flex items-center justify-center shrink-0 overflow-hidden">
+                      {(item.productImage.startsWith('http') || item.productImage.startsWith('/')) ? (
+                        <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">{item.productImage}</span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm text-[#5A3E36] dark:text-white truncate">

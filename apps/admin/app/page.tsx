@@ -15,54 +15,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { getAuth, StoredUser } from "@/lib/auth-storage"
 import { api } from "@/lib/api-client"
+import { StatsSummary } from "@/types"
 
-type StatsSummary = {
-  farmers: number
-  products: number
-  orders: number
-  revenueAda: number
+
+type Activity = {
+  id: string
+  type: "order" | "product" | "farmer"
+  title: string
+  description: string
+  time: string
+  status: "success" | "info" | "warning" | "default" | "secondary" | "outline" | "destructive"
 }
-
-const recentActivities = [
-  {
-    id: 1,
-    type: "order",
-    title: "Nouvelle commande",
-    description: "Commande #1234 de Jean Mukendi",
-    time: "Il y a 5 minutes",
-    status: "success",
-  },
-  {
-    id: 2,
-    type: "product",
-    title: "Produit ajouté",
-    description: "Cacao premium ajouté par Marie Kabila",
-    time: "Il y a 12 minutes",
-    status: "info",
-  },
-  {
-    id: 3,
-    type: "farmer",
-    title: "Nouvel agriculteur",
-    description: "Pierre Kasa s'est inscrit",
-    time: "Il y a 1 heure",
-    status: "success",
-  },
-  {
-    id: 4,
-    type: "nft",
-    title: "NFT vendu",
-    description: "NFT culturel vendu pour 50 ADA",
-    time: "Il y a 2 heures",
-    status: "success",
-  },
-]
 
 export default function DashboardPage() {
   const [user, setUser] = React.useState<StoredUser | undefined>()
   const { data: stats } = useQuery<StatsSummary>({
     queryKey: ["stats", "summary"],
     queryFn: () => api.get<StatsSummary>("/stats/summary"),
+  })
+
+  const { data: activities = [] } = useQuery<Activity[]>({
+    queryKey: ["stats", "activities"],
+    queryFn: () => api.get<Activity[]>("/stats/activities"),
   })
 
   React.useEffect(() => {
@@ -187,39 +161,45 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0"
-                >
-                  <div className="mt-1">
-                    <div className="h-2 w-2 rounded-full bg-[#3A8F4C]"></div>
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      <Badge
-                        variant={
-                          activity.status === "success"
-                            ? "default"
-                            : activity.status === "info"
-                            ? "secondary"
-                            : "outline"
-                        }
-                        className="text-xs"
-                      >
-                        {activity.status}
-                      </Badge>
+              {activities.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucune activité récente
+                </p>
+              ) : (
+                activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0"
+                  >
+                    <div className="mt-1">
+                      <div className="h-2 w-2 rounded-full bg-[#3A8F4C]"></div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.time}
-                    </p>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{activity.title}</p>
+                        <Badge
+                          variant={
+                            activity.status === "success"
+                              ? "default"
+                              : activity.status === "info"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-xs"
+                        >
+                          {activity.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.time).toLocaleDateString()} {new Date(activity.time).toLocaleTimeString()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -307,12 +287,12 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              { name: "API", status: "online", value: "99.9%" },
-              { name: "Base de données", status: "online", value: "100%" },
-              { name: "Blockchain", status: "online", value: "99.8%" },
-              { name: "Marketplace", status: "online", value: "100%" },
-            ].map((service) => (
+            {(stats?.systemStatus || [
+              { name: "API", status: "online", value: "..." },
+              { name: "Base de données", status: "online", value: "..." },
+              { name: "Blockchain", status: "online", value: "..." },
+              { name: "Marketplace", status: "online", value: "..." },
+            ]).map((service) => (
               <div
                 key={service.name}
                 className="flex items-center justify-between rounded-lg border p-4"
@@ -323,7 +303,15 @@ export default function DashboardPage() {
                     Disponibilité: {service.value}
                   </p>
                 </div>
-                <div className="h-3 w-3 rounded-full bg-[#3A8F4C]"></div>
+                <div
+                  className={`h-3 w-3 rounded-full ${
+                    service.status === "online"
+                      ? "bg-[#3A8F4C]"
+                      : service.status === "degraded"
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
+                  }`}
+                ></div>
               </div>
             ))}
           </div>

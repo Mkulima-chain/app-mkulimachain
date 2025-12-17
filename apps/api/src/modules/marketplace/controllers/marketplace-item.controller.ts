@@ -26,11 +26,13 @@ import {
   MarketplaceItemResponseDto,
 } from '../dto/marketplace-item.dto';
 import { MarketplaceItemEntity } from '../entities/marketplace-item.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('marketplace')
 @Controller('marketplace')
+@Public() // Rendre le marketplace accessible publiquement
 export class MarketplaceItemController {
-  constructor(private readonly service: MarketplaceItemService) {}
+  constructor(private readonly service: MarketplaceItemService) { }
 
   @Post()
   @ApiOperation({
@@ -57,7 +59,7 @@ export class MarketplaceItemController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des articles',
-    type: [MarketplaceItemResponseDto],
+    type: [ MarketplaceItemResponseDto ],
   })
   async findAll(
     @Query() query: GetMarketplaceItemDto,
@@ -73,7 +75,7 @@ export class MarketplaceItemController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Articles actifs',
-    type: [MarketplaceItemResponseDto],
+    type: [ MarketplaceItemResponseDto ],
   })
   async findActive(): Promise<MarketplaceItemEntity[]> {
     return this.service.findActive();
@@ -91,7 +93,7 @@ export class MarketplaceItemController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Articles du vendeur',
-    type: [MarketplaceItemResponseDto],
+    type: [ MarketplaceItemResponseDto ],
   })
   async findByFarmerId(
     @Param('farmerId', ParseUUIDPipe) farmerId: string,

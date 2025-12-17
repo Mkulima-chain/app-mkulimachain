@@ -17,7 +17,7 @@ export interface IMarketplaceItem {
   priceADA: number;
   stockKg: number;
   status: MarketplaceItemStatus;
-  imageUrl?: string;
+  imageUrls?: string[];
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

@@ -25,11 +25,13 @@ import {
   BatchResponseDto,
 } from '../dto/batch.dto';
 import { BatchEntity } from '../entities/batch.entity';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('batches')
 @Controller('batches')
+@Public() // Rendre les lots accessibles publiquement
 export class BatchController {
-  constructor(private readonly service: BatchService) {}
+  constructor(private readonly service: BatchService) { }
 
   @Post()
   @ApiOperation({
@@ -54,7 +56,7 @@ export class BatchController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Liste des lots',
-    type: [BatchResponseDto],
+    type: [ BatchResponseDto ],
   })
   async findAll(@Query() query: GetBatchDto): Promise<BatchEntity[]> {
     return this.service.findAll(query);

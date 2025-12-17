@@ -39,6 +39,12 @@ export class FarmerEntity implements IFarmer {
   @Column({ type: 'varchar', length: 255 })
   state!: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  mobileMoneyNumber?: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  mobileMoneyProvider?: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 7 })
   latitude!: number;
 

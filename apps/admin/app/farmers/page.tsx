@@ -2,28 +2,28 @@
 
 import * as React from "react";
 import {
-  Users,
-  Search,
-  Plus,
-  Filter,
-  Edit,
-  Trash2,
-  MoreVertical,
-  Loader2,
+    Users,
+    Search,
+    Plus,
+    Filter,
+    Edit,
+    Trash2,
+    MoreVertical,
+    Loader2,
 } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
@@ -37,6 +37,8 @@ type Farmer = {
   name: string;
   phone: string;
   walletAddress?: string;
+  mobileMoneyNumber?: string;
+  mobileMoneyProvider?: string;
   address: string;
   city: string;
   state: string;
@@ -51,6 +53,8 @@ type CreateFarmerDto = {
   name: string;
   phone: string;
   walletAddress?: string;
+  mobileMoneyNumber?: string;
+  mobileMoneyProvider?: string;
   address: string;
   city: string;
   state: string;
@@ -72,6 +76,8 @@ export default function FarmersPage() {
     name: "",
     phone: "",
     walletAddress: "",
+    mobileMoneyNumber: "",
+    mobileMoneyProvider: "",
     address: "",
     city: "",
     state: "",
@@ -136,6 +142,8 @@ export default function FarmersPage() {
       name: "",
       phone: "",
       walletAddress: "",
+      mobileMoneyNumber: "",
+      mobileMoneyProvider: "",
       address: "",
       city: "",
       state: "",
@@ -152,6 +160,8 @@ export default function FarmersPage() {
       name: farmer.name,
       phone: farmer.phone,
       walletAddress: farmer.walletAddress || "",
+      mobileMoneyNumber: farmer.mobileMoneyNumber || "",
+      mobileMoneyProvider: farmer.mobileMoneyProvider || "",
       address: farmer.address,
       city: farmer.city,
       state: farmer.state,
@@ -174,6 +184,8 @@ export default function FarmersPage() {
       latitude: parseFloat(formData.latitude.toString()),
       longitude: parseFloat(formData.longitude.toString()),
       walletAddress: formData.walletAddress || undefined,
+      mobileMoneyNumber: formData.mobileMoneyNumber || undefined,
+      mobileMoneyProvider: formData.mobileMoneyProvider || undefined,
       cooperativeId: formData.cooperativeId || undefined,
     };
     createMutation.mutate(data);
@@ -187,6 +199,8 @@ export default function FarmersPage() {
       latitude: parseFloat(formData.latitude.toString()),
       longitude: parseFloat(formData.longitude.toString()),
       walletAddress: formData.walletAddress || undefined,
+      mobileMoneyNumber: formData.mobileMoneyNumber || undefined,
+      mobileMoneyProvider: formData.mobileMoneyProvider || undefined,
       cooperativeId: formData.cooperativeId || undefined,
     };
     updateMutation.mutate(data);

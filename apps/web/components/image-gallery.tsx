@@ -48,17 +48,16 @@ export function ImageGallery({
             isPlaying && "animate-pulse-slow"
           )}
         >
-          {currentImage ? (
+          {currentImage && (currentImage.startsWith('http') || currentImage.startsWith('/')) ? (
             <>
               <img
                 src={currentImage}
-                alt="NFT Image"
+                alt="Product Image"
                 className={cn(
                   "w-full h-full object-cover transition-all duration-300",
                   isPlaying && "animate-bounce-slow scale-110"
                 )}
                 onError={(e) => {
-                  // Fallback si l'image ne charge pas
                   const target = e.target as HTMLImageElement;
                   target.style.display = "none";
                   const fallback = target.parentElement?.querySelector(
@@ -75,7 +74,7 @@ export function ImageGallery({
               </span>
             </>
           ) : (
-            <span className="text-9xl transition-all duration-300">🖼️</span>
+            <span className="text-9xl transition-all duration-300">{currentImage || "🖼️"}</span>
           )}
 
           {/* Visualizer effect when playing */}
@@ -161,14 +160,13 @@ export function ImageGallery({
               )}
               aria-label={`Voir l'image ${index + 1}`}
             >
-              {image ? (
+              {image && (image.startsWith('http') || image.startsWith('/')) ? (
                 <>
                   <img
                     src={image}
                     alt={`Thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Fallback si l'image ne charge pas
                       const target = e.target as HTMLImageElement;
                       target.style.display = "none";
                       const fallback = target.parentElement?.querySelector(
@@ -186,7 +184,7 @@ export function ImageGallery({
                 </>
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center">
-                  <span className="text-3xl">🖼️</span>
+                  <span className="text-3xl">{image || "🖼️"}</span>
                 </div>
               )}
               {currentIndex === index && (

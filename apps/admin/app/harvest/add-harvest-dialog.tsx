@@ -91,7 +91,7 @@ export function AddHarvestDialog({
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un agriculteur" />
                 </SelectTrigger>
-                <SelectContent className="z-10">
+                <SelectContent className="z-[100]">
                   {farmers.map((farmer) => (
                     <SelectItem key={farmer.id} value={farmer.id}>
                       {farmer.name}
@@ -111,7 +111,7 @@ export function AddHarvestDialog({
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un produit" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[100]">
                   {products.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.name}
@@ -227,4 +227,3 @@ export function AddHarvestDialog({
     </Dialog>
   );
 }
-

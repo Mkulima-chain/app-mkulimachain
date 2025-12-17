@@ -9,8 +9,8 @@ import {
   Plus,
   Edit,
   Trash2,
-  MoreVertical,
-  Loader2,
+  MoreVertical, Loader2,
+  Eye
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { FileUpload } from "@/components/ui/file-upload"
 import { Label } from "@/components/ui/label"
 import {
   Popover,
@@ -32,6 +33,9 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import { Batch } from "@/types/batch"
+import { Farmer } from "@/types/farmer"
+import { Harvest } from "@/types/harvest"
 
 type MarketplaceItem = {
   id: string
@@ -42,8 +46,10 @@ type MarketplaceItem = {
   priceADA: number
   stockKg: number
   status: string
-  imageUrl?: string
+  imageUrls?: string[]
   createdAt: string
+  batch?: { id: string; qrCode: string; batchHash: string }
+  farmer?: { id: string; name: string }
 }
 
 type CreateMarketplaceItemDto = {
@@ -53,7 +59,7 @@ type CreateMarketplaceItemDto = {
   description?: string
   priceADA: number
   stockKg: number
-  imageUrl?: string
+  imageUrls?: string[]
   status?: string
 }
 
@@ -68,6 +74,7 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedItem, setSelectedItem] = React.useState<MarketplaceItem | null>(null)
   const [formData, setFormData] = React.useState<CreateMarketplaceItemDto>({
@@ -77,7 +84,8 @@ export default function MarketplacePage() {
     description: "",
     priceADA: 0,
     stockKg: 0,
-    imageUrl: "",
+
+    imageUrls: [],
     status: "draft",
   })
 
@@ -85,6 +93,10 @@ export default function MarketplacePage() {
     ["marketplace", searchQuery],
     `/marketplace${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`
   )
+
+  const { data: batches = [] } = useApiQuery<Batch[]>(["batches"], "/batches")
+  const { data: farmers = [] } = useApiQuery<Farmer[]>(["farmers"], "/farmers")
+  const { data: harvests = [] } = useApiQuery<Harvest[]>(["harvests"], "/harvests")
 
   const createMutation = useApiMutation<MarketplaceItem, CreateMarketplaceItemDto>(
     "/marketplace",
@@ -132,7 +144,8 @@ export default function MarketplacePage() {
       description: "",
       priceADA: 0,
       stockKg: 0,
-      imageUrl: "",
+
+      imageUrls: [],
       status: "draft",
     })
     setIsAddDialogOpen(true)
@@ -144,10 +157,11 @@ export default function MarketplacePage() {
       batchId: item.batchId,
       farmerId: item.farmerId,
       title: item.title,
-      description: item.description,
+      description: item.description || "",
       priceADA: item.priceADA,
       stockKg: item.stockKg,
-      imageUrl: item.imageUrl,
+
+      imageUrls: item.imageUrls || [],
       status: item.status,
     })
     setIsEditDialogOpen(true)
@@ -158,13 +172,21 @@ export default function MarketplacePage() {
     setIsDeleteDialogOpen(true)
   }
 
+  const handleView = (item: MarketplaceItem) => {
+    setSelectedItem(item)
+    setIsViewDialogOpen(true)
+  }
+
   const handleSubmitAdd = (e: React.FormEvent) => {
     e.preventDefault()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { status, ...dataToSend } = formData
     createMutation.mutate({
-      ...formData,
+      ...dataToSend,
       priceADA: Number(formData.priceADA),
       stockKg: Number(formData.stockKg),
-      imageUrl: formData.imageUrl || undefined,
+
+      imageUrls: formData.imageUrls,
     })
   }
 
@@ -175,7 +197,8 @@ export default function MarketplacePage() {
       ...formData,
       priceADA: Number(formData.priceADA),
       stockKg: Number(formData.stockKg),
-      imageUrl: formData.imageUrl || undefined,
+
+      imageUrls: formData.imageUrls,
     })
   }
 
@@ -301,7 +324,7 @@ export default function MarketplacePage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium">{item.title}</div>
                             <div className="text-xs text-muted-foreground">
-                              Lot: {item.batchId} • Vendeur: {item.farmerId}
+                              Lot: {item.batch?.qrCode || item.batchId} • Vendeur: {item.farmer?.name || item.farmerId}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -328,6 +351,13 @@ export default function MarketplacePage() {
                                   >
                                     <Edit className="h-4 w-4" />
                                     Modifier
+                                  </button>
+                                  <button
+                                    onClick={() => handleView(item)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    Détails
                                   </button>
                                   <button
                                     onClick={() => handleDelete(item)}
@@ -362,23 +392,100 @@ export default function MarketplacePage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="batchId">Batch ID *</Label>
-                <Input
+                <Label htmlFor="batchId">Batch *</Label>
+                <select
                   id="batchId"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.batchId}
-                  onChange={(e) => setFormData({ ...formData, batchId: e.target.value })}
+                  onChange={(e) => {
+                    const batchId = e.target.value;
+                    // Reset dependant fields
+                    const updates: any = { batchId, title: "", stockKg: 0 };
+                    
+                    if (batchId) {
+                      const batch = batches.find(b => b.id === batchId);
+                      if (batch) {
+                         // Find associated harvests
+                         const batchHarvests = batch.harvests?.map(hRef => harvests.find(h => h.id === hRef.id)).filter(Boolean) || [];
+                         
+                         // Auto-select farmer if unique
+                         const startFarmerIds = Array.from(new Set(batchHarvests.map(h => h?.farmerId).filter(Boolean)));
+                         if (startFarmerIds.length === 1) {
+                           updates.farmerId = startFarmerIds[0] as string;
+                         }
+                      }
+                    }
+                    
+                    setFormData({ ...formData, ...updates });
+                  }}
                   required
-                />
+                >
+                  <option value="">Sélectionner un lot</option>
+                  {batches.map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.qrCode} ({batch.batchHash.substring(0, 8)}...)
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="farmerId">Farmer ID *</Label>
-                <Input
+                <Label htmlFor="farmerId">Agriculteur *</Label>
+                <select
                   id="farmerId"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.farmerId}
                   onChange={(e) => setFormData({ ...formData, farmerId: e.target.value })}
                   required
-                />
+                >
+                  <option value="">Sélectionner un agriculteur</option>
+                  {farmers.map((farmer) => (
+                    <option key={farmer.id} value={farmer.id}>
+                      {farmer.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Product Selection from Batch */}
+              {formData.batchId && (() => {
+                 const batch = batches.find(b => b.id === formData.batchId);
+                 const batchHarvests = batch?.harvests?.map(hRef => harvests.find(h => h.id === hRef.id)).filter(Boolean) || [];
+                 const products = Array.from(new Set(batchHarvests.map(h => h?.product?.name).filter(Boolean))) as string[];
+                 
+                 if (products.length > 0) {
+                   return (
+                     <div className="grid gap-2 p-3 bg-muted/20 rounded-md border border-dashed">
+                       <Label className="text-[#3A8F4C]">Sélection rapide : Produit du lot</Label>
+                       <select
+                         className="border rounded-md px-3 py-2 bg-background w-full"
+                         onChange={(e) => {
+                           const productName = e.target.value;
+                           if (!productName) return;
+
+                           // Calculate total stock for this product in the batch
+                           const totalStock = batchHarvests
+                             .filter(h => h?.product?.name === productName)
+                             .reduce((sum, h) => sum + (h?.quantity || 0), 0);
+
+                           setFormData(prev => ({
+                             ...prev,
+                             title: productName,
+                             stockKg: totalStock
+                           }));
+                         }}
+                         defaultValue=""
+                       >
+                         <option value="">-- Choisir un produit pour remplir --</option>
+                         {products.map((p, i) => (
+                           <option key={i} value={p}>{p}</option>
+                         ))}
+                       </select>
+                     </div>
+                   );
+                 }
+                 return null;
+              })()}
+
               <div className="grid gap-2">
                 <Label htmlFor="title">Titre *</Label>
                 <Input
@@ -421,11 +528,38 @@ export default function MarketplacePage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="imageUrl">Image URL</Label>
-                <Input
-                  id="imageUrl"
-                  value={formData.imageUrl || ""}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                <Label>Images du produit</Label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {formData.imageUrls?.map((url, index) => (
+                    <div key={index} className="relative aspect-square rounded-md overflow-hidden border">
+                      <img src={url} alt={`Produit ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newUrls = [...(formData.imageUrls || [])];
+                          newUrls.splice(index, 1);
+                          setFormData({ ...formData, imageUrls: newUrls });
+                        }}
+                        className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <FileUpload
+                  value={undefined}
+                  onChange={(url) => {
+                    if (url) {
+                      setFormData({ 
+                        ...formData, 
+                        imageUrls: [...(formData.imageUrls || []), url] 
+                      });
+                    }
+                  }}
+                  placeholder="Ajouter une image"
+                  label="Ajouter une image"
+                  accept="image/*"
                 />
               </div>
               <div className="grid gap-2">
@@ -483,22 +617,38 @@ export default function MarketplacePage() {
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-batchId">Batch ID *</Label>
-                <Input
+                <Label htmlFor="edit-batchId">Batch *</Label>
+                <select
                   id="edit-batchId"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.batchId}
                   onChange={(e) => setFormData({ ...formData, batchId: e.target.value })}
                   required
-                />
+                >
+                  <option value="">Sélectionner un lot</option>
+                  {batches.map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.qrCode} ({batch.batchHash.substring(0, 8)}...)
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-farmerId">Farmer ID *</Label>
-                <Input
+                <Label htmlFor="edit-farmerId">Agriculteur *</Label>
+                <select
                   id="edit-farmerId"
+                  className="border rounded-md px-3 py-2 bg-background w-full"
                   value={formData.farmerId}
                   onChange={(e) => setFormData({ ...formData, farmerId: e.target.value })}
                   required
-                />
+                >
+                  <option value="">Sélectionner un agriculteur</option>
+                  {farmers.map((farmer) => (
+                    <option key={farmer.id} value={farmer.id}>
+                      {farmer.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-title">Titre *</Label>
@@ -542,11 +692,38 @@ export default function MarketplacePage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-imageUrl">Image URL</Label>
-                <Input
-                  id="edit-imageUrl"
-                  value={formData.imageUrl || ""}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                <Label>Images du produit</Label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {formData.imageUrls?.map((url, index) => (
+                    <div key={index} className="relative aspect-square rounded-md overflow-hidden border">
+                      <img src={url} alt={`Produit ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newUrls = [...(formData.imageUrls || [])];
+                          newUrls.splice(index, 1);
+                          setFormData({ ...formData, imageUrls: newUrls });
+                        }}
+                        className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <FileUpload
+                  value={undefined}
+                  onChange={(url) => {
+                    if (url) {
+                      setFormData({ 
+                        ...formData, 
+                        imageUrls: [...(formData.imageUrls || []), url] 
+                      });
+                    }
+                  }}
+                  placeholder="Ajouter une image"
+                  label="Ajouter une image"
+                  accept="image/*"
                 />
               </div>
               <div className="grid gap-2">
@@ -622,6 +799,134 @@ export default function MarketplacePage() {
               ) : (
                 "Supprimer"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails de l'article</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur l'article de la marketplace
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedItem && (
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                {selectedItem?.imageUrls && selectedItem.imageUrls.length > 0 ? (
+                  <div className="w-24 h-24 rounded-lg border bg-muted flex-shrink-0 overflow-hidden">
+                    <img 
+                      src={selectedItem.imageUrls[0]} 
+                      alt={selectedItem.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center flex-shrink-0">
+                    <Store className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-1">
+                  <h3 className="font-semibold text-lg">{selectedItem.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedItem.description || "Aucune description"}
+                  </p>
+                  <div className="pt-2 flex gap-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                      {statuses.find(s => s.value === selectedItem.status)?.label || selectedItem.status}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {selectedItem.priceADA} ADA/kg
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Stock disponible</Label>
+                  <div className="font-medium">{selectedItem.stockKg} kg</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Date de création</Label>
+                  <div>{new Date(selectedItem.createdAt).toLocaleString()}</div>
+                </div>
+              </div>
+
+              {selectedItem?.imageUrls && selectedItem.imageUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Galerie photos</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {selectedItem.imageUrls.map((url, i) => (
+                      <div key={i} className="aspect-square rounded-md overflow-hidden border bg-muted">
+                        <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="border rounded-lg p-4 bg-muted/10 space-y-4">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Package className="h-4 w-4 text-[#004D73]" />
+                  Informations de traçabilité
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  
+                  {/* Logic to find product from batch -> harvests */}
+                  {(() => {
+                    const fullBatch = batches.find(b => b.id === (selectedItem.batch?.id || selectedItem.batchId));
+                    const batchHarvests = fullBatch?.harvests?.map(hRef => harvests.find(h => h.id === hRef.id)).filter(Boolean) || [];
+                    const products = Array.from(new Set(batchHarvests.map(h => h?.product?.name || "Inconnu")));
+                    
+                    return (
+                      <div className="col-span-2 space-y-2 pb-3 mb-2 border-b border-border/50">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Produit(s) du lot</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {products.length > 0 ? (
+                            products.map((p, i) => (
+                              <div key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#3A8F4C]/10 text-[#3A8F4C] border border-[#3A8F4C]/20">
+                                {/* We can import Sprout from lucide-react if needed, or just use text/icon */}
+                                <span className="font-medium text-sm">{p}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground italic">Non spécifié</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                   <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Lot (Batch)</Label>
+                    <div className="text-sm font-medium">
+                      {selectedItem.batch?.qrCode || selectedItem.batchId}
+                    </div>
+                    {selectedItem.batch?.batchHash && (
+                      <div className="text-xs font-mono text-muted-foreground break-all">
+                        {selectedItem.batch.batchHash}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Agriculteur</Label>
+                    <div className="text-sm font-medium">
+                      {selectedItem.farmer?.name || selectedItem.farmerId}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setIsViewDialogOpen(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -23,6 +23,7 @@ export interface IMicroLoan {
   approvedBy?: string;
   approvedAt?: Date;
   rejectionReason?: string;
+  transactionHash?: string;
   // Documents
   identificationNumber?: string;
   idCardPhotoUrl?: string;

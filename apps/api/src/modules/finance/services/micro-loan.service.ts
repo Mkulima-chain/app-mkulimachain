@@ -59,7 +59,7 @@ export class MicroLoanService {
     return loan;
   }
 
-  async activate(id: string): Promise<MicroLoanEntity> {
+  async activate(id: string, transactionHash?: string): Promise<MicroLoanEntity> {
     const loan = await this.findById(id);
 
     if (loan.status !== LoanStatus.PENDING && loan.status !== LoanStatus.APPROVED) {
@@ -68,7 +68,7 @@ export class MicroLoanService {
       );
     }
 
-    const activated = await this.repository.activate(id);
+    const activated = await this.repository.activate(id, transactionHash);
     if (!activated) {
       throw new NotFoundException(`Loan with ID ${id} not found`);
     }

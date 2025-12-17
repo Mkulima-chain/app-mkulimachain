@@ -20,7 +20,7 @@ export class MarketplaceItemRepository {
     private readonly batchRepository: Repository<BatchEntity>,
     @InjectRepository(FarmerEntity)
     private readonly farmerRepository: Repository<FarmerEntity>,
-  ) {}
+  ) { }
 
   async create(dto: CreateMarketplaceItemDto): Promise<MarketplaceItemEntity> {
     const batch = await this.batchRepository.findOneBy({ id: dto.batchId });
@@ -33,7 +33,7 @@ export class MarketplaceItemRepository {
       description: dto.description,
       priceADA: dto.priceADA,
       stockKg: dto.stockKg,
-      imageUrl: dto.imageUrl,
+      imageUrls: dto.imageUrls,
       status: MarketplaceItemStatus.DRAFT,
     });
 
@@ -43,7 +43,7 @@ export class MarketplaceItemRepository {
   async findById(id: string): Promise<MarketplaceItemEntity | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['batch', 'farmer'],
+      relations: [ 'batch', 'farmer', 'batch.harvests', 'batch.harvests.product' ],
     });
   }
 
@@ -53,7 +53,9 @@ export class MarketplaceItemRepository {
     const qb = this.repository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.batch', 'batch')
-      .leftJoinAndSelect('item.farmer', 'farmer');
+      .leftJoinAndSelect('item.farmer', 'farmer')
+      .leftJoinAndSelect('batch.harvests', 'harvests')
+      .leftJoinAndSelect('harvests.product', 'product');
 
     if (query.id) qb.andWhere('item.id = :id', { id: query.id });
     if (query.batchId)
@@ -80,7 +82,7 @@ export class MarketplaceItemRepository {
   async findActive(): Promise<MarketplaceItemEntity[]> {
     return this.repository.find({
       where: { status: MarketplaceItemStatus.ACTIVE },
-      relations: ['batch', 'farmer'],
+      relations: [ 'batch', 'farmer', 'batch.harvests', 'batch.harvests.product' ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -88,7 +90,7 @@ export class MarketplaceItemRepository {
   async findByFarmerId(farmerId: string): Promise<MarketplaceItemEntity[]> {
     return this.repository.find({
       where: { farmer: { id: farmerId } },
-      relations: ['batch', 'farmer'],
+      relations: [ 'batch', 'farmer', 'batch.harvests', 'batch.harvests.product' ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -97,7 +99,18 @@ export class MarketplaceItemRepository {
     id: string,
     dto: UpdateMarketplaceItemDto,
   ): Promise<MarketplaceItemEntity | null> {
-    await this.repository.update(id, dto);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { batchId, farmerId, ...rest } = dto;
+    const updateData: any = { ...rest };
+
+    if (batchId) {
+      updateData.batch = { id: batchId };
+    }
+    if (farmerId) {
+      updateData.farmer = { id: farmerId };
+    }
+
+    await this.repository.update(id, updateData);
     return this.findById(id);
   }
 

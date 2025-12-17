@@ -59,6 +59,9 @@ export class MicroLoanEntity implements IMicroLoan {
   @Column({ type: 'varchar', length: 50, nullable: true })
   identificationNumber?: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  transactionHash?: string;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   idCardPhotoUrl?: string;
 

@@ -43,6 +43,8 @@ import {
 import { OrderTraceability } from "@/components/order-traceability";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
+import { useMyOrders } from "@/hooks";
+import type { Order as ApiOrder } from "@/types/order";
 
 // Types
 interface Order {
@@ -346,6 +348,46 @@ export default function DashboardPage() {
     "overview" | "orders" | "favorites" | "profile" | "nfts"
   >("overview");
 
+  // Récupérer les commandes depuis l'API
+  const { data: apiOrders, isLoading: ordersLoading } = useMyOrders(session?.user?.id);
+
+  // Mapper les commandes API vers le format local
+  const mapApiOrderToLocal = (apiOrder: ApiOrder): Order => {
+    // Mapper le status API vers le status local
+    const statusMap: Record<string, Order["status"]> = {
+      pending: "pending",
+      paid: "processing",
+      shipped: "shipped",
+      completed: "delivered",
+      cancelled: "cancelled",
+    };
+    
+    return {
+      id: apiOrder.id,
+      productName: apiOrder.item?.title || "Produit",
+      productImage: apiOrder.item?.imageUrls && apiOrder.item.imageUrls.length > 0 ? apiOrder.item.imageUrls[0] : "📦",
+      price: apiOrder.unitPriceADA,
+      quantity: apiOrder.quantityKg,
+      status: statusMap[apiOrder.status] || "pending",
+      date: apiOrder.createdAt,
+      orderNumber: `ORD-${apiOrder.id.slice(0, 8).toUpperCase()}`,
+      traceability: {
+        order: { completed: true, date: apiOrder.createdAt },
+        preparation: { completed: apiOrder.status !== "pending" },
+        harvest: { completed: apiOrder.status !== "pending" },
+        processing: { completed: ["paid", "shipped", "completed"].includes(apiOrder.status) },
+        packaging: { completed: ["shipped", "completed"].includes(apiOrder.status) },
+        shipping: { completed: ["shipped", "completed"].includes(apiOrder.status), date: apiOrder.shippedAt },
+        delivery: { completed: apiOrder.status === "completed", date: apiOrder.completedAt },
+      },
+    };
+  };
+
+  // Utiliser les commandes API si disponibles, sinon fallback sur mock
+  const orders: Order[] = apiOrders && apiOrders.length > 0
+    ? apiOrders.map(mapApiOrderToLocal)
+    : mockOrders;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -376,14 +418,14 @@ export default function DashboardPage() {
 
   const hasImage = user.image && user.image.length > 0;
 
-  // Statistiques
-  const totalOrders = mockOrders.length;
-  const totalSpent = mockOrders.reduce(
+  // Statistiques (utilise orders qui peut venir de l'API)
+  const totalOrders = orders.length;
+  const totalSpent = orders.reduce(
     (sum, order) => sum + order.price * order.quantity,
     0
   );
   const totalFavorites = mockFavorites.length;
-  const pendingOrders = mockOrders.filter(
+  const pendingOrders = orders.filter(
     (o) => o.status === "pending" || o.status === "processing"
   ).length;
 
@@ -605,16 +647,20 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockOrders.slice(0, 4).map((order) => (
+                    {orders.slice(0, 4).map((order) => (
                       <div
                         key={order.id}
                         className="p-4 rounded-lg border border-[#004D73]/10 dark:border-white/10 hover:bg-[#E8F5E9]/50 dark:hover:bg-white/5 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0">
-                            <span className="text-3xl">
-                              {order.productImage}
-                            </span>
+                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {(order.productImage.startsWith("http") || order.productImage.startsWith("/")) ? (
+                              <img src={order.productImage} alt={order.productName} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-3xl">
+                                {order.productImage}
+                              </span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-[#5A3E36] dark:text-white truncate">
@@ -669,14 +715,18 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockOrders.map((order) => (
+                  {orders.map((order) => (
                     <div
                       key={order.id}
                       className="p-4 rounded-lg border border-[#004D73]/10 dark:border-white/10 hover:bg-[#E8F5E9]/50 dark:hover:bg-white/5 transition-colors"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0">
-                          <span className="text-4xl">{order.productImage}</span>
+                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {(order.productImage.startsWith("http") || order.productImage.startsWith("/")) ? (
+                            <img src={order.productImage} alt={order.productName} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl">{order.productImage}</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1">

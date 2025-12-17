@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -22,13 +23,14 @@ import {
   Smartphone,
   Check,
   Package,
-  User,
+  User
 } from "lucide-react";
-import { useCart } from "@/hooks";
-import { useCardanoWallet } from "@/hooks";
+import { useCart, useCardanoWallet, useCreateBatchOrders } from "@/hooks";
 import { ModalWallet } from "@/components/wallet/modal-wallet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { CreateOrderDto } from "@/types/order";
+
 
 type PaymentMethod = "ada" | "airtel" | "orange" | "vodacom" | null;
 type ShippingOption = "buyer-choice" | "seller-choice";
@@ -80,6 +82,7 @@ const TRANSPORT_COMPANIES = [
 
 export default function CartPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const {
     cart,
     updateQuantity,
@@ -89,20 +92,33 @@ export default function CartPage() {
     getItemCount,
   } = useCart();
   const { connected } = useCardanoWallet();
+  const createOrdersMutation = useCreateBatchOrders();
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>(null);
   const [mobileMoneyPhone, setMobileMoneyPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
   const [shippingOption, setShippingOption] =
     useState<ShippingOption>("seller-choice");
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<
     string | null
   >(null);
 
-  const handleCheckout = () => {
+  // Taux de change fixe pour la démo
+  const ADA_TO_USD_RATE = 0.45;
+
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Votre panier est vide");
       return;
+    }
+
+    if (!session?.user?.id) {
+        toast.error("Connexion requise", {
+            description: "Veuillez vous connecter pour passer une commande",
+        });
+        return;
     }
 
     if (!selectedPaymentMethod) {
@@ -136,8 +152,28 @@ export default function CartPage() {
 
     setIsProcessing(true);
 
-    // Simuler la création de commande
-    setTimeout(() => {
+    try {
+      // Construire les commandes pour chaque article du panier
+      const transportInfo = shippingOption === "buyer-choice" && selectedTransportCompany
+        ? `Transport: ${TRANSPORT_COMPANIES.find((c) => c.id === selectedTransportCompany)?.name || "À définir"}`
+        : "";
+      
+      const fullAddress = [
+        shippingAddress,
+        transportInfo,
+        selectedPaymentMethod !== "ada" ? `Tél: ${mobileMoneyPhone}` : "",
+      ].filter(Boolean).join(" | ");
+
+      const orders: CreateOrderDto[] = cart.map((item) => ({
+        buyerId: session?.user?.id as string,
+        itemId: item.productId, // Note: productId doit correspondre à un itemId API valide
+        quantityKg: item.quantity,
+        shippingAddress: fullAddress || undefined,
+      }));
+
+      // Appel API pour créer les commandes
+      await createOrdersMutation.mutateAsync(orders);
+
       const methodName =
         selectedPaymentMethod === "ada"
           ? "ADA (Cardano)"
@@ -147,23 +183,74 @@ export default function CartPage() {
               ? "Orange Money"
               : "Vodacom M-Pesa";
 
-      const shippingInfo =
-        shippingOption === "buyer-choice" && selectedTransportCompany
-          ? `Transport: ${TRANSPORT_COMPANIES.find((c) => c.id === selectedTransportCompany)?.name || "Inconnu"}`
-          : "Transport: Le vendeur choisira";
-
-      toast.success("Commande créée avec succès!", {
-        description: `Votre commande de ${getItemCount()} article(s) a été enregistrée. Paiement: ${methodName}. ${shippingInfo}`,
+      toast.success("Commande(s) créée(s) avec succès!", {
+        description: `${cart.length} commande(s) enregistrée(s). Paiement: ${methodName}.`,
       });
+      
       clearCart();
-      setIsProcessing(false);
       setSelectedPaymentMethod(null);
       setMobileMoneyPhone("");
+      setShippingAddress("");
       setShippingOption("seller-choice");
       setSelectedTransportCompany(null);
       router.push("/dashboard");
-    }, 1500);
+    } catch (error) {
+      console.error("Erreur lors de la création des commandes:", error);
+      toast.error("Erreur lors de la création de la commande", {
+        description: error instanceof Error ? error.message : "Veuillez réessayer",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  // Vérifier l'authentification au chargement
+  useEffect(() => {
+    // Si pas de session (et pas en chargement), on redirige ou on notifie
+    if (session === null) {
+        // Optionnel : redirection automatique
+        // router.push("/api/auth/signin?callbackUrl=/cart");
+        toast.error("Connexion requise", {
+            description: "Veuillez vous connecter pour accéder à votre panier",
+            action: {
+                label: "Se connecter",
+                onClick: () => router.push("/api/auth/signin?callbackUrl=/cart"),
+            },
+            duration: 5000,
+        });
+    } else if (session?.user?.id) {
+        // Vérifier si l'ID est valide (UUID)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(session.user.id)) {
+             toast.error("Session invalide", {
+                description: "Votre session est obsolète. Veuillez vous reconnecter.",
+                action: {
+                    label: "Se déconnecter",
+                    onClick: () => window.location.href = "/api/auth/signout",
+                },
+                duration: Infinity, // Reste visible
+            });
+        }
+    }
+  }, [session, router]);
+  
+  // Calculer le total à afficher selon la méthode de paiement
+  const getDisplayTotal = () => {
+    const totalADA = getTotal();
+    if (selectedPaymentMethod && selectedPaymentMethod !== "ada") {
+        // Conversion en USD pour Mobile Money
+        return {
+            amount: (totalADA * ADA_TO_USD_RATE),
+            currency: "USD"
+        };
+    }
+    return {
+        amount: totalADA,
+        currency: "ADA"
+    };
+  };
+
+  const displayTotal = getDisplayTotal();
 
   if (cart.length === 0) {
     return (
@@ -217,8 +304,12 @@ export default function CartPage() {
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-lg bg-linear-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center shrink-0">
-                      <span className="text-4xl">{item.productImage}</span>
+                    <div className="w-20 h-20 rounded-lg bg-linear-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center shrink-0 overflow-hidden">
+                      {(item.productImage.startsWith('http') || item.productImage.startsWith('/')) ? (
+                        <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl">{item.productImage}</span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-lg text-[#5A3E36] dark:text-white mb-1 truncate">
@@ -705,7 +796,7 @@ export default function CartPage() {
                       Sous-total
                     </span>
                     <span className="text-[#5A3E36] dark:text-white font-medium">
-                      {getTotal().toLocaleString()} USD
+                      {displayTotal.amount.toLocaleString()} {displayTotal.currency}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -722,7 +813,7 @@ export default function CartPage() {
                       Total
                     </span>
                     <span className="text-[#3A8F4C] dark:text-[#3A8F4C]">
-                      {getTotal().toLocaleString()} USD
+                      {displayTotal.amount.toLocaleString()} {displayTotal.currency}
                     </span>
                   </div>
                 </div>

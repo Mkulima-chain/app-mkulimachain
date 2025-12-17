@@ -88,7 +88,7 @@ export class MicroLoanRepository {
     return this.findById(id);
   }
 
-  async activate(id: string): Promise<MicroLoanEntity | null> {
+  async activate(id: string, transactionHash?: string): Promise<MicroLoanEntity | null> {
     const loan = await this.findById(id);
     if (!loan) return null;
 
@@ -99,6 +99,9 @@ export class MicroLoanRepository {
     loan.status = LoanStatus.ACTIVE;
     loan.startDate = startDate;
     loan.dueDate = dueDate;
+    if (transactionHash) {
+      loan.transactionHash = transactionHash;
+    }
 
     return this.repository.save(loan);
   }

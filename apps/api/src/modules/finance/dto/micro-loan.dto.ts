@@ -177,6 +177,15 @@ export class ActivateLoanDto {
   @IsOptional()
   @MaxLength(255)
   loanContractHash?: string;
+
+  @ApiPropertyOptional({
+    description: 'Hash de la transaction sur la blockchain',
+    example: 'a632...',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  transactionHash?: string;
 }
 
 export class MicroLoanResponseDto {
@@ -200,6 +209,9 @@ export class MicroLoanResponseDto {
 
   @ApiProperty({ example: '0xabc123def456789...' })
   loanContractHash!: string;
+
+  @ApiPropertyOptional({ example: '2a4b...' })
+  transactionHash?: string;
 
   @ApiPropertyOptional({ example: '2024-01-15T10:30:00Z' })
   startDate?: Date;

@@ -14,8 +14,7 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiParam,
-  ApiBody,
+  ApiParam, ApiBody
 } from '@nestjs/swagger';
 import { MicroLoanService } from '../services/micro-loan.service';
 import {
@@ -26,9 +25,8 @@ import {
   RepaymentAmountDto,
   ApproveLoanDto,
   RejectLoanDto,
-  LoanStatsDto,
-  EligibilityCheckDto,
-  EligibilityResponseDto,
+  LoanStatsDto, EligibilityResponseDto,
+  ActivateLoanDto
 } from '../dto/micro-loan.dto';
 import { MicroLoanEntity } from '../entities/micro-loan.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
@@ -178,20 +176,15 @@ export class MicroLoanController {
   }
 
   @Post(':id/activate')
-  @ApiOperation({
-    summary: 'Activer un prêt',
-    description: 'Passe le prêt au statut "active" et démarre le compteur',
-  })
-  @ApiParam({ name: 'id', description: 'ID du prêt' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Prêt activé',
-    type: MicroLoanResponseDto,
-  })
+  @ApiOperation({ summary: 'Activer un prêt approuvé' })
+  @ApiBody({ type: ActivateLoanDto }) // Added ApiBody for the new DTO
+  @ApiResponse({ status: 200, type: MicroLoanResponseDto })
   async activate(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<MicroLoanEntity> {
-    return this.service.activate(id);
+    @Param('id') id: string,
+    @Body() dto: ActivateLoanDto,
+  ): Promise<MicroLoanResponseDto> {
+    const loan = await this.service.activate(id, dto.transactionHash);
+    return this.toResponseDto(loan);
   }
 
   @Post(':id/repay')
@@ -280,20 +273,29 @@ export class MicroLoanController {
     return this.service.reject(id, dto.reason, dto.rejectedBy);
   }
 
-  @Post('eligibility')
-  @ApiOperation({
-    summary: "Vérifier l'éligibilité",
-    description: "Vérifie si un agriculteur est éligible pour un prêt",
-  })
-  @ApiBody({ type: EligibilityCheckDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Résultat de l\'éligibilité',
-    type: EligibilityResponseDto,
-  })
+  @Get(':id/eligibility')
+  @ApiOperation({ summary: "Vérifier l'éligibilité d'un agriculteur" })
+  @ApiResponse({ status: 200, type: EligibilityResponseDto })
   async checkEligibility(
-    @Body() dto: EligibilityCheckDto,
+    @Param('id') id: string,
+    @Query('amount') amount: number,
   ): Promise<EligibilityResponseDto> {
-    return this.service.checkEligibility(dto.farmerId, dto.amountADA);
+    return this.service.checkEligibility(id, Number(amount));
+  }
+
+  private toResponseDto(loan: MicroLoanEntity): MicroLoanResponseDto {
+    return {
+      id: loan.id,
+      farmerId: loan.farmer.id,
+      amountADA: Number(loan.amountADA),
+      interestRate: Number(loan.interestRate),
+      durationDays: loan.durationDays,
+      status: loan.status,
+      loanContractHash: loan.loanContractHash,
+      startDate: loan.startDate,
+      dueDate: loan.dueDate,
+      createdAt: loan.createdAt,
+      transactionHash: loan.transactionHash,
+    };
   }
 }

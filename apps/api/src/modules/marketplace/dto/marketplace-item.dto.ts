@@ -4,10 +4,9 @@ import {
   IsOptional,
   IsUUID,
   IsEnum,
-  IsNumber,
-  IsUrl,
-  MaxLength,
+  IsNumber, MaxLength,
   Min,
+  IsArray
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { MarketplaceItemStatus } from '../interfaces/imarketplace-item';
@@ -68,13 +67,13 @@ export class CreateMarketplaceItemDto {
   stockKg!: number;
 
   @ApiPropertyOptional({
-    description: "URL de l'image du produit",
-    example: 'https://cdn.mkulimachain.com/products/cacao-kasai.jpg',
+    description: "URLs des images du produit",
+    example: [ 'https://cdn.mkulimachain.com/products/cacao-kasai.jpg' ],
   })
-  @IsUrl()
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
-  @MaxLength(500)
-  imageUrl?: string;
+  imageUrls?: string[];
 }
 
 export class UpdateMarketplaceItemDto extends PartialType(
@@ -185,9 +184,9 @@ export class MarketplaceItemResponseDto {
   status!: MarketplaceItemStatus;
 
   @ApiPropertyOptional({
-    example: 'https://cdn.mkulimachain.com/products/cacao.jpg',
+    example: [ 'https://cdn.mkulimachain.com/products/cacao.jpg' ],
   })
-  imageUrl?: string;
+  imageUrls?: string[];
 
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   createdAt!: Date;

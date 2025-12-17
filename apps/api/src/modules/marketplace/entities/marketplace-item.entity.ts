@@ -50,8 +50,8 @@ export class MarketplaceItemEntity implements IMarketplaceItem {
   })
   status!: MarketplaceItemStatus;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  imageUrl?: string;
+  @Column({ type: 'simple-array', nullable: true })
+  imageUrls?: string[];
 
   @CreateDateColumn()
   createdAt!: Date;

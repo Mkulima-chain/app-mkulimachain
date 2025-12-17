@@ -11,34 +11,8 @@ interface UseCartSyncReturn {
 }
 
 export function useCartSync(): UseCartSyncReturn {
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(CART_STORAGE_KEY);
-        if (stored) {
-          return JSON.parse(stored);
-        }
-      } catch (error) {
-        console.error("Error reading cart:", error);
-      }
-    }
-    return [];
-  });
-
-  const [cartItemCount, setCartItemCount] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(CART_STORAGE_KEY);
-        if (stored) {
-          const cartData = JSON.parse(stored);
-          return cartData.length; // Nombre de produits différents
-        }
-      } catch (error) {
-        console.error("Error reading cart:", error);
-      }
-    }
-    return 0;
-  });
+  const [ cart, setCart ] = useState<CartItem[]>([]);
+  const [ cartItemCount, setCartItemCount ] = useState(0);
 
   const getTotal = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0);
