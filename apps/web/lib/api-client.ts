@@ -39,18 +39,25 @@ export async function apiClient<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  // Normaliser l'endpoint pour s'assurer qu'il commence par /
-  const normalizedEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
-
-  // S'assurer que API_BASE_URL ne se termine pas par / pour éviter les doubles slashes
-  const baseUrl = API_BASE_URL;
-
   // Construire l'URL finale
-  const url = endpoint.startsWith("http")
-    ? endpoint
-    : `${baseUrl}${normalizedEndpoint}`;
+  let url: string;
+
+  if (endpoint.startsWith("http")) {
+    url = endpoint;
+  } else {
+    // Normaliser l'URL de base en retirant le slash final s'il existe
+    const baseUrl = API_BASE_URL.endsWith("/")
+      ? API_BASE_URL.slice(0, -1)
+      : API_BASE_URL;
+
+    // Normaliser l'endpoint pour s'assurer qu'il commence par /
+    const normalizedEndpoint = endpoint.startsWith("/")
+      ? endpoint
+      : `/${endpoint}`;
+
+    // Construire l'URL finale
+    url = `${baseUrl}${normalizedEndpoint}`;
+  }
 
   // Debug: logger l'URL construite (à retirer en production)
   if (process.env.NODE_ENV === "development") {

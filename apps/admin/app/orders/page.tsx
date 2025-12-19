@@ -15,6 +15,12 @@ import {
   Users,
   ChevronDown,
   ChevronRight,
+  LockKeyhole,
+  Unlock,
+  RotateCcw,
+  AlertTriangle,
+  Wallet,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Card,
@@ -43,6 +49,9 @@ import {
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { useApiMutation } from "@/hooks/use-api-mutation";
+import { useEscrowContract } from "@/hooks";
+import { useWalletAtom } from "@/hooks/useWalletAtom";
+import { WalletConnectDialog } from "@/components/wallet-connect-dialog";
 
 enum OrderStatus {
   PENDING = "pending",
@@ -95,9 +104,17 @@ export default function OrdersPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isEscrowDialogOpen, setIsEscrowDialogOpen] = React.useState(false);
+  const [escrowAction, setEscrowAction] = React.useState<
+    "release" | "refund" | "dispute" | null
+  >(null);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
-  const [viewMode, setViewMode] = React.useState<"list" | "by-client" | "by-date">("list");
-  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = React.useState<
+    "list" | "by-client" | "by-date"
+  >("list");
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(
+    new Set()
+  );
   const [formData, setFormData] = React.useState<CreateOrderDto>({
     buyerId: "",
     itemId: "",
@@ -107,6 +124,32 @@ export default function OrdersPage() {
   const [updateData, setUpdateData] = React.useState<UpdateOrderDto>({
     status: OrderStatus.PENDING,
   });
+
+  // Escrow contract hook
+  const {
+    releaseFunds,
+    refundPayer,
+    createDispute,
+    getEscrows,
+    isLoading: isEscrowLoading,
+  } = useEscrowContract();
+
+  // Wallet connection
+  const { connected: walletConnected, address: walletAddress } =
+    useWalletAtom();
+  const [isWalletDialogOpen, setIsWalletDialogOpen] = React.useState(false);
+
+  // Helper to check if order has escrow
+  const hasEscrow = (order: Order): boolean => {
+    return order.shippingAddress?.includes("Escrow TX:") || false;
+  };
+
+  // Extract escrow TX hash from shippingAddress
+  const getEscrowTxHash = (order: Order): string | null => {
+    if (!order.shippingAddress) return null;
+    const match = order.shippingAddress.match(/Escrow TX:\s*([a-fA-F0-9]+)/);
+    return match ? match[1] : null;
+  };
 
   // Grouping types
   type OrderGroup = {
@@ -153,9 +196,16 @@ export default function OrdersPage() {
         key,
         label: key,
         orders,
-        totalAmount: orders.reduce((sum, o) => sum + Number(o.totalADA || 0), 0),
+        totalAmount: orders.reduce(
+          (sum, o) => sum + Number(o.totalADA || 0),
+          0
+        ),
       }))
-      .sort((a, b) => new Date(b.orders[0].createdAt).getTime() - new Date(a.orders[0].createdAt).getTime());
+      .sort(
+        (a, b) =>
+          new Date(b.orders[0].createdAt).getTime() -
+          new Date(a.orders[0].createdAt).getTime()
+      );
   };
 
   // Toggle group expansion
@@ -267,6 +317,183 @@ export default function OrdersPage() {
     deleteMutation.mutate(undefined);
   };
 
+  // Escrow action handlers
+  const handleEscrowAction = async (
+    order: Order,
+    action: "release" | "refund" | "dispute"
+  ) => {
+    setSelectedOrder(order);
+    setEscrowAction(action);
+    setIsEscrowDialogOpen(true);
+  };
+
+  const handleConfirmEscrowAction = async () => {
+    if (!selectedOrder || !escrowAction) return;
+
+    // Check wallet connection
+    if (!walletConnected) {
+      toast.error("Wallet non connecté", {
+        description:
+          "Veuillez connecter votre wallet pour effectuer cette action",
+        action: {
+          label: "Connecter",
+          onClick: () => setIsWalletDialogOpen(true),
+        },
+      });
+      return;
+    }
+
+    const escrowTxHash = getEscrowTxHash(selectedOrder);
+    if (!escrowTxHash) {
+      toast.error("Impossible de trouver le hash de transaction escrow");
+      return;
+    }
+
+    try {
+      // Fetch escrow UTxOs from blockchain
+      toast.info("Recherche de l'escrow sur la blockchain...", {
+        duration: 3000,
+      });
+
+      const escrowUtxos = await getEscrows();
+
+      if (!escrowUtxos || escrowUtxos.length === 0) {
+        toast.warning("Aucun escrow trouvé sur la blockchain", {
+          description: "L'escrow a peut-être déjà été traité",
+        });
+        // Still update the order status locally
+        if (escrowAction === "release") {
+          updateMutation.mutate({ status: OrderStatus.COMPLETED });
+        } else if (escrowAction === "refund") {
+          updateMutation.mutate({ status: OrderStatus.REFUNDED });
+        }
+        setIsEscrowDialogOpen(false);
+        setSelectedOrder(null);
+        setEscrowAction(null);
+        return;
+      }
+
+      // Find the matching escrow by amount (convert ADA to lovelace)
+      const orderAmount = BigInt(
+        Math.floor(Number(selectedOrder.totalADA || 0) * 1_000_000)
+      );
+
+      // Debug: Log all escrow UTxOs
+      console.log("Escrow UTxOs found:", escrowUtxos.length);
+      escrowUtxos.forEach((utxo: any, i: number) => {
+        console.log(`UTxO ${i}:`, {
+          txHash: utxo.txHash,
+          lovelace: utxo.assets?.lovelace?.toString(),
+          datumHash: utxo.datumHash,
+          datum: utxo.datum,
+          scriptRef: utxo.scriptRef,
+        });
+      });
+      console.log("Looking for amount:", orderAmount.toString());
+
+      const matchingUtxo = escrowUtxos.find((utxo: any) => {
+        const utxoLovelace = utxo.assets?.lovelace || BigInt(0);
+        // Allow 2 ADA difference for fees
+        return Math.abs(Number(utxoLovelace) - Number(orderAmount)) < 2_000_000;
+      });
+
+      if (matchingUtxo) {
+        console.log("Matching UTxO found:", matchingUtxo);
+      }
+
+      if (!matchingUtxo) {
+        toast.warning("Escrow non trouvé avec le montant correspondant", {
+          description: "L'escrow a peut-être déjà été traité",
+        });
+        // Still update the order status locally
+        if (escrowAction === "release") {
+          updateMutation.mutate({ status: OrderStatus.COMPLETED });
+        } else if (escrowAction === "refund") {
+          updateMutation.mutate({ status: OrderStatus.REFUNDED });
+        }
+        setIsEscrowDialogOpen(false);
+        setSelectedOrder(null);
+        setEscrowAction(null);
+        return;
+      }
+
+      toast.info("Exécution de la transaction blockchain...", {
+        duration: 5000,
+      });
+
+      // Reconstruct datum from order data
+      // Note: In production, this should be parsed from the inline datum
+      const reconstructedDatum: any = {
+        payerAddress: walletAddress || "", // Use current wallet as fallback
+        beneficiaryAddress:
+          selectedOrder.item?.farmer?.id || walletAddress || "",
+        amountLovelace: orderAmount,
+        arbiterAddress:
+          process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || walletAddress || "",
+        deadlineTimestamp: Math.floor(Date.now() / 1000) + 72 * 60 * 60,
+        description: `Commande ${selectedOrder.id.slice(0, 8)}`,
+        status: "Locked",
+      };
+
+      let txResult: string | null = null;
+
+      if (escrowAction === "release") {
+        // Release funds to seller
+        txResult = await releaseFunds({
+          escrowUtxo: matchingUtxo,
+          datum: reconstructedDatum,
+        });
+
+        toast.success("Fonds libérés avec succès!", {
+          description: `TX: ${txResult?.slice(0, 16)}... - Commande #${selectedOrder.id.slice(0, 8)}`,
+        });
+
+        // Update order status to COMPLETED
+        updateMutation.mutate({
+          status: OrderStatus.COMPLETED,
+          paymentHash: txResult || undefined,
+        });
+      } else if (escrowAction === "refund") {
+        // Refund to buyer
+        txResult = await refundPayer({
+          escrowUtxo: matchingUtxo,
+          datum: reconstructedDatum,
+        });
+
+        toast.success("Remboursement effectué avec succès!", {
+          description: `TX: ${txResult?.slice(0, 16)}... - Commande #${selectedOrder.id.slice(0, 8)}`,
+        });
+
+        // Update order status to REFUNDED
+        updateMutation.mutate({
+          status: OrderStatus.REFUNDED,
+          paymentHash: txResult || undefined,
+        });
+      } else if (escrowAction === "dispute") {
+        // Create dispute
+        txResult = await createDispute({
+          escrowUtxo: matchingUtxo,
+          datum: reconstructedDatum,
+          reason: `Litige ouvert pour commande #${selectedOrder.id.slice(0, 8)}`,
+        });
+
+        toast.warning("Litige ouvert avec succès!", {
+          description: `TX: ${txResult?.slice(0, 16)}... - En attente de résolution`,
+        });
+      }
+
+      setIsEscrowDialogOpen(false);
+      setSelectedOrder(null);
+      setEscrowAction(null);
+      refetch(); // Refresh orders list
+    } catch (error: any) {
+      console.error("Escrow action error:", error);
+      toast.error("Erreur lors de l'action escrow", {
+        description: error.message || "Veuillez réessayer",
+      });
+    }
+  };
+
   const getStatusBadge = (status: OrderStatus) => {
     const variants: Record<
       OrderStatus,
@@ -319,10 +546,33 @@ export default function OrdersPage() {
             Gérez et suivez les commandes de la plateforme
           </p>
         </div>
-        <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter une commande
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Wallet Connection Button */}
+          <Button
+            variant={walletConnected ? "outline" : "secondary"}
+            onClick={() => setIsWalletDialogOpen(true)}
+            className={walletConnected ? "border-green-500 text-green-600" : ""}
+          >
+            {walletConnected ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {walletAddress?.slice(0, 8)}...
+              </>
+            ) : (
+              <>
+                <Wallet className="h-4 w-4 mr-2" />
+                Connecter Wallet
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleAdd}
+            className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter une commande
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -423,7 +673,9 @@ export default function OrdersPage() {
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+                className={
+                  viewMode === "list" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""
+                }
               >
                 <List className="h-4 w-4 mr-1" />
                 Liste
@@ -432,7 +684,11 @@ export default function OrdersPage() {
                 variant={viewMode === "by-client" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("by-client")}
-                className={viewMode === "by-client" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+                className={
+                  viewMode === "by-client"
+                    ? "bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                    : ""
+                }
               >
                 <Users className="h-4 w-4 mr-1" />
                 Par Client
@@ -441,7 +697,11 @@ export default function OrdersPage() {
                 variant={viewMode === "by-date" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("by-date")}
-                className={viewMode === "by-date" ? "bg-[#3A8F4C] hover:bg-[#2E7D32]" : ""}
+                className={
+                  viewMode === "by-date"
+                    ? "bg-[#3A8F4C] hover:bg-[#2E7D32]"
+                    : ""
+                }
               >
                 <Calendar className="h-4 w-4 mr-1" />
                 Par Date
@@ -453,202 +713,287 @@ export default function OrdersPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-[#3A8F4C]" />
             </div>
-          ) : (
-            viewMode === "list" ? (
-              /* LIST VIEW - Original table */
-              <div className="rounded-lg border">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted">
+          ) : viewMode === "list" ? (
+            /* LIST VIEW - Original table */
+            <div className="rounded-lg border">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Commande
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Produit
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Agriculteur
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Quantité
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Montant
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orders.length === 0 ? (
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Commande
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Produit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Agriculteur
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Quantité
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Montant
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Statut
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-muted-foreground"
+                        >
+                          Aucune commande trouvée
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {orders.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-6 py-8 text-center text-muted-foreground"
-                          >
-                            Aucune commande trouvée
-                          </td>
-                        </tr>
-                      ) : (
-                        orders.map((order) => {
-                          const statusBadge = getStatusBadge(order.status);
-                          return (
-                            <tr key={order.id} className="hover:bg-muted/50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium">
-                                  #{order.id.slice(0, 8)}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {order.item?.title || "N/A"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {order.item?.farmer?.name || "N/A"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {order.quantityKg} kg
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                ₳ {Number(order.totalADA || 0).toFixed(2)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                    ) : (
+                      orders.map((order) => {
+                        const statusBadge = getStatusBadge(order.status);
+                        return (
+                          <tr key={order.id} className="hover:bg-muted/50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium">
+                                #{order.id.slice(0, 8)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.item?.title || "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.item?.farmer?.name || "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.quantityKg} kg
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              ₳ {Number(order.totalADA || 0).toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
                                 <Badge
                                   variant={statusBadge.variant}
                                   className={statusBadge.className}
                                 >
                                   {statusBadge.label}
                                 </Badge>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    align="end"
-                                    className="w-48 p-2"
+                                {hasEscrow(order) && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-50 text-amber-700 border-amber-300"
                                   >
-                                    <div className="space-y-1">
-                                      <button
-                                        onClick={() => handleEdit(order)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                        Modifier
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(order)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                        Supprimer
-                                      </button>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              /* GROUPED VIEW */
-              <div className="space-y-4">
-                {(viewMode === "by-client" ? groupOrdersByClient(orders) : groupOrdersByDate(orders)).map((group) => (
-                  <div key={group.key} className="rounded-lg border">
-                    <button
-                      onClick={() => toggleGroup(group.key)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        {expandedGroups.has(group.key) ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        {viewMode === "by-client" ? (
-                          <Users className="h-4 w-4 text-[#004D73]" />
-                        ) : (
-                          <Calendar className="h-4 w-4 text-[#004D73]" />
-                        )}
-                        <span className="font-medium">{group.label}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">
-                          {group.orders.length} commande{group.orders.length > 1 ? "s" : ""}
-                        </span>
-                        <span className="font-medium text-[#3A8F4C]">
-                          ₳ {group.totalAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    </button>
-                    {expandedGroups.has(group.key) && (
-                      <div className="divide-y">
-                        {group.orders.map((order) => {
-                          const statusBadge = getStatusBadge(order.status);
-                          return (
-                            <div key={order.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30">
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm font-medium">#{order.id.slice(0, 8)}</span>
-                                <span className="text-sm text-muted-foreground">{order.item?.title || "N/A"}</span>
+                                    <LockKeyhole className="h-3 w-3 mr-1" />
+                                    Escrow
+                                  </Badge>
+                                )}
                               </div>
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm">{order.quantityKg} kg</span>
-                                <span className="text-sm font-medium">₳ {Number(order.totalADA || 0).toFixed(2)}</span>
-                                <Badge variant={statusBadge.variant} className={statusBadge.className}>
-                                  {statusBadge.label}
-                                </Badge>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent align="end" className="w-48 p-2">
-                                    <div className="space-y-1">
-                                      <button
-                                        onClick={() => handleEdit(order)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                        Modifier
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(order)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                        Supprimer
-                                      </button>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="end"
+                                  className="w-56 p-2"
+                                >
+                                  <div className="space-y-1">
+                                    <button
+                                      onClick={() => handleEdit(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                      Modifier
+                                    </button>
+
+                                    {/* Escrow Actions */}
+                                    {hasEscrow(order) && (
+                                      <>
+                                        <div className="border-t my-2" />
+                                        <p className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                                          Actions Escrow
+                                        </p>
+                                        {(order.status ===
+                                          OrderStatus.SHIPPED ||
+                                          order.status ===
+                                            OrderStatus.PAID) && (
+                                          <button
+                                            onClick={() =>
+                                              handleEscrowAction(
+                                                order,
+                                                "release"
+                                              )
+                                            }
+                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-green-50 text-green-700 transition-colors"
+                                          >
+                                            <Unlock className="h-4 w-4" />
+                                            Libérer les fonds
+                                          </button>
+                                        )}
+                                        {(order.status ===
+                                          OrderStatus.PENDING ||
+                                          order.status ===
+                                            OrderStatus.CANCELLED) && (
+                                          <button
+                                            onClick={() =>
+                                              handleEscrowAction(
+                                                order,
+                                                "refund"
+                                              )
+                                            }
+                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-blue-50 text-blue-700 transition-colors"
+                                          >
+                                            <RotateCcw className="h-4 w-4" />
+                                            Rembourser
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() =>
+                                            handleEscrowAction(order, "dispute")
+                                          }
+                                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-amber-50 text-amber-700 transition-colors"
+                                        >
+                                          <AlertTriangle className="h-4 w-4" />
+                                          Ouvrir un litige
+                                        </button>
+                                      </>
+                                    )}
+
+                                    <div className="border-t my-2" />
+                                    <button
+                                      onClick={() => handleDelete(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
-                  </div>
-                ))}
-                {orders.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Aucune commande trouvée
-                  </div>
-                )}
+                  </tbody>
+                </table>
               </div>
-            )
+            </div>
+          ) : (
+            /* GROUPED VIEW */
+            <div className="space-y-4">
+              {(viewMode === "by-client"
+                ? groupOrdersByClient(orders)
+                : groupOrdersByDate(orders)
+              ).map((group) => (
+                <div key={group.key} className="rounded-lg border">
+                  <button
+                    onClick={() => toggleGroup(group.key)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {expandedGroups.has(group.key) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      {viewMode === "by-client" ? (
+                        <Users className="h-4 w-4 text-[#004D73]" />
+                      ) : (
+                        <Calendar className="h-4 w-4 text-[#004D73]" />
+                      )}
+                      <span className="font-medium">{group.label}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-muted-foreground">
+                        {group.orders.length} commande
+                        {group.orders.length > 1 ? "s" : ""}
+                      </span>
+                      <span className="font-medium text-[#3A8F4C]">
+                        ₳ {group.totalAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </button>
+                  {expandedGroups.has(group.key) && (
+                    <div className="divide-y">
+                      {group.orders.map((order) => {
+                        const statusBadge = getStatusBadge(order.status);
+                        return (
+                          <div
+                            key={order.id}
+                            className="flex items-center justify-between px-4 py-3 hover:bg-muted/30"
+                          >
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-medium">
+                                #{order.id.slice(0, 8)}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                {order.item?.title || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm">
+                                {order.quantityKg} kg
+                              </span>
+                              <span className="text-sm font-medium">
+                                ₳ {Number(order.totalADA || 0).toFixed(2)}
+                              </span>
+                              <Badge
+                                variant={statusBadge.variant}
+                                className={statusBadge.className}
+                              >
+                                {statusBadge.label}
+                              </Badge>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="end"
+                                  className="w-48 p-2"
+                                >
+                                  <div className="space-y-1">
+                                    <button
+                                      onClick={() => handleEdit(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                      Modifier
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(order)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {orders.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucune commande trouvée
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -889,6 +1234,112 @@ export default function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Escrow Action Dialog */}
+      <Dialog open={isEscrowDialogOpen} onOpenChange={setIsEscrowDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {escrowAction === "release" && (
+                <>
+                  <Unlock className="h-5 w-5 text-green-600" />
+                  Libérer les fonds
+                </>
+              )}
+              {escrowAction === "refund" && (
+                <>
+                  <RotateCcw className="h-5 w-5 text-blue-600" />
+                  Rembourser l&apos;acheteur
+                </>
+              )}
+              {escrowAction === "dispute" && (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  Ouvrir un litige
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {escrowAction === "release" && (
+                <>
+                  Cette action libérera les fonds verrouillés en escrow au
+                  vendeur. Commande:{" "}
+                  <strong>#{selectedOrder?.id.slice(0, 8)}</strong>
+                </>
+              )}
+              {escrowAction === "refund" && (
+                <>
+                  Cette action remboursera les fonds verrouillés en escrow à
+                  l&apos;acheteur. Commande:{" "}
+                  <strong>#{selectedOrder?.id.slice(0, 8)}</strong>
+                </>
+              )}
+              {escrowAction === "dispute" && (
+                <>
+                  Cette action ouvrira un litige pour la commande{" "}
+                  <strong>#{selectedOrder?.id.slice(0, 8)}</strong>.
+                  L&apos;arbitre devra résoudre le litige.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="py-4 space-y-2">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm">
+                  <strong>Produit:</strong> {selectedOrder.item?.title || "N/A"}
+                </p>
+                <p className="text-sm">
+                  <strong>Montant:</strong> ₳{" "}
+                  {Number(selectedOrder.totalADA || 0).toFixed(2)}
+                </p>
+                <p className="text-sm">
+                  <strong>TX Escrow:</strong>{" "}
+                  {getEscrowTxHash(selectedOrder)?.slice(0, 24)}...
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEscrowDialogOpen(false);
+                setEscrowAction(null);
+              }}
+              disabled={isEscrowLoading}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleConfirmEscrowAction}
+              disabled={isEscrowLoading}
+              className={
+                escrowAction === "release"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : escrowAction === "refund"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-amber-600 hover:bg-amber-700"
+              }
+            >
+              {isEscrowLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Traitement...
+                </>
+              ) : (
+                "Confirmer"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Wallet Connect Dialog */}
+      <WalletConnectDialog
+        open={isWalletDialogOpen}
+        onOpenChange={setIsWalletDialogOpen}
+      />
     </div>
   );
 }

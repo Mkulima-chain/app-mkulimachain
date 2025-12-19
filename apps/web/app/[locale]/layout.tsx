@@ -57,35 +57,33 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <NextIntlClientProvider messages={messages}>
-          <QueryProvider>
-            <WalletProvider>
-              <SessionProvider>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="light"
-                  enableSystem={false}
-                  disableTransitionOnChange={false}
-                  storageKey="mkulima-chain-theme"
+    <NextIntlClientProvider messages={messages}>
+      <QueryProvider>
+        <WalletProvider>
+          <SessionProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem={false}
+              disableTransitionOnChange={false}
+              storageKey="mkulima-chain-theme"
+            >
+              <MeshProviderComponent>
+                <div
+                  className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
                 >
-                  <MeshProviderComponent>
-                    <WalletAutoReconnect />
-                    <NotificationListener />
-                    <NavBar />
-                    {children}
-                    <Footer />
-                    <Toaster />
-                  </MeshProviderComponent>
-                </ThemeProvider>
-              </SessionProvider>
-            </WalletProvider>
-          </QueryProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+                  <WalletAutoReconnect />
+                  <NotificationListener />
+                  <NavBar />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                  <Toaster />
+                </div>
+              </MeshProviderComponent>
+            </ThemeProvider>
+          </SessionProvider>
+        </WalletProvider>
+      </QueryProvider>
+    </NextIntlClientProvider>
   );
 }

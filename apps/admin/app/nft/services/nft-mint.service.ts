@@ -84,10 +84,29 @@ export class NFTMintService {
 
       // Récupérer les UTXOs et l'adresse de change
       const utxos = await wallet.getUtxos();
+      if (!utxos || utxos.length === 0) {
+        throw new Error(
+          "Aucun UTXO disponible dans le wallet. Veuillez ajouter des fonds ADA à votre wallet."
+        );
+      }
+
       const changeAddress = await wallet.getChangeAddress();
+      if (!changeAddress) {
+        throw new Error(
+          "Impossible de récupérer l'adresse de change du wallet."
+        );
+      }
 
       // Créer une policy simple avec ForgeScript
+      // Important: ForgeScript.withOneSignature nécessite une adresse valide
       const forgingScript = ForgeScript.withOneSignature(changeAddress);
+
+      // Vérifier que le forging script est valide
+      if (!forgingScript) {
+        throw new Error(
+          "Impossible de créer le ForgeScript. Vérifiez que l'adresse est valide."
+        );
+      }
 
       // Obtenir le Policy ID réel depuis le script ForgeScript
       // Si un Policy ID est fourni, l'utiliser (pour réutiliser une policy existante)
@@ -308,32 +327,99 @@ export class NFTMintService {
       // Valider toutes les métadonnées avant de construire la transaction
       validateMetadata(cip25Metadata);
 
+      // Validation des valeurs avant de construire la transaction
+      if (!finalPolicyId || finalPolicyId.length !== 56) {
+        throw new Error(
+          `Policy ID invalide: ${finalPolicyId}. Le Policy ID doit être une string hexadécimale de 56 caractères.`
+        );
+      }
+
+      if (!finalAssetName || finalAssetName.length === 0) {
+        throw new Error(
+          `Asset name invalide: ${finalAssetName}. L'asset name ne peut pas être vide.`
+        );
+      }
+
+      if (!forgingScript) {
+        throw new Error(
+          "ForgeScript invalide. Impossible de créer le script de minting."
+        );
+      }
+
+      // Debug: logger les valeurs (en développement uniquement)
+      if (
+        typeof window !== "undefined" &&
+        process.env.NODE_ENV === "development"
+      ) {
+        console.log("Minting parameters:", {
+          policyId: finalPolicyId,
+          assetName: finalAssetName,
+          assetNameLength: finalAssetName.length,
+          forgingScriptType: typeof forgingScript,
+          forgingScript: forgingScript,
+        });
+      }
+
       // Créer le builder de transaction
+      // Note: L'evaluator peut être nécessaire pour certaines opérations
       const txBuilder = new MeshTxBuilder({
         fetcher: provider,
         submitter: provider,
+        evaluator: provider, // Ajouter l'evaluator pour le minting
       });
 
       // Construire la transaction avec la policy
-      // Important: appeler .mintingScript() avant .mint() pour que Mesh SDK
-      // puisse correctement associer le script au Policy ID
-      const unsignedTx = await txBuilder
-        .mintingScript(forgingScript)
-        .mint("1", finalPolicyId, finalAssetName)
-        .metadataValue(721, cip25Metadata)
-        .changeAddress(changeAddress)
-        .selectUtxosFrom(utxos)
-        .complete();
+      // WORKAROUND pour le bug "Undefined mint" dans Mesh SDK beta.87
+      // Il semble que mintingScript() doit être appelé AVANT mint() pour ForgeScript
+      // même si la documentation suggère l'inverse
+      try {
+        // Essayer d'abord l'ordre: mintingScript puis mint (workaround pour beta.87)
+        let unsignedTx;
+        try {
+          unsignedTx = await txBuilder
+            .mintingScript(forgingScript)
+            .mint("1", finalPolicyId, finalAssetName)
+            .metadataValue(721, cip25Metadata)
+            .changeAddress(changeAddress)
+            .selectUtxosFrom(utxos)
+            .complete();
+        } catch (firstError) {
+          // Si cela échoue, essayer l'ordre standard
+          console.warn(
+            "Tentative avec mintingScript en premier échouée, essai ordre standard:",
+            firstError
+          );
+          const txBuilder2 = new MeshTxBuilder({
+            fetcher: provider,
+            submitter: provider,
+            evaluator: provider,
+          });
+          unsignedTx = await txBuilder2
+            .mint("1", finalPolicyId, finalAssetName)
+            .mintingScript(forgingScript)
+            .metadataValue(721, cip25Metadata)
+            .changeAddress(changeAddress)
+            .selectUtxosFrom(utxos)
+            .complete();
+        }
 
-      // Signer et soumettre
-      const signedTx = await wallet.signTx(unsignedTx);
-      const txHash = await wallet.submitTx(signedTx);
+        // Signer et soumettre
+        const signedTx = await wallet.signTx(unsignedTx);
+        const txHash = await wallet.submitTx(signedTx);
 
-      return {
-        txHash,
-        policyId: finalPolicyId,
-        assetName: tokenName, // Retourner le nom en texte, pas en hex
-      };
+        return {
+          txHash,
+          policyId: finalPolicyId,
+          assetName: tokenName, // Retourner le nom en texte, pas en hex
+        };
+      } catch (mintError) {
+        console.error("Erreur détaillée lors du mint:", mintError);
+        throw new Error(
+          `Erreur lors de la construction de la transaction de mint: ${
+            mintError instanceof Error ? mintError.message : "Erreur inconnue"
+          }`
+        );
+      }
     } catch (error) {
       console.error("Error minting NFT:", error);
       throw new Error(

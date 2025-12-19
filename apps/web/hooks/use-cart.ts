@@ -9,6 +9,8 @@ export interface CartItem {
   price: number;
   currency: string;
   quantity: number;
+  sellerId?: string; // Seller user ID for order creation
+  sellerAddress?: string; // Cardano address for escrow payments
 }
 
 const CART_STORAGE_KEY = "mkulima-cart";

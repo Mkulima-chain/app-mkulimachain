@@ -23,14 +23,18 @@ import {
   Smartphone,
   Check,
   Package,
-  User
+  User,
 } from "lucide-react";
-import { useCart, useCardanoWallet, useCreateBatchOrders } from "@/hooks";
+import {
+  useCart,
+  useCardanoWallet,
+  useCreateBatchOrders,
+  useEscrowContract,
+} from "@/hooks";
 import { ModalWallet } from "@/components/wallet/modal-wallet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CreateOrderDto } from "@/types/order";
-
 
 type PaymentMethod = "ada" | "airtel" | "orange" | "vodacom" | null;
 type ShippingOption = "buyer-choice" | "seller-choice";
@@ -93,8 +97,18 @@ export default function CartPage() {
   } = useCart();
   const { connected } = useCardanoWallet();
   const createOrdersMutation = useCreateBatchOrders();
-  
+  const {
+    lockFunds,
+    isLoading: isEscrowLoading,
+    error: escrowError,
+    txHash: escrowTxHash,
+  } = useEscrowContract();
+
   const [isProcessing, setIsProcessing] = useState(false);
+  const [escrowStatus, setEscrowStatus] = useState<
+    "idle" | "locking" | "success" | "error"
+  >("idle");
+  const [escrowTransactions, setEscrowTransactions] = useState<string[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>(null);
   const [mobileMoneyPhone, setMobileMoneyPhone] = useState("");
@@ -104,6 +118,9 @@ export default function CartPage() {
   const [selectedTransportCompany, setSelectedTransportCompany] = useState<
     string | null
   >(null);
+
+  // Platform address for escrow arbiter (from env or default)
+  const PLATFORM_ADDRESS = process.env.NEXT_PUBLIC_PLATFORM_ADDRESS || "";
 
   // Taux de change fixe pour la démo
   const ADA_TO_USD_RATE = 0.45;
@@ -115,10 +132,10 @@ export default function CartPage() {
     }
 
     if (!session?.user?.id) {
-        toast.error("Connexion requise", {
-            description: "Veuillez vous connecter pour passer une commande",
-        });
-        return;
+      toast.error("Connexion requise", {
+        description: "Veuillez vous connecter pour passer une commande",
+      });
+      return;
     }
 
     if (!selectedPaymentMethod) {
@@ -151,53 +168,146 @@ export default function CartPage() {
     }
 
     setIsProcessing(true);
+    setEscrowStatus("idle");
+    setEscrowTransactions([]);
 
     try {
       // Construire les commandes pour chaque article du panier
-      const transportInfo = shippingOption === "buyer-choice" && selectedTransportCompany
-        ? `Transport: ${TRANSPORT_COMPANIES.find((c) => c.id === selectedTransportCompany)?.name || "À définir"}`
-        : "";
-      
+      const transportInfo =
+        shippingOption === "buyer-choice" && selectedTransportCompany
+          ? `Transport: ${TRANSPORT_COMPANIES.find((c) => c.id === selectedTransportCompany)?.name || "À définir"}`
+          : "";
+
       const fullAddress = [
         shippingAddress,
         transportInfo,
         selectedPaymentMethod !== "ada" ? `Tél: ${mobileMoneyPhone}` : "",
-      ].filter(Boolean).join(" | ");
+      ]
+        .filter(Boolean)
+        .join(" | ");
 
-      const orders: CreateOrderDto[] = cart.map((item) => ({
-        buyerId: session?.user?.id as string,
-        itemId: item.productId, // Note: productId doit correspondre à un itemId API valide
-        quantityKg: item.quantity,
-        shippingAddress: fullAddress || undefined,
-      }));
+      // ===== ESCROW PAYMENT FOR ADA =====
+      if (selectedPaymentMethod === "ada" && connected) {
+        setEscrowStatus("locking");
 
-      // Appel API pour créer les commandes
-      await createOrdersMutation.mutateAsync(orders);
+        // Lock funds in escrow for each cart item
+        const txHashes: string[] = [];
 
-      const methodName =
-        selectedPaymentMethod === "ada"
-          ? "ADA (Cardano)"
-          : selectedPaymentMethod === "airtel"
+        for (const item of cart) {
+          const totalAmount = item.price * item.quantity;
+
+          // Use seller address if available, otherwise use platform address
+          const beneficiaryAddress = item.sellerAddress || PLATFORM_ADDRESS;
+
+          if (!beneficiaryAddress) {
+            toast.error("Adresse du vendeur manquante", {
+              description: `L'adresse du vendeur pour "${item.productName}" n'est pas configurée.`,
+            });
+            setEscrowStatus("error");
+            setIsProcessing(false);
+            return;
+          }
+
+          // Use platform as arbiter for dispute resolution
+          const arbiterAddress = PLATFORM_ADDRESS;
+
+          if (!arbiterAddress) {
+            toast.error("Adresse de la plateforme manquante", {
+              description:
+                "Veuillez configurer NEXT_PUBLIC_PLATFORM_ADDRESS dans .env.local",
+            });
+            setEscrowStatus("error");
+            setIsProcessing(false);
+            return;
+          }
+
+          toast.info(`Verrouillage des fonds pour ${item.productName}...`, {
+            duration: 3000,
+          });
+
+          try {
+            // Lock funds in escrow contract
+            const txHash = await lockFunds({
+              amountADA: totalAmount,
+              beneficiaryAddress: beneficiaryAddress,
+              arbiterAddress: arbiterAddress,
+              deadlineHours: 72, // 3 days deadline
+              description: `Commande: ${item.productName} x${item.quantity} (${totalAmount} ADA)`,
+            });
+
+            txHashes.push(txHash);
+            setEscrowTransactions((prev) => [...prev, txHash]);
+
+            toast.success(`Fonds verrouillés pour ${item.productName}`, {
+              description: `Transaction: ${txHash.slice(0, 16)}...`,
+            });
+          } catch (escrowError: any) {
+            console.error("Escrow locking failed:", escrowError);
+            setEscrowStatus("error");
+            toast.error(`Échec du verrouillage pour ${item.productName}`, {
+              description: escrowError.message || "Erreur blockchain",
+            });
+            setIsProcessing(false);
+            return;
+          }
+        }
+
+        setEscrowStatus("success");
+
+        // All escrow transactions successful, now create orders in database
+        // Store escrow TX hash in shippingAddress since notes field is not supported by API
+        const orders: CreateOrderDto[] = cart.map((item, index) => ({
+          buyerId: session?.user?.id as string,
+          itemId: item.productId,
+          quantityKg: item.quantity,
+          shippingAddress: fullAddress
+            ? `${fullAddress} | Escrow TX: ${txHashes[index]?.slice(0, 24)}...`
+            : `Escrow TX: ${txHashes[index] || "N/A"}`,
+        }));
+
+        await createOrdersMutation.mutateAsync(orders);
+
+        toast.success("Commande(s) créée(s) avec succès!", {
+          description: `${cart.length} commande(s) avec paiement sécurisé par escrow Cardano.`,
+        });
+      } else {
+        // ===== MOBILE MONEY PAYMENT (existing flow) =====
+        const orders: CreateOrderDto[] = cart.map((item) => ({
+          buyerId: session?.user?.id as string,
+          itemId: item.productId,
+          quantityKg: item.quantity,
+          shippingAddress: fullAddress || undefined,
+        }));
+
+        await createOrdersMutation.mutateAsync(orders);
+
+        const methodName =
+          selectedPaymentMethod === "airtel"
             ? "Airtel Money"
             : selectedPaymentMethod === "orange"
               ? "Orange Money"
               : "Vodacom M-Pesa";
 
-      toast.success("Commande(s) créée(s) avec succès!", {
-        description: `${cart.length} commande(s) enregistrée(s). Paiement: ${methodName}.`,
-      });
-      
+        toast.success("Commande(s) créée(s) avec succès!", {
+          description: `${cart.length} commande(s) enregistrée(s). Paiement: ${methodName}.`,
+        });
+      }
+
+      // Clear cart and reset state
       clearCart();
       setSelectedPaymentMethod(null);
       setMobileMoneyPhone("");
       setShippingAddress("");
       setShippingOption("seller-choice");
       setSelectedTransportCompany(null);
+      setEscrowStatus("idle");
+      setEscrowTransactions([]);
       router.push("/dashboard");
     } catch (error) {
       console.error("Erreur lors de la création des commandes:", error);
       toast.error("Erreur lors de la création de la commande", {
-        description: error instanceof Error ? error.message : "Veuillez réessayer",
+        description:
+          error instanceof Error ? error.message : "Veuillez réessayer",
       });
     } finally {
       setIsProcessing(false);
@@ -208,45 +318,46 @@ export default function CartPage() {
   useEffect(() => {
     // Si pas de session (et pas en chargement), on redirige ou on notifie
     if (session === null) {
-        // Optionnel : redirection automatique
-        // router.push("/api/auth/signin?callbackUrl=/cart");
-        toast.error("Connexion requise", {
-            description: "Veuillez vous connecter pour accéder à votre panier",
-            action: {
-                label: "Se connecter",
-                onClick: () => router.push("/api/auth/signin?callbackUrl=/cart"),
-            },
-            duration: 5000,
-        });
+      // Optionnel : redirection automatique
+      // router.push("/api/auth/signin?callbackUrl=/cart");
+      toast.error("Connexion requise", {
+        description: "Veuillez vous connecter pour accéder à votre panier",
+        action: {
+          label: "Se connecter",
+          onClick: () => router.push("/api/auth/signin?callbackUrl=/cart"),
+        },
+        duration: 5000,
+      });
     } else if (session?.user?.id) {
-        // Vérifier si l'ID est valide (UUID)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(session.user.id)) {
-             toast.error("Session invalide", {
-                description: "Votre session est obsolète. Veuillez vous reconnecter.",
-                action: {
-                    label: "Se déconnecter",
-                    onClick: () => window.location.href = "/api/auth/signout",
-                },
-                duration: Infinity, // Reste visible
-            });
-        }
+      // Vérifier si l'ID est valide (UUID)
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(session.user.id)) {
+        toast.error("Session invalide", {
+          description: "Votre session est obsolète. Veuillez vous reconnecter.",
+          action: {
+            label: "Se déconnecter",
+            onClick: () => (window.location.href = "/api/auth/signout"),
+          },
+          duration: Infinity, // Reste visible
+        });
+      }
     }
   }, [session, router]);
-  
+
   // Calculer le total à afficher selon la méthode de paiement
   const getDisplayTotal = () => {
     const totalADA = getTotal();
     if (selectedPaymentMethod && selectedPaymentMethod !== "ada") {
-        // Conversion en USD pour Mobile Money
-        return {
-            amount: (totalADA * ADA_TO_USD_RATE),
-            currency: "USD"
-        };
+      // Conversion en USD pour Mobile Money
+      return {
+        amount: totalADA * ADA_TO_USD_RATE,
+        currency: "USD",
+      };
     }
     return {
-        amount: totalADA,
-        currency: "ADA"
+      amount: totalADA,
+      currency: "ADA",
     };
   };
 
@@ -305,8 +416,13 @@ export default function CartPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-lg bg-linear-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center shrink-0 overflow-hidden">
-                      {(item.productImage.startsWith('http') || item.productImage.startsWith('/')) ? (
-                        <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                      {item.productImage.startsWith("http") ||
+                      item.productImage.startsWith("/") ? (
+                        <img
+                          src={item.productImage}
+                          alt={item.productName}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <span className="text-4xl">{item.productImage}</span>
                       )}
@@ -796,7 +912,8 @@ export default function CartPage() {
                       Sous-total
                     </span>
                     <span className="text-[#5A3E36] dark:text-white font-medium">
-                      {displayTotal.amount.toLocaleString()} {displayTotal.currency}
+                      {displayTotal.amount.toLocaleString()}{" "}
+                      {displayTotal.currency}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -813,7 +930,8 @@ export default function CartPage() {
                       Total
                     </span>
                     <span className="text-[#3A8F4C] dark:text-[#3A8F4C]">
-                      {displayTotal.amount.toLocaleString()} {displayTotal.currency}
+                      {displayTotal.amount.toLocaleString()}{" "}
+                      {displayTotal.currency}
                     </span>
                   </div>
                 </div>

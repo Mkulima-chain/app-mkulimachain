@@ -3,7 +3,7 @@ use aiken/collection/list
 use cardano/script_context.{ScriptContext}
 
 /// Datum pour la vente de NFT
-type SaleDatum {
+pub type SaleDatum {
   seller_address: ByteArray,
   nft_policy_id: ByteArray,
   nft_asset_name: ByteArray,
@@ -17,11 +17,11 @@ type SaleDatum {
 }
 
 /// Redeemer pour la vente
-type SaleRedeemer {
+pub type SaleRedeemer {
   action: SaleAction,
 }
 
-type SaleAction {
+pub type SaleAction {
   Buy { buyer_address: ByteArray }
   Cancel
 }
