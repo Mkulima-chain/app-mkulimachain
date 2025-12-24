@@ -15,8 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { useApiPost } from "@/hooks/use-api-mutation";
-import { LanguageSelector } from "@/components/language-selector";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -30,7 +28,9 @@ import {
   Check,
 } from "lucide-react";
 import { useWalletAtom } from "@/hooks/useWalletAtom";
-import { BrowserWallet } from "@meshsdk/core";
+import { getAvailableWallets } from "@/lib/wallet";
+import { useAuthContract } from "@/hooks/use-auth-contract";
+import { UserRole as ContractUserRole } from "@/types/contracts";
 
 // Types pour l'inscription
 enum UserRole {
@@ -98,12 +98,20 @@ export default function RegisterPage() {
   const { connected, address, connect, disconnect, walletName } =
     useWalletAtom();
 
+  // Auth contract for blockchain registration
+  const {
+    registerUser: registerOnChain,
+    isLoading: isRegisteringOnChain,
+    error: blockchainError,
+    txHash,
+  } = useAuthContract();
+
   // Load available wallets
   React.useEffect(() => {
     const loadWallets = async () => {
       try {
-        const wallets = await BrowserWallet.getInstalledWallets();
-        setAvailableWallets(wallets.map((w) => w.name));
+        const wallets = getAvailableWallets();
+        setAvailableWallets(wallets);
       } catch (error) {
         console.error("Error loading wallets:", error);
       }
@@ -171,14 +179,32 @@ export default function RegisterPage() {
   const registerMutation = useApiPost<RegisterResponse, RegisterDto>(
     "auth/register",
     {
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success("Compte créé avec succès !", {
-          description: "Vous allez être redirigé vers la page de connexion.",
+          description: "Enregistrement sur la blockchain en cours...",
         });
+
+        // Enregistrement on-chain (non-bloquant)
+        if (address) {
+          try {
+            await registerOnChain({
+              role: ContractUserRole.Buyer,
+              signature: address, // Utiliser l'adresse comme signature simplifiée
+              metadataHash: undefined,
+            });
+            toast.success("Identité blockchain créée !", {
+              description: "Votre compte est maintenant sécurisé sur Cardano.",
+            });
+          } catch (e) {
+            console.warn("Blockchain registration failed (non-blocking):", e);
+            // L'inscription API a réussi, on continue quand même
+          }
+        }
+
         // Rediriger vers la page de connexion après un court délai
         setTimeout(() => {
           router.push("/login");
-        }, 1500);
+        }, 2000);
       },
       onError: (error) => {
         const errorMessage =
@@ -293,11 +319,6 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 dark:bg-[#004D73] p-4">
-      {/* Language Selector - Top Right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <ThemeToggle />
-        <LanguageSelector />
-      </div>
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8 animate-fade-in">

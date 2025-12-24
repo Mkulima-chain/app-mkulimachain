@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -14,7 +15,7 @@ import {
   Network,
   Leaf,
   Store,
-  Image,
+  ImageIcon,
   FileText,
   Settings,
   Menu,
@@ -77,7 +78,7 @@ const menuItems: MenuItem[] = [
   {
     title: "NFT",
     href: "/nft",
-    icon: Image,
+    icon: ImageIcon,
   },
   {
     title: "Finance",
@@ -160,9 +161,13 @@ export function Sidebar() {
           {/* Logo */}
           <div className="flex h-16 items-center border-b px-6">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3A8F4C] to-[#2E7D32]">
-                <LayoutDashboard className="h-6 w-6 text-white" />
-              </div>
+              <NextImage
+                src="/logo-mkulima-leaf.png"
+                alt="Mkulima Chain Logo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+              />
               <div className="flex flex-col">
                 <span className="text-lg font-bold text-foreground">Admin</span>
                 <span className="text-xs text-muted-foreground">

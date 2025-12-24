@@ -229,7 +229,7 @@ export default function NFTPage() {
     listMutation.mutate(undefined);
   };
 
-  const handleMintWithMesh = async () => {
+  const handleMintWithLucid = async () => {
     if (!selectedNFT) return;
 
     if (!connected || !wallet) {
@@ -237,31 +237,16 @@ export default function NFTPage() {
       return;
     }
 
-    // Vérifier la configuration Blockfrost avant de commencer
-    const blockfrostKey =
-      typeof window !== "undefined"
-        ? process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
-        : undefined;
-
-    if (!blockfrostKey) {
-      toast.error(
-        "Configuration manquante: Veuillez définir NEXT_PUBLIC_BLOCKFROST_API_KEY dans votre fichier .env.local et redémarrer le serveur.",
-        { duration: 10000 }
-      );
-      return;
-    }
-
     try {
       setIsMinting(true);
       toast.loading("Mint en cours sur la blockchain...", { id: "minting" });
 
-      // Mint le NFT avec Mesh SDK
+      // Mint le NFT avec Lucid
       const result = await NFTMintService.mintNFT(
         wallet,
         selectedNFT,
         mintData.policyId || undefined,
-        mintData.assetName || undefined,
-        undefined // blockfrostApiKey (depuis env)
+        mintData.assetName || undefined
       );
 
       toast.success("NFT minté avec succès sur la blockchain!", {
@@ -277,7 +262,23 @@ export default function NFTPage() {
     } catch (error) {
       setIsMinting(false);
       const errorMessage =
-        error instanceof Error ? error.message : "Erreur inconnue";
+        error instanceof Error ? error.message : String(error);
+      const errorMessageLower = errorMessage.toLowerCase();
+
+      // Gestion spécifique pour l'annulation utilisateur
+      if (
+        errorMessageLower.includes("declined") ||
+        errorMessageLower.includes("cancelled") ||
+        errorMessageLower.includes("refused") ||
+        errorMessageLower.includes("user declined") ||
+        errorMessageLower.includes("user canceled")
+      ) {
+        toast.info("Mint annulé", {
+          description: "Vous avez annulé la transaction.",
+        });
+        return;
+      }
+
       toast.error(`Erreur lors du mint: ${errorMessage}`, {
         id: "minting",
         duration: 10000,
@@ -494,7 +495,7 @@ export default function NFTPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-priceADA">Prix (ADA)</Label>
+                <Label htmlFor="edit-priceADA">Prix (\u20b3)</Label>
                 <Input
                   id="edit-priceADA"
                   type="number"
@@ -728,17 +729,33 @@ export default function NFTPage() {
                   type="button"
                   onClick={async () => {
                     try {
-                      const { BrowserWallet } = await import("@meshsdk/core");
-                      const wallets = await BrowserWallet.getInstalledWallets();
-                      if (wallets.length === 0) {
+                      // Simple detection of installed wallets from window.cardano
+                      const cardano = (window as any).cardano;
+                      if (!cardano) {
                         toast.error(
                           "Aucun wallet Cardano détecté. Installez Nami, Eternl ou un autre wallet Cardano."
                         );
                         return;
                       }
-                      // Connecter le premier wallet disponible
-                      await connect(wallets[0].name);
-                      toast.success("Wallet connecté avec succès");
+
+                      // Filter for likely wallet objects (checking for .enable or .apiVersion)
+                      const walletNames = Object.keys(cardano).filter(
+                        (key) =>
+                          typeof cardano[key] === "object" &&
+                          (cardano[key].enable || cardano[key].apiVersion) &&
+                          !["ccvault", "typhon"].includes(key) // Exclude some checks if needed, but generally safe to try
+                      );
+
+                      if (walletNames.length === 0) {
+                        toast.error("Aucun wallet compatible détecté.");
+                        return;
+                      }
+
+                      // Connect to the first found wallet for simplicity, or could show selection
+                      await connect(walletNames[0]);
+                      toast.success(
+                        `Wallet ${walletNames[0]} connecté avec succès`
+                      );
                     } catch (error) {
                       toast.error(
                         `Erreur de connexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`
@@ -746,10 +763,7 @@ export default function NFTPage() {
                     }
                   }}
                   className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
-                  disabled={
-                    typeof window !== "undefined" &&
-                    !process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
-                  }
+                  disabled={false} // Removed Blockfrost check dependency for button enabling
                 >
                   <Wallet className="h-4 w-4 mr-2" />
                   Connecter Wallet
@@ -800,13 +814,11 @@ export default function NFTPage() {
                 </Label>
                 <Input
                   id="mint-policyId"
-                  type="text"
-                  placeholder="Laissez vide pour générer automatiquement"
-                  value={mintData.policyId}
+                  placeholder="Policy ID existant (vide = nouveau)"
+                  value={mintData.policyId || ""}
                   onChange={(e) =>
                     setMintData({ ...mintData, policyId: e.target.value })
                   }
-                  maxLength={100}
                 />
                 <p className="text-xs text-muted-foreground">
                   Si vide, un Policy ID sera généré automatiquement
@@ -814,17 +826,15 @@ export default function NFTPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="mint-assetName">
-                  Nom de l&apos;Asset (optionnel - sera généré si vide)
+                  Nom de l&apos;asset (optionnel - sera généré si vide)
                 </Label>
                 <Input
                   id="mint-assetName"
-                  type="text"
-                  placeholder="Laissez vide pour générer automatiquement"
-                  value={mintData.assetName}
+                  placeholder="Nom de l'asset (vide = titre du NFT)"
+                  value={mintData.assetName || ""}
                   onChange={(e) =>
                     setMintData({ ...mintData, assetName: e.target.value })
                   }
-                  maxLength={100}
                 />
                 <p className="text-xs text-muted-foreground">
                   Si vide, un nom sera généré à partir du titre du NFT
@@ -846,7 +856,7 @@ export default function NFTPage() {
             </Button>
             <Button
               type="button"
-              onClick={handleMintWithMesh}
+              onClick={handleMintWithLucid}
               className="bg-[#3A8F4C] hover:bg-[#2E7D32]"
               disabled={
                 !connected || !wallet || isMinting || mintMutation.isPending

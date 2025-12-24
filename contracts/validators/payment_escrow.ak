@@ -1,6 +1,10 @@
 use cardano/transaction.{Transaction, OutputReference}
 use aiken/collection/list
 use cardano/script_context.{ScriptContext}
+use aiken/interval
+
+/// Minimum escrow amount in lovelace (2 ADA)
+const min_escrow_amount: Int = 2_000_000
 
 /// Statut d'un paiement en escrow
 pub type EscrowStatus {
@@ -66,6 +70,15 @@ fn arbiter_signed(datum: EscrowDatum, context: ScriptContext) -> Bool {
   list.has(context.transaction.extra_signatories, datum.arbiter_address)
 }
 
+/// Vérifie si le deadline est passé en utilisant la validity range de la transaction
+fn deadline_passed(datum: EscrowDatum, context: ScriptContext) -> Bool {
+  // Le deadline est passé si le lower bound de la validity range est après le deadline
+  when context.transaction.validity_range.lower_bound.bound_type is {
+    interval.Finite(tx_time) -> tx_time > datum.deadline_timestamp
+    _ -> False
+  }
+}
+
 /// Calcule le montant pour le bénéficiaire lors d'un split
 fn calculate_beneficiary_split(total: Int, percent: Int) -> Int {
   (total * percent) / 100
@@ -87,29 +100,33 @@ validator payment_escrow {
           Release -> {
             // Vérifier que l'escrow est verrouillé
             d.status == Locked
+              // Vérifier le montant minimum pour éviter les attaques dust
+              && d.amount_lovelace >= min_escrow_amount
               // Le bénéficiaire ou l'arbitre peut libérer les fonds
               && (beneficiary_signed(d, context) || arbiter_signed(d, context))
-              // Vérifier que le montant est valide
-              && d.amount_lovelace > 0
           }
           
           // Action: Rembourser le payeur
           Refund -> {
             // Vérifier que l'escrow est verrouillé
             d.status == Locked
+              // Vérifier le montant minimum
+              && d.amount_lovelace >= min_escrow_amount
               // Le payeur ou l'arbitre peut demander un remboursement
-              && (payer_signed(d, context) || arbiter_signed(d, context))
-              // Vérifier que le montant est valide
-              && d.amount_lovelace > 0
+              // OU le deadline est passé (refund automatique possible)
+              && (payer_signed(d, context) || arbiter_signed(d, context) || deadline_passed(d, context))
           }
           
           // Action: Créer un litige
           Dispute { reason } -> {
             // Vérifier que l'escrow est verrouillé
             d.status == Locked
+              // Vérifier le montant minimum
+              && d.amount_lovelace >= min_escrow_amount
               // Le payeur ou le bénéficiaire peut créer un litige
               && (payer_signed(d, context) || beneficiary_signed(d, context))
-              // Note: reason est un ByteArray, pas besoin de vérifier la longueur
+              // Le deadline ne doit pas être passé pour disputer
+              && !deadline_passed(d, context)
           }
           
           // Action: Résoudre un litige

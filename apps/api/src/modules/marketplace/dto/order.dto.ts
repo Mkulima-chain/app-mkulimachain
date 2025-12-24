@@ -80,3 +80,13 @@ export class ShipOrderDto {
   @MaxLength(100)
   trackingNumber!: string;
 }
+
+export class UpdateTraceabilityDto {
+  @IsString()
+  @IsOptional()
+  txHash?: string;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
+}

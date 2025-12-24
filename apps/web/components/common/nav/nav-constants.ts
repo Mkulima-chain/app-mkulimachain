@@ -11,6 +11,7 @@ export interface HomeSection {
 export const NAV_LINKS: NavLink[] = [
   { href: "/marketplace", label: "Marketplace" },
   { href: "/marketplace/nft", label: "NFT" },
+  { href: "/marketplace/mint", label: "Créer NFT" },
 ];
 
 export const HOME_SECTIONS: HomeSection[] = [

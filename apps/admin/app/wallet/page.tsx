@@ -218,7 +218,7 @@ export default function WalletPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total ADA</CardTitle>
+            <CardTitle className="text-sm font-medium">Total \u20b3</CardTitle>
             <TrendingUp className="h-5 w-5 text-[#5A3E36]" />
           </CardHeader>
           <CardContent>
@@ -284,7 +284,7 @@ export default function WalletPage() {
                         Propriétaire
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Adresse ADA
+                        Adresse \u20b3
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Mobile Money

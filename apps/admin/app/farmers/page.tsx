@@ -31,6 +31,9 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { EditFarmerDialog } from "@/components/farmers/edit-farmer-dialog";
 import { AddFarmerDialog } from "@/components/farmers/add-farmer-dialog";
 import { DeleteFarmerDialog } from "@/components/farmers/delete-farmer-dialog";
+import { AuthContractService } from "@/services/lucid/auth-contract.service";
+import { initLucid, connectWallet } from "@/lib/lucid";
+import { useWalletAtom } from "@/hooks/useWalletAtom";
 
 type Farmer = {
   id: string;
@@ -177,8 +180,54 @@ export default function FarmersPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  // Import AuthContractService (make sure to add import at top)
+  // import { AuthContractService } from "@/services/lucid/auth-contract.service";
+  // import { initLucid } from "@/lib/lucid";
+  // import { useWalletAtom } from "@/hooks/useWalletAtom";
+
+  const { walletName, connected } = useWalletAtom();
+
   const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (connected && walletName && formData.walletAddress) {
+      try {
+        toast.info("Préparation de l'enregistrement Blockchain...");
+
+        const lucid = await initLucid();
+
+        // Connect to the specific wallet
+        // @ts-ignore
+        const walletApi = await window.cardano[walletName].enable();
+        await connectWallet(lucid, walletApi);
+
+        const authService = new AuthContractService(lucid);
+
+        const txHash = await authService.registerFarmer({
+          farmerAddress: formData.walletAddress,
+          metadataHash: undefined,
+        });
+
+        toast.success(`Transaction envoyée: ${txHash.slice(0, 10)}...`);
+
+        // Verify transaction success (optional wait)
+        await lucid.awaitTx(txHash);
+        toast.success("Enregistrement Blockchain confirmé !");
+      } catch (error: any) {
+        console.error("Blockchain Error:", error);
+        toast.error(
+          "Erreur enregistrement Blockchain: " + (error.message || error)
+        );
+        // We stop here to prevent DB inconsistency if blockchain fails
+        return;
+      }
+    } else if (formData.walletAddress && !connected) {
+      toast.warning(
+        "Veuillez connecter votre wallet Admin pour enregistrer sur la blockchain"
+      );
+      return;
+    }
+
     const data = {
       ...formData,
       latitude: parseFloat(formData.latitude.toString()),

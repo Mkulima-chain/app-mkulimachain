@@ -5,6 +5,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useCardanoWallet } from "@/hooks";
 import { useWalletData } from "@/components/wallet/hooks/use-wallet-data";
 import { useWalletStorage } from "@/components/wallet/hooks/use-wallet-storage";
@@ -17,11 +19,12 @@ import { AssetItem } from "./components/asset-item";
 import { WalletActions } from "./components/wallet-actions";
 
 const POPOVER_WIDTH = "w-80";
-const POPOVER_BG = "bg-[#2D3247]";
-const POPOVER_BORDER = "border-white/10";
+const POPOVER_BG = "bg-white dark:bg-[#2D3247]";
+const POPOVER_BORDER = "border-gray-200 dark:border-white/10";
 const MAX_VISIBLE_ASSETS = 2;
 
 export function WalletPopover() {
+  const router = useRouter();
   const { connected, wallet, disconnect } = useCardanoWallet();
   const { saveToStorage, clearStorage } = useWalletStorage();
   const { walletData } = useWalletData({
@@ -41,10 +44,17 @@ export function WalletPopover() {
     copyAddress(walletData.address);
   };
 
-  const handleDisconnect = () => {
-    disconnect();
-    clearStorage();
-    toast.success("Wallet déconnecté");
+  const handleDisconnect = async () => {
+    try {
+      disconnect();
+      clearStorage();
+      await signOut({ redirect: false });
+      toast.success("Wallet déconnecté");
+      router.push("/login");
+    } catch (error) {
+      console.error("Error disconnecting:", error);
+      toast.error("Erreur lors de la déconnexion");
+    }
   };
 
   const displayAdaBalance = adaBalance || walletData.balance || 0;
@@ -55,7 +65,7 @@ export function WalletPopover() {
         <WalletTriggerButton address={walletData.address} />
       </PopoverTrigger>
       <PopoverContent
-        className={`${POPOVER_WIDTH} p-0 ${POPOVER_BG} dark:${POPOVER_BG} ${POPOVER_BORDER}`}
+        className={`${POPOVER_WIDTH} p-0 ${POPOVER_BG} ${POPOVER_BORDER}`}
         align="end"
       >
         <div className="p-4 space-y-4">
@@ -71,7 +81,7 @@ export function WalletPopover() {
               asset={{
                 unit: "lovelace",
                 quantity: displayAdaBalance * 1_000_000,
-                name: "ADA",
+                name: "₳",
               }}
               balance={displayAdaBalance}
               isAda

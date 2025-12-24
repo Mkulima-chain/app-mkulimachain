@@ -1,13 +1,13 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect } from "react";
 
-import { BrowserWallet } from "@meshsdk/core";
 import {
   signDataAtom,
   walletInstanceAtom,
   walletOperationsAtom,
   walletStateAtom,
 } from "@/lib/atoms/wallet";
+import { initLucid, connectWallet } from "@/lib/lucid";
 
 export function useWalletAtom() {
   const walletState = useAtomValue(walletStateAtom);
@@ -25,27 +25,30 @@ export function useWalletAtom() {
             "Attempting to reconnect wallet:",
             walletState.walletName
           );
-          const browserWallet = await BrowserWallet.enable(
-            walletState.walletName
-          );
+          // Connect using standard CIP-30 approach then initialize Lucid
+          // @ts-ignore
+          const walletApi =
+            await window.cardano[walletState.walletName].enable();
 
-          // Check if the addresses match to verify it's the same wallet
-          const addresses = await browserWallet.getUsedAddresses();
+          if (walletApi) {
+            // Initialize Lucid
+            const lucid = await initLucid();
 
-          if (addresses && addresses.length > 0) {
-            // If the stored address doesn't match the current one, update it
-            const currentAddress = addresses[0];
+            // Connect wallet to Lucid
+            await connectWallet(lucid, walletApi);
 
-            if (currentAddress !== walletState.address) {
+            const address = await lucid.wallet.address();
+
+            if (address !== walletState.address) {
               console.log("Address changed since last connection");
             }
 
             // Update the wallet instance
-            setWalletInstance(browserWallet);
+            setWalletInstance(lucid);
 
             console.log("Wallet reconnected successfully");
           } else {
-            console.warn("No addresses found in wallet during reconnection");
+            console.warn("Could not enable wallet during reconnection");
             // Reset the stored state since we couldn't reconnect properly
             dispatch({ type: "disconnect" });
           }

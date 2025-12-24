@@ -39,6 +39,24 @@ export interface Order {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  traceability?: TraceabilityData;
+}
+
+export interface TraceabilityStepData {
+  completed: boolean;
+  date?: string;
+  txHash?: string;
+  note?: string;
+}
+
+export interface TraceabilityData {
+  order: TraceabilityStepData;
+  preparation: TraceabilityStepData;
+  harvest: TraceabilityStepData;
+  processing: TraceabilityStepData;
+  packaging: TraceabilityStepData;
+  shipping: TraceabilityStepData;
+  delivery: TraceabilityStepData;
 }
 
 export interface CreateOrderDto {

@@ -82,7 +82,7 @@ export function OrderContractExample() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Price per kg (ADA)</label>
+          <label className="text-sm font-medium">Price per kg (\u20b3)</label>
           <Input
             type="number"
             step="0.01"

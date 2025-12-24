@@ -26,10 +26,10 @@ export function WalletActions({ address, onDisconnect }: WalletActionsProps) {
   };
 
   return (
-    <div className="space-y-2 pt-2 border-t border-white/10">
+    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-white/10">
       <Button
         variant="ghost"
-        className="w-full justify-start text-white hover:bg-white/10 h-9"
+        className="w-full justify-start text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 h-9"
         onClick={handleViewAccount}
         aria-label="View account settings"
       >
@@ -38,7 +38,7 @@ export function WalletActions({ address, onDisconnect }: WalletActionsProps) {
       </Button>
       <Button
         variant="ghost"
-        className="w-full justify-start text-white hover:bg-white/10 h-9"
+        className="w-full justify-start text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 h-9"
         onClick={handleViewOnExplorer}
         disabled={!address}
         aria-label="View wallet on CardanoScan explorer"
@@ -48,7 +48,7 @@ export function WalletActions({ address, onDisconnect }: WalletActionsProps) {
       </Button>
       <Button
         variant="ghost"
-        className="w-full justify-start text-red-400 hover:bg-red-500/20 h-9"
+        className="w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/20 h-9"
         onClick={onDisconnect}
         aria-label="Disconnect wallet"
       >

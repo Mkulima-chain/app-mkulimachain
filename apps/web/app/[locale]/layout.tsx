@@ -15,6 +15,7 @@ import { WalletProvider } from "@/wallet/wallet-provider";
 import { NotificationListener } from "@/components/notification-listener";
 import { NavBar } from "@/components/common/nav-bar";
 import { Footer } from "@/components/common/footer";
+import { AdaPriceProvider } from "@/components/ui/price-display";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,16 +70,18 @@ export default async function LocaleLayout({
               storageKey="mkulima-chain-theme"
             >
               <MeshProviderComponent>
-                <div
-                  className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
-                >
-                  <WalletAutoReconnect />
-                  <NotificationListener />
-                  <NavBar />
-                  <main className="flex-1">{children}</main>
-                  <Footer />
-                  <Toaster />
-                </div>
+                <AdaPriceProvider>
+                  <div
+                    className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+                  >
+                    <WalletAutoReconnect />
+                    <NotificationListener />
+                    <NavBar />
+                    <main className="flex-1">{children}</main>
+                    <Footer />
+                    <Toaster />
+                  </div>
+                </AdaPriceProvider>
               </MeshProviderComponent>
             </ThemeProvider>
           </SessionProvider>

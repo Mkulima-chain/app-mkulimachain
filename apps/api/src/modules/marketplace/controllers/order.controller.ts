@@ -8,6 +8,8 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  Patch,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { OrderService } from '../services/order.service';
 import {
@@ -16,7 +18,9 @@ import {
   GetOrderDto,
   PayOrderDto,
   ShipOrderDto,
+  UpdateTraceabilityDto,
 } from '../dto/order.dto';
+import { TraceabilityStep } from '../interfaces/iorder';
 import { OrderEntity } from '../entities/order.entity';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 
@@ -91,5 +95,14 @@ export class OrderController {
   @Delete(':id')
   async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.service.delete(id);
+  }
+
+  @Patch(':id/traceability/:step')
+  async updateTraceabilityStep(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('step', new ParseEnumPipe(TraceabilityStep)) step: TraceabilityStep,
+    @Body() dto: UpdateTraceabilityDto,
+  ): Promise<OrderEntity> {
+    return this.service.updateTraceabilityStep(id, step, dto);
   }
 }

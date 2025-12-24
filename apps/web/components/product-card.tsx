@@ -1,37 +1,53 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { StatusBadge } from "@/components/status-badge"
-import { ShoppingCart, Star, MapPin, Users, Heart, Share2, Sparkles, Images } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  ShoppingCart,
+  Star,
+  MapPin,
+  Users,
+  Heart,
+  Share2,
+  Sparkles,
+  Images,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { InlinePrice } from "@/components/ui/price-display";
 
 interface Product {
-  id: string
-  name: string
-  category: string
-  price: number
-  currency: string
-  images: string[]
-  description: string
-  producer: string
-  location: string
-  rating: number
-  reviews: number
-  stock: number
-  certified: boolean
-  blockchainHash?: string
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  currency: string;
+  images: string[];
+  description: string;
+  producer: string;
+  location: string;
+  rating: number;
+  reviews: number;
+  stock: number;
+  certified: boolean;
+  blockchainHash?: string;
 }
 
 interface ProductCardProps {
-  product: Product
-  viewMode: "grid" | "list"
-  isFavorite: boolean
-  onToggleFavorite: () => void
-  onClick: () => void
+  product: Product;
+  viewMode: "grid" | "list";
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  onClick: () => void;
 }
 
-export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, onClick }: ProductCardProps) {
+export function ProductCard({
+  product,
+  viewMode,
+  isFavorite,
+  onToggleFavorite,
+  onClick,
+}: ProductCardProps) {
   if (viewMode === "list") {
     return (
       <Card
@@ -42,9 +58,10 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
           <div className="flex gap-4 p-4">
             {/* Product Image */}
             <div className="relative w-32 h-32 flex-shrink-0 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 rounded-lg flex items-center justify-center overflow-hidden">
-              {product.images[0].startsWith('http') || product.images[0].startsWith('/') ? (
-                <img 
-                  src={product.images[0]} 
+              {product.images[0].startsWith("http") ||
+              product.images[0].startsWith("/") ? (
+                <img
+                  src={product.images[0]}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -80,8 +97,8 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
                     variant="ghost"
                     size="icon"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onToggleFavorite()
+                      e.stopPropagation();
+                      onToggleFavorite();
                     }}
                     className={cn(
                       "h-8 w-8",
@@ -90,7 +107,9 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
                         : "text-[#5A3E36] dark:text-white/90"
                     )}
                   >
-                    <Heart className={cn("w-4 h-4", isFavorite && "fill-current")} />
+                    <Heart
+                      className={cn("w-4 h-4", isFavorite && "fill-current")}
+                    />
                   </Button>
                   <Button
                     variant="ghost"
@@ -126,19 +145,15 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
                     </span>
                   </div>
                   <span className="text-xs text-[#004D73] dark:text-white/60">
-                    Stock: {product.stock}
+                    Stock: {Math.round(product.stock)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                      {product.price.toLocaleString()} {product.currency}
-                    </p>
-                  </div>
+                  <InlinePrice adaAmount={product.price} />
                   <Button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onClick()
+                      e.stopPropagation();
+                      onClick();
                     }}
                     className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white rounded-lg px-4 py-2"
                   >
@@ -151,7 +166,7 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   // Grid View
@@ -163,16 +178,19 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative h-48 bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center rounded-t-lg overflow-hidden">
-          {product.images[0].startsWith('http') || product.images[0].startsWith('/') ? (
-            <img 
-              src={product.images[0]} 
+          {product.images[0].startsWith("http") ||
+          product.images[0].startsWith("/") ? (
+            <img
+              src={product.images[0]}
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
             />
           ) : (
-            <span className="text-8xl transition-transform duration-300 group-hover:scale-110">{product.images[0]}</span>
+            <span className="text-8xl transition-transform duration-300 group-hover:scale-110">
+              {product.images[0]}
+            </span>
           )}
-          
+
           {/* Image count badge */}
           {product.images.length > 1 && (
             <div className="absolute top-3 left-3 bg-black/50 dark:bg-black/70 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1.5 rounded-full flex items-center gap-1.5 z-20">
@@ -180,7 +198,7 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
               {product.images.length}
             </div>
           )}
-          
+
           {/* Action buttons */}
           <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
             {product.certified && (
@@ -192,8 +210,8 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
               variant="ghost"
               size="icon"
               onClick={(e) => {
-                e.stopPropagation()
-                onToggleFavorite()
+                e.stopPropagation();
+                onToggleFavorite();
               }}
               className={cn(
                 "h-8 w-8 bg-white/90 dark:bg-[#003D5C]/90 backdrop-blur-sm",
@@ -255,17 +273,15 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
           {/* Price & Stock */}
           <div className="flex items-center justify-between pt-2 border-t border-[#004D73]/10 dark:border-white/10">
             <div>
-              <p className="text-2xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                {product.price.toLocaleString()} {product.currency}
-              </p>
+              <InlinePrice adaAmount={product.price} />
               <p className="text-xs text-[#004D73] dark:text-white/60">
-                Stock: {product.stock} unités
+                Stock: {Math.round(product.stock)} unités
               </p>
             </div>
             <Button
               onClick={(e) => {
-                e.stopPropagation()
-                onClick()
+                e.stopPropagation();
+                onClick();
               }}
               className="bg-[#3A8F4C] hover:bg-[#2E7D32] text-white rounded-lg px-4 py-2"
             >
@@ -288,6 +304,5 @@ export function ProductCard({ product, viewMode, isFavorite, onToggleFavorite, o
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-

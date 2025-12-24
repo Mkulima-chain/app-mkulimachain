@@ -6,7 +6,11 @@ import {
 import { OrderRepository } from '../repositories/order.repository';
 import { OrderEntity } from '../entities/order.entity';
 import { CreateOrderDto, UpdateOrderDto, GetOrderDto } from '../dto/order.dto';
-import { OrderStatus } from '../interfaces/iorder';
+import {
+  OrderStatus,
+  TraceabilityStep,
+  DEFAULT_TRACEABILITY,
+} from '../interfaces/iorder';
 import { MarketplaceItemService } from './marketplace-item.service';
 import { MarketplaceItemStatus } from '../interfaces/imarketplace-item';
 import { NotificationService } from '../../notifications/notification.service';
@@ -32,7 +36,10 @@ export class OrderService {
       );
     }
 
-    const order = await this.repository.create(dto);
+    const order = await this.repository.create({
+      ...dto,
+      traceability: DEFAULT_TRACEABILITY,
+    } as any);
 
     // Reserve stock
     await this.itemService.reduceStock(dto.itemId, dto.quantityKg);
@@ -198,5 +205,59 @@ export class OrderService {
     }
 
     await this.repository.delete(id);
+  }
+
+  async updateTraceabilityStep(
+    id: string,
+    step: TraceabilityStep,
+    data: { txHash?: string; note?: string },
+  ): Promise<OrderEntity> {
+    const order = await this.findById(id);
+
+    // Initialize traceability if it doesn't exist (migration fallback)
+    const traceability =
+      order.traceability || JSON.parse(JSON.stringify(DEFAULT_TRACEABILITY));
+
+    // Update step
+    traceability[step] = {
+      completed: true,
+      date: new Date(),
+      txHash: data.txHash,
+      note: data.note,
+    };
+
+    // Update specific fields based on step
+    const updateData: Partial<OrderEntity> = { traceability };
+
+    // Auto-update order status based on steps?
+    if (
+      step === TraceabilityStep.SHIPPING &&
+      order.status === OrderStatus.PAID
+    ) {
+      updateData.status = OrderStatus.SHIPPED;
+      updateData.shippedAt = new Date();
+    } else if (
+      step === TraceabilityStep.DELIVERY &&
+      order.status === OrderStatus.SHIPPED
+    ) {
+      updateData.status = OrderStatus.COMPLETED;
+      updateData.completedAt = new Date();
+    }
+
+    const updatedOrder = await this.repository.update(id, updateData);
+
+    if (!updatedOrder) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    // Notify buyer
+    this.notificationService.notifyUser(
+      updatedOrder.buyerId,
+      `Mise à jour: ${step}`,
+      `L'étape ${step} de votre commande #${updatedOrder.id.slice(0, 8)} a été mise à jour.`,
+      'info',
+    );
+
+    return updatedOrder;
   }
 }

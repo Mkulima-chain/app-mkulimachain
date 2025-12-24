@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Users,
   Package,
@@ -9,50 +9,64 @@ import {
   TrendingUp,
   Activity,
   User as UserIcon,
-} from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { getAuth, StoredUser } from "@/lib/auth-storage"
-import { api } from "@/lib/api-client"
-import { StatsSummary } from "@/types"
-
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getAuth, StoredUser } from "@/lib/auth-storage";
+import { api } from "@/lib/api-client";
+import { StatsSummary } from "@/types";
 
 type Activity = {
-  id: string
-  type: "order" | "product" | "farmer"
-  title: string
-  description: string
-  time: string
-  status: "success" | "info" | "warning" | "default" | "secondary" | "outline" | "destructive"
-}
+  id: string;
+  type: "order" | "product" | "farmer";
+  title: string;
+  description: string;
+  time: string;
+  status:
+    | "success"
+    | "info"
+    | "warning"
+    | "default"
+    | "secondary"
+    | "outline"
+    | "destructive";
+};
 
 export default function DashboardPage() {
-  const [user, setUser] = React.useState<StoredUser | undefined>()
+  const [user, setUser] = React.useState<StoredUser | undefined>();
   const { data: stats } = useQuery<StatsSummary>({
     queryKey: ["stats", "summary"],
     queryFn: () => api.get<StatsSummary>("/stats/summary"),
-  })
+  });
 
   const { data: activities = [] } = useQuery<Activity[]>({
     queryKey: ["stats", "activities"],
     queryFn: () => api.get<Activity[]>("/stats/activities"),
-  })
+  });
 
   React.useEffect(() => {
     // Lecture locale uniquement côté client
-    const auth = getAuth()
+    const auth = getAuth();
     if (auth?.user) {
-      setUser(auth.user)
+      setUser(auth.user);
     }
-  }, [])
+  }, []);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Tableau de bord</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Tableau de bord
+          </h1>
           <p className="text-muted-foreground mt-1">
             Vue d'ensemble de votre plateforme Mkulima Chain
           </p>
@@ -116,19 +130,22 @@ export default function DashboardPage() {
             bgColor: "bg-[#E3F2FD] dark:bg-[#004D73]/20",
           },
           {
-            title: "Revenus (ADA)",
+            title: "Revenus (₳)",
             value:
               stats?.revenueAda !== undefined
-                ? `${stats.revenueAda.toFixed(2)} ADA`
+                ? `${stats.revenueAda.toFixed(2)} ₳`
                 : "...",
             icon: Coins,
             color: "text-[#F2C94C]",
             bgColor: "bg-[#FFF8E1] dark:bg-[#F2C94C]/20",
           },
         ].map((stat) => {
-          const Icon = stat.icon
+          const Icon = stat.icon;
           return (
-            <Card key={stat.title} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={stat.title}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
@@ -145,7 +162,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
@@ -182,8 +199,8 @@ export default function DashboardPage() {
                             activity.status === "success"
                               ? "default"
                               : activity.status === "info"
-                              ? "secondary"
-                              : "outline"
+                                ? "secondary"
+                                : "outline"
                           }
                           className="text-xs"
                         >
@@ -194,7 +211,8 @@ export default function DashboardPage() {
                         {activity.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(activity.time).toLocaleDateString()} {new Date(activity.time).toLocaleTimeString()}
+                        {new Date(activity.time).toLocaleDateString()}{" "}
+                        {new Date(activity.time).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
@@ -273,9 +291,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>État du système</CardTitle>
-              <CardDescription>
-                Statut des services et modules
-              </CardDescription>
+              <CardDescription>Statut des services et modules</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-[#3A8F4C]" />
@@ -287,12 +303,14 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {(stats?.systemStatus || [
-              { name: "API", status: "online", value: "..." },
-              { name: "Base de données", status: "online", value: "..." },
-              { name: "Blockchain", status: "online", value: "..." },
-              { name: "Marketplace", status: "online", value: "..." },
-            ]).map((service) => (
+            {(
+              stats?.systemStatus || [
+                { name: "API", status: "online", value: "..." },
+                { name: "Base de données", status: "online", value: "..." },
+                { name: "Blockchain", status: "online", value: "..." },
+                { name: "Marketplace", status: "online", value: "..." },
+              ]
+            ).map((service) => (
               <div
                 key={service.name}
                 className="flex items-center justify-between rounded-lg border p-4"
@@ -308,8 +326,8 @@ export default function DashboardPage() {
                     service.status === "online"
                       ? "bg-[#3A8F4C]"
                       : service.status === "degraded"
-                      ? "bg-yellow-500"
-                      : "bg-red-500"
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
                   }`}
                 ></div>
               </div>
@@ -318,5 +336,5 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

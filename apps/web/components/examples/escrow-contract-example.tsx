@@ -49,7 +49,7 @@ export function EscrowContractExample() {
         <h2 className="text-2xl font-bold">Escrow Payment (Secure)</h2>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Amount (ADA)</label>
+          <label className="text-sm font-medium">Amount (\u20b3)</label>
           <Input
             type="number"
             placeholder="50"

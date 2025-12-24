@@ -1,54 +1,61 @@
+"use client";
+
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect } from "react";
-
-import { BrowserWallet } from "@meshsdk/core";
+import { initLucid } from "@/lib/lucid";
 import {
   signDataAtom,
-  walletInstanceAtom,
+  lucidInstanceAtom,
   walletOperationsAtom,
   walletStateAtom,
 } from "@/lib/wallet";
 
 export function useWalletAtom() {
   const walletState = useAtomValue(walletStateAtom);
-  const [wallet, setWalletInstance] = useAtom(walletInstanceAtom);
+  const [lucid, setLucidInstance] = useAtom(lucidInstanceAtom);
   const [_, dispatch] = useAtom(walletOperationsAtom);
   const [__, signData] = useAtom(signDataAtom);
 
   // Attempt to reconnect wallet from saved state on component mount
   useEffect(() => {
     const reconnectWallet = async () => {
-      // Only attempt to reconnect if we have a stored connection state but no wallet instance
-      if (walletState.connected && walletState.walletName && !wallet) {
+      // Only attempt to reconnect if we have a stored connection state but no lucid instance
+      if (walletState.connected && walletState.walletName && !lucid) {
         try {
           console.log(
             "Attempting to reconnect wallet:",
             walletState.walletName
           );
-          const browserWallet = await BrowserWallet.enable(
-            walletState.walletName
-          );
 
-          // Check if the addresses match to verify it's the same wallet
-          const addresses = await browserWallet.getUsedAddresses();
+          // Initialize Lucid
+          const lucidInstance = await initLucid();
 
-          if (addresses && addresses.length > 0) {
-            // If the stored address doesn't match the current one, update it
-            const currentAddress = addresses[0];
-
-            if (currentAddress !== walletState.address) {
-              console.log("Address changed since last connection");
-            }
-
-            // Update the wallet instance
-            setWalletInstance(browserWallet);
-
-            console.log("Wallet reconnected successfully");
-          } else {
-            console.warn("No addresses found in wallet during reconnection");
-            // Reset the stored state since we couldn't reconnect properly
+          // Get wallet API from window.cardano
+          const cardano = (window as any).cardano;
+          if (!cardano || !cardano[walletState.walletName]) {
+            console.warn("Wallet not available for reconnection");
             dispatch({ type: "disconnect" });
+            return;
           }
+
+          // Enable the wallet
+          const walletApi = await cardano[walletState.walletName].enable();
+          lucidInstance.selectWallet(walletApi);
+
+          // Verify the address
+          const currentAddress = await lucidInstance.wallet.address();
+
+          if (currentAddress !== walletState.address) {
+            console.log("Address changed since last connection");
+          }
+
+          // Update the lucid instance
+          setLucidInstance(lucidInstance);
+
+          // Store on window for other services
+          (window as any).__lucidInstance = lucidInstance;
+
+          console.log("Wallet reconnected successfully");
         } catch (error) {
           console.error("Failed to reconnect wallet:", error);
           // Reset the stored state since we couldn't reconnect
@@ -61,9 +68,9 @@ export function useWalletAtom() {
   }, [
     walletState.connected,
     walletState.walletName,
-    wallet,
+    lucid,
     dispatch,
-    setWalletInstance,
+    setLucidInstance,
     walletState.address,
   ]);
 
@@ -90,17 +97,21 @@ export function useWalletAtom() {
 
   const signMessage = useCallback(
     async (message: string) => {
-      // TODO: Implement sign message
+      if (!walletState.address) {
+        throw new Error("No address available for signing");
+      }
+      return await signData({ address: walletState.address, message });
     },
-    [walletState.connected, walletState.address, wallet, signData]
+    [walletState.address, signData]
   );
 
-  // The complete wallet state to return (combination of persisted state and in-memory wallet instance)
+  // The complete wallet state to return
   const fullWalletState = {
     connected: walletState.connected,
     address: walletState.address,
     walletName: walletState.walletName,
-    wallet,
+    wallet: lucid, // For backward compatibility
+    lucid,
   };
 
   return {

@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Wallet,
   CheckCircle2,
+  Activity,
 } from "lucide-react";
 import {
   Card,
@@ -52,38 +53,8 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useEscrowContract } from "@/hooks";
 import { useWalletAtom } from "@/hooks/useWalletAtom";
 import { WalletConnectDialog } from "@/components/wallet-connect-dialog";
-
-enum OrderStatus {
-  PENDING = "pending",
-  PAID = "paid",
-  SHIPPED = "shipped",
-  COMPLETED = "completed",
-  CANCELLED = "cancelled",
-  REFUNDED = "refunded",
-}
-
-type Order = {
-  id: string;
-  buyerId: string;
-  item: {
-    id: string;
-    title: string;
-    priceADA: number;
-    farmer: {
-      id: string;
-      name: string;
-    };
-  };
-  quantityKg: number;
-  unitPriceADA: number;
-  totalADA: number;
-  status: OrderStatus;
-  paymentHash?: string;
-  shippingAddress?: string;
-  trackingNumber?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import { TraceabilityStepButtons } from "@/components/traceability-step-buttons";
+import { OrderStatus, Order } from "@/types/order";
 
 type CreateOrderDto = {
   buyerId: string;
@@ -105,6 +76,8 @@ export default function OrdersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isEscrowDialogOpen, setIsEscrowDialogOpen] = React.useState(false);
+  const [isTraceabilityDialogOpen, setIsTraceabilityDialogOpen] =
+    React.useState(false);
   const [escrowAction, setEscrowAction] = React.useState<
     "release" | "refund" | "dispute" | null
   >(null);
@@ -296,6 +269,11 @@ export default function OrdersPage() {
   const handleDelete = (order: Order) => {
     setSelectedOrder(order);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleManageTraceability = (order: Order) => {
+    setSelectedOrder(order);
+    setIsTraceabilityDialogOpen(true);
   };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
@@ -814,6 +792,16 @@ export default function OrdersPage() {
                                       Modifier
                                     </button>
 
+                                    <button
+                                      onClick={() =>
+                                        handleManageTraceability(order)
+                                      }
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    >
+                                      <Activity className="h-4 w-4" />
+                                      Traçabilité
+                                    </button>
+
                                     {/* Escrow Actions */}
                                     {hasEscrow(order) && (
                                       <>
@@ -969,6 +957,15 @@ export default function OrdersPage() {
                                     >
                                       <Edit className="h-4 w-4" />
                                       Modifier
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleManageTraceability(order)
+                                      }
+                                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    >
+                                      <Activity className="h-4 w-4" />
+                                      Traçabilité
                                     </button>
                                     <button
                                       onClick={() => handleDelete(order)}
@@ -1340,6 +1337,42 @@ export default function OrdersPage() {
         open={isWalletDialogOpen}
         onOpenChange={setIsWalletDialogOpen}
       />
+
+      {/* Traceability Dialog */}
+      <Dialog
+        open={isTraceabilityDialogOpen}
+        onOpenChange={setIsTraceabilityDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Gérer la traçabilité</DialogTitle>
+            <DialogDescription>
+              Mettez à jour les étapes de la commande{" "}
+              <strong>#{selectedOrder?.id.slice(0, 8)}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="py-4">
+              <TraceabilityStepButtons
+                order={selectedOrder}
+                onUpdate={() => {
+                  refetch();
+                }}
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsTraceabilityDialogOpen(false)}
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

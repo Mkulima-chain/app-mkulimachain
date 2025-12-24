@@ -51,7 +51,7 @@ export default function TestContractsPage() {
             testnet
           </li>
           <li>
-            Get free test ADA from:{" "}
+            Get free test ₳ from:{" "}
             <a
               href="https://docs.cardano.org/cardano-testnet/tools/faucet"
               target="_blank"
@@ -74,8 +74,7 @@ export default function TestContractsPage() {
             and on Preprod testnet
           </li>
           <li>
-            <strong>Get Test ADA:</strong> Request at least 50 tADA from the
-            faucet
+            <strong>Get Test ₳:</strong> Request at least 50 t₳ from the faucet
           </li>
           <li>
             <strong>Test Order:</strong> Create an order to test the order

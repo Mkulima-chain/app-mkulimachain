@@ -1,29 +1,21 @@
-import {
-  BrowserWallet,
-  MeshTxBuilder,
-  BlockfrostProvider,
-  ForgeScript,
-  stringToHex,
-  resolveScriptHash,
-} from "@meshsdk/core";
+import { Lucid, fromText } from "lucid-cardano";
 import { NFT } from "../types";
-import { ipfsUriToHttpUrl } from "../utils";
 
 /**
- * Service pour mint des NFTs avec Mesh SDK
+ * Service pour mint des NFTs avec Lucid
  */
 export class NFTMintService {
   /**
-   * Mint un NFT sur Cardano avec Mesh SDK
+   * Mint un NFT sur Cardano avec Lucid
    *
-   * @param wallet - Le wallet BrowserWallet connecté
+   * @param lucid - L'instance Lucid connectée
    * @param nft - Le NFT à mint
-   * @param policyId - Policy ID Cardano (optionnel, sera généré si non fourni)
+   * @param policyId - Policy ID Cardano (optionnel, ignoré car généré par le script actuel)
    * @param assetName - Nom de l'asset (optionnel, sera généré si non fourni)
-   * @param blockfrostApiKey - Clé API Blockfrost (optionnel, depuis env si non fourni)
+   * @param blockfrostApiKey - Clé API Blockfrost (plus nécessaire si Lucid est init)
    */
   static async mintNFT(
-    wallet: BrowserWallet,
+    lucid: Lucid,
     nft: NFT,
     policyId?: string,
     assetName?: string,
@@ -34,394 +26,94 @@ export class NFTMintService {
     assetName: string;
   }> {
     try {
-      // Récupérer l'API key Blockfrost depuis l'environnement si non fournie
-      // Note: Dans Next.js, les variables NEXT_PUBLIC_* sont accessibles côté client
-      const apiKey =
-        blockfrostApiKey ||
-        (typeof window !== "undefined"
-          ? process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
-          : undefined);
+      console.log("MINT_DEBUG [1]: Getting wallet address");
+      const address = await lucid.wallet.address();
+      console.log("MINT_DEBUG [2]: Address obtained:", address);
 
-      if (!apiKey) {
-        const errorMessage =
-          "Blockfrost API key is required. " +
-          "Please set NEXT_PUBLIC_BLOCKFROST_API_KEY in your .env.local file " +
-          "and restart the development server.";
-        console.error("Blockfrost API Key Error:", {
-          hasBlockfrostKey: !!blockfrostApiKey,
-          hasEnvVar: !!process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY,
-          isClient: typeof window !== "undefined",
+      console.log("MINT_DEBUG [3]: Fetching address details");
+      let paymentCredential;
+      try {
+        const details = lucid.utils.getAddressDetails(address);
+        paymentCredential = details.paymentCredential;
+        console.log(
+          "MINT_DEBUG [4]: Credential hash:",
+          paymentCredential?.hash
+        );
+      } catch (e) {
+        console.error("MINT_DEBUG [E4]: getAddressDetails failed:", e);
+        throw e;
+      }
+
+      if (!paymentCredential) throw new Error("No payment credential found");
+
+      console.log("MINT_DEBUG [5]: Creating simple policy");
+      let mintingPolicy;
+      try {
+        mintingPolicy = lucid.utils.nativeScriptFromJson({
+          type: "all",
+          scripts: [{ type: "sig", keyHash: paymentCredential.hash }],
         });
-        throw new Error(errorMessage);
+        console.log("MINT_DEBUG [6]: Policy created");
+      } catch (e) {
+        console.error("MINT_DEBUG [E6]: nativeScriptFromJson failed:", e);
+        throw e;
       }
 
-      // Créer le provider Blockfrost
-      const provider = new BlockfrostProvider(apiKey);
-
-      // Récupérer les métadonnées depuis IPFS
-      // Note: On ne récupère que l'image, pas toutes les métadonnées
-      // car elles peuvent contenir des valeurs trop longues pour Cardano
-      const metadata: Record<string, unknown> = {};
-      let imageUrl = "";
-      if (nft.metadataURI) {
-        try {
-          const metadataUrl = ipfsUriToHttpUrl(nft.metadataURI);
-          const response = await fetch(metadataUrl);
-          if (response.ok) {
-            const fetchedMetadata = await response.json();
-            // Ne garder que l'image, ignorer le reste pour éviter les problèmes de taille
-            imageUrl = fetchedMetadata.image || "";
-            if (imageUrl && imageUrl.startsWith("ipfs://")) {
-              imageUrl = ipfsUriToHttpUrl(imageUrl);
-            }
-            // Ne pas copier les autres métadonnées car elles peuvent être trop longues
-            // Les métadonnées principales (name, description, type) viennent du NFT directement
-          }
-        } catch (error) {
-          console.warn("Could not fetch metadata from IPFS:", error);
-        }
+      console.log("MINT_DEBUG [7]: Computing policy ID");
+      let actualPolicyId;
+      try {
+        actualPolicyId = lucid.utils.mintingPolicyToId(mintingPolicy);
+        console.log("MINT_DEBUG [8]: Policy ID:", actualPolicyId);
+      } catch (e) {
+        console.error("MINT_DEBUG [E8]: mintingPolicyToId failed:", e);
+        throw e;
       }
 
-      // Récupérer les UTXOs et l'adresse de change
-      const utxos = await wallet.getUtxos();
-      if (!utxos || utxos.length === 0) {
-        throw new Error(
-          "Aucun UTXO disponible dans le wallet. Veuillez ajouter des fonds ADA à votre wallet."
-        );
-      }
-
-      const changeAddress = await wallet.getChangeAddress();
-      if (!changeAddress) {
-        throw new Error(
-          "Impossible de récupérer l'adresse de change du wallet."
-        );
-      }
-
-      // Créer une policy simple avec ForgeScript
-      // Important: ForgeScript.withOneSignature nécessite une adresse valide
-      const forgingScript = ForgeScript.withOneSignature(changeAddress);
-
-      // Vérifier que le forging script est valide
-      if (!forgingScript) {
-        throw new Error(
-          "Impossible de créer le ForgeScript. Vérifiez que l'adresse est valide."
-        );
-      }
-
-      // Obtenir le Policy ID réel depuis le script ForgeScript
-      // Si un Policy ID est fourni, l'utiliser (pour réutiliser une policy existante)
-      // Sinon, calculer le Policy ID depuis le script
-      let finalPolicyId: string;
-      if (policyId) {
-        finalPolicyId = policyId;
-        console.log("Utilisation du Policy ID fourni:", finalPolicyId);
-      } else {
-        // Calculer le Policy ID depuis le script ForgeScript
-        try {
-          finalPolicyId = resolveScriptHash(forgingScript);
-          console.log("Policy ID calculé depuis ForgeScript:", finalPolicyId);
-          console.log("Type de forgingScript:", typeof forgingScript);
-
-          // Vérifier que le Policy ID est valide (56 caractères hex)
-          if (
-            !finalPolicyId ||
-            finalPolicyId.length !== 56 ||
-            !/^[0-9a-fA-F]+$/.test(finalPolicyId) ||
-            finalPolicyId ===
-              "00000000000000000000000000000000000000000000000000000000"
-          ) {
-            throw new Error(
-              `Policy ID invalide calculé depuis ForgeScript: ${finalPolicyId}. ` +
-                `Le Policy ID doit être une string hexadécimale de 56 caractères valide.`
-            );
-          }
-        } catch (error) {
-          console.error(
-            "Erreur lors du calcul du Policy ID avec resolveScriptHash:",
-            error
-          );
-          // Si resolveScriptHash échoue, cela pourrait être un bug de Mesh SDK
-          // Dans ce cas, on ne peut pas continuer car on a besoin du Policy ID
-          throw new Error(
-            `Impossible de calculer le Policy ID depuis ForgeScript. ` +
-              `Cela pourrait être un bug dans Mesh SDK v1.9.0-beta.87. ` +
-              `Erreur: ${error instanceof Error ? error.message : "Erreur inconnue"}`
-          );
-        }
-      }
-
-      // Générer ou utiliser le nom d'asset fourni
-      const tokenName =
+      const tokenNameStr =
         assetName ||
         nft.title.replace(/[^a-zA-Z0-9]/g, "").substring(0, 32) ||
         "MkulimaNFT";
-      const finalAssetName = stringToHex(tokenName);
+      const unit = actualPolicyId + fromText(tokenNameStr);
+      console.log("MINT_DEBUG [9]: Unit:", unit);
 
-      // Fonction helper pour tronquer les valeurs de métadonnées à 64 bytes max
-      // Cardano impose une limite stricte de 64 bytes par valeur de metadatum
-      const truncateMetadataValue = (
-        value: string,
-        maxBytes: number = 64
-      ): string => {
-        if (!value) return "";
-
-        // Convertir en bytes (UTF-8)
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(value);
-
-        // Si déjà <= maxBytes, retourner tel quel
-        if (bytes.length <= maxBytes) return value;
-
-        // Tronquer byte par byte pour éviter de couper un caractère UTF-8
-        // On prend maxBytes - 3 pour laisser de la marge pour les caractères UTF-8 multi-bytes
-        const safeMaxBytes = Math.max(1, maxBytes - 3);
-        let truncated = bytes.slice(0, safeMaxBytes);
-        const decoder = new TextDecoder("utf-8", { fatal: false });
-        let result = decoder.decode(truncated);
-
-        // Vérifier et ajuster jusqu'à ce que la taille soit correcte
-        let encodedLength = encoder.encode(result).length;
-        while (encodedLength > maxBytes && result.length > 0) {
-          result = result.slice(0, -1);
-          encodedLength = encoder.encode(result).length;
-        }
-
-        // Double vérification finale
-        const finalBytes = encoder.encode(result);
-        if (finalBytes.length > maxBytes) {
-          // Si toujours trop long, tronquer plus agressivement
-          truncated = bytes.slice(0, Math.floor(maxBytes * 0.8));
-          result = decoder.decode(truncated);
-          // Nettoyer à nouveau
-          while (
-            encoder.encode(result).length > maxBytes &&
-            result.length > 0
-          ) {
-            result = result.slice(0, -1);
-          }
-        }
-
-        return result;
-      };
-
-      // Construire les métadonnées CIP-25 avec valeurs tronquées
-      // Note: Cardano limite chaque valeur de metadatum à 64 bytes
-      // Tronquer toutes les valeurs AVANT de construire l'objet
-      const truncatedTitle = truncateMetadataValue(nft.title, 64);
-      const truncatedDescription = truncateMetadataValue(
-        nft.description || "",
-        64
-      );
-      const truncatedImage = truncateMetadataValue(imageUrl || "", 64);
-      const truncatedType = truncateMetadataValue(nft.type, 64);
-
-      // Vérifier les longueurs après troncature (pour débogage)
-      if (
-        typeof window !== "undefined" &&
-        process.env.NODE_ENV === "development"
-      ) {
-        console.log("Metadata lengths after truncation:", {
-          title: new TextEncoder().encode(truncatedTitle).length,
-          description: new TextEncoder().encode(truncatedDescription).length,
-          image: new TextEncoder().encode(truncatedImage).length,
-          type: new TextEncoder().encode(truncatedType).length,
-        });
-      }
-
-      const cip25Metadata: Record<
-        string,
-        Record<string, Record<string, string>>
-      > = {
-        [finalPolicyId]: {
-          [tokenName]: {
-            name: truncatedTitle,
-            description: truncatedDescription,
-            image: truncatedImage,
-            type: truncatedType,
+      // Skip image/metadata fetching for now to isolate WASM issue
+      const metadata = {
+        [actualPolicyId]: {
+          [tokenNameStr]: {
+            name: nft.title.substring(0, 60),
+            description: (nft.description || "").substring(0, 60),
+            image: "ipfs://",
           },
         },
       };
 
-      // Ajouter les métadonnées supplémentaires en filtrant et tronquant
-      if (
-        metadata &&
-        typeof metadata === "object" &&
-        !Array.isArray(metadata)
-      ) {
-        const additionalMetadata: Record<string, string> = {};
-
-        for (const [key, value] of Object.entries(metadata)) {
-          // Ignorer les clés qui sont déjà utilisées
-          if (
-            ["name", "description", "image", "type"].includes(key.toLowerCase())
-          ) {
-            continue;
-          }
-
-          // Tronquer la clé
-          const truncatedKey = truncateMetadataValue(key, 64);
-
-          // Traiter la valeur selon son type
-          let processedValue: string | undefined;
-
-          if (typeof value === "string") {
-            processedValue = truncateMetadataValue(value, 64);
-          } else if (typeof value === "number") {
-            processedValue = truncateMetadataValue(value.toString(), 64);
-          } else if (typeof value === "boolean") {
-            processedValue = value ? "true" : "false";
-          } else if (Array.isArray(value)) {
-            // Pour les tableaux, prendre seulement le premier élément si c'est une string
-            const firstItem = value[0];
-            if (typeof firstItem === "string") {
-              processedValue = truncateMetadataValue(firstItem, 64);
-            } else {
-              continue; // Ignorer les tableaux complexes
-            }
-          } else {
-            // Ignorer les objets complexes
-            continue;
-          }
-
-          // Vérifier que la clé et la valeur sont valides
-          if (truncatedKey && processedValue) {
-            additionalMetadata[truncatedKey] = processedValue;
-          }
-        }
-
-        // Fusionner les métadonnées supplémentaires
-        cip25Metadata[finalPolicyId][tokenName] = {
-          ...cip25Metadata[finalPolicyId][tokenName],
-          ...additionalMetadata,
-        };
-      }
-
-      // Validation finale : vérifier que toutes les valeurs sont <= 64 bytes
-      const encoder = new TextEncoder();
-      const validateMetadata = (
-        obj: Record<string, unknown>,
-        path: string = ""
-      ): void => {
-        for (const [key, value] of Object.entries(obj)) {
-          const currentPath = path ? `${path}.${key}` : key;
-          if (typeof value === "string") {
-            const byteLength = encoder.encode(value).length;
-            if (byteLength > 64) {
-              console.error(
-                `Metadata value at ${currentPath} is ${byteLength} bytes (max 64)`
-              );
-              throw new Error(
-                `Metadata value "${currentPath}" exceeds 64 bytes limit (${byteLength} bytes). Please shorten the content.`
-              );
-            }
-          } else if (
-            typeof value === "object" &&
-            value !== null &&
-            !Array.isArray(value)
-          ) {
-            validateMetadata(value as Record<string, unknown>, currentPath);
-          }
-        }
-      };
-
-      // Valider toutes les métadonnées avant de construire la transaction
-      validateMetadata(cip25Metadata);
-
-      // Validation des valeurs avant de construire la transaction
-      if (!finalPolicyId || finalPolicyId.length !== 56) {
-        throw new Error(
-          `Policy ID invalide: ${finalPolicyId}. Le Policy ID doit être une string hexadécimale de 56 caractères.`
-        );
-      }
-
-      if (!finalAssetName || finalAssetName.length === 0) {
-        throw new Error(
-          `Asset name invalide: ${finalAssetName}. L'asset name ne peut pas être vide.`
-        );
-      }
-
-      if (!forgingScript) {
-        throw new Error(
-          "ForgeScript invalide. Impossible de créer le script de minting."
-        );
-      }
-
-      // Debug: logger les valeurs (en développement uniquement)
-      if (
-        typeof window !== "undefined" &&
-        process.env.NODE_ENV === "development"
-      ) {
-        console.log("Minting parameters:", {
-          policyId: finalPolicyId,
-          assetName: finalAssetName,
-          assetNameLength: finalAssetName.length,
-          forgingScriptType: typeof forgingScript,
-          forgingScript: forgingScript,
-        });
-      }
-
-      // Créer le builder de transaction
-      // Note: L'evaluator peut être nécessaire pour certaines opérations
-      const txBuilder = new MeshTxBuilder({
-        fetcher: provider,
-        submitter: provider,
-        evaluator: provider, // Ajouter l'evaluator pour le minting
-      });
-
-      // Construire la transaction avec la policy
-      // WORKAROUND pour le bug "Undefined mint" dans Mesh SDK beta.87
-      // Il semble que mintingScript() doit être appelé AVANT mint() pour ForgeScript
-      // même si la documentation suggère l'inverse
+      console.log("MINT_DEBUG [10]: Starting transaction");
       try {
-        // Essayer d'abord l'ordre: mintingScript puis mint (workaround pour beta.87)
-        let unsignedTx;
-        try {
-          unsignedTx = await txBuilder
-            .mintingScript(forgingScript)
-            .mint("1", finalPolicyId, finalAssetName)
-            .metadataValue(721, cip25Metadata)
-            .changeAddress(changeAddress)
-            .selectUtxosFrom(utxos)
-            .complete();
-        } catch (firstError) {
-          // Si cela échoue, essayer l'ordre standard
-          console.warn(
-            "Tentative avec mintingScript en premier échouée, essai ordre standard:",
-            firstError
-          );
-          const txBuilder2 = new MeshTxBuilder({
-            fetcher: provider,
-            submitter: provider,
-            evaluator: provider,
-          });
-          unsignedTx = await txBuilder2
-            .mint("1", finalPolicyId, finalAssetName)
-            .mintingScript(forgingScript)
-            .metadataValue(721, cip25Metadata)
-            .changeAddress(changeAddress)
-            .selectUtxosFrom(utxos)
-            .complete();
-        }
+        const tx = await lucid
+          .newTx()
+          .mintAssets({ [unit]: BigInt(1) })
+          .attachMintingPolicy(mintingPolicy)
+          .attachMetadata(721, metadata)
+          .complete();
+        console.log("MINT_DEBUG [11]: Transaction completed successfully");
 
-        // Signer et soumettre
-        const signedTx = await wallet.signTx(unsignedTx);
-        const txHash = await wallet.submitTx(signedTx);
+        const signedTx = await tx.sign().complete();
+        console.log("MINT_DEBUG [12]: Transaction signed");
+
+        const txHash = await signedTx.submit();
+        console.log("MINT_DEBUG [13]: Transaction submitted:", txHash);
 
         return {
           txHash,
-          policyId: finalPolicyId,
-          assetName: tokenName, // Retourner le nom en texte, pas en hex
+          policyId: actualPolicyId,
+          assetName: tokenNameStr,
         };
-      } catch (mintError) {
-        console.error("Erreur détaillée lors du mint:", mintError);
-        throw new Error(
-          `Erreur lors de la construction de la transaction de mint: ${
-            mintError instanceof Error ? mintError.message : "Erreur inconnue"
-          }`
-        );
+      } catch (e) {
+        console.error("MINT_DEBUG [E10-13]: Transaction flow failed:", e);
+        throw e;
       }
     } catch (error) {
-      console.error("Error minting NFT:", error);
+      console.error("Error minting NFT with Lucid (catch-all):", error);
       throw new Error(
         `Erreur lors du mint: ${error instanceof Error ? error.message : "Erreur inconnue"}`
       );

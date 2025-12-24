@@ -1,6 +1,9 @@
+"use client";
+
 import { atom } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
-import { BrowserWallet } from "@meshsdk/core";
+import { Lucid } from "lucid-cardano";
+import { initLucid } from "./lucid";
 
 export interface WalletState {
   connected: boolean;
@@ -22,17 +25,17 @@ export const walletStateAtom = atomWithStorage<WalletState>(
   walletStateStorage
 );
 
-// Store the actual wallet instance in a separate atom (non-persisted)
-export const walletInstanceAtom = atom<BrowserWallet | null>(null);
+// Store the Lucid instance in a separate atom (non-persisted)
+export const lucidInstanceAtom = atom<Lucid | null>(null);
 
 // Combined atom that provides complete wallet state
 export const walletAtom = atom(
   (get) => {
     const state = get(walletStateAtom);
-    const wallet = get(walletInstanceAtom);
+    const lucid = get(lucidInstanceAtom);
     return {
       ...state,
-      wallet,
+      lucid,
     };
   },
   (
@@ -41,7 +44,7 @@ export const walletAtom = atom(
     newState: {
       connected: boolean;
       address: string;
-      wallet: BrowserWallet | null;
+      lucid: Lucid | null;
       walletName: string;
     }
   ) => {
@@ -52,10 +55,31 @@ export const walletAtom = atom(
       walletName: newState.walletName,
     });
 
-    // Update the wallet instance
-    set(walletInstanceAtom, newState.wallet);
+    // Update the lucid instance
+    set(lucidInstanceAtom, newState.lucid);
   }
 );
+
+/**
+ * Get available Cardano wallets from window.cardano
+ */
+export function getAvailableWallets(): string[] {
+  if (typeof window === "undefined") return [];
+
+  const cardano = (window as any).cardano;
+  if (!cardano) return [];
+
+  const knownWallets = [
+    "nami",
+    "eternl",
+    "flint",
+    "lace",
+    "yoroi",
+    "typhon",
+    "gerowallet",
+  ];
+  return knownWallets.filter((name) => cardano[name] !== undefined);
+}
 
 // Derived atom for wallet operations
 export const walletOperationsAtom = atom(
@@ -74,58 +98,49 @@ export const walletOperationsAtom = atom(
   ) => {
     if (action.type === "connect") {
       try {
-        console.log("Connecting wallet:", action.walletId);
+        console.log("Connecting wallet with Lucid:", action.walletId);
 
-        // Enable the browser wallet
-        const browserWallet = await BrowserWallet.enable(action.walletId);
+        // Initialize Lucid
+        const lucid = await initLucid();
 
-        // Log the wallet object to help debugging
-        console.log("Wallet enabled:", {
-          hasWallet: !!browserWallet,
-          methods: Object.keys(browserWallet).filter((key) => {
-            const value = (browserWallet as unknown as Record<string, unknown>)[
-              key
-            ];
-            return typeof value === "function";
-          }),
+        // Get wallet API from window.cardano
+        const cardano = (window as any).cardano;
+        if (!cardano || !cardano[action.walletId]) {
+          throw new Error(`Wallet ${action.walletId} not found`);
+        }
+
+        // Enable the wallet and get its API
+        const walletApi = await cardano[action.walletId].enable();
+
+        // Select the wallet in Lucid
+        lucid.selectWallet(walletApi);
+
+        // Get the wallet address
+        const address = await lucid.wallet.address();
+        console.log("Connected to address:", address);
+
+        // Store on window for other services to access
+        (window as any).__lucidInstance = lucid;
+
+        // Update the lucid instance
+        set(lucidInstanceAtom, lucid);
+
+        // Update the persisted state
+        set(walletStateAtom, {
+          connected: true,
+          address,
+          walletName: action.walletId,
         });
 
-        // Validate wallet has required methods
-        if (typeof browserWallet.getUsedAddresses !== "function") {
-          throw new Error("Wallet does not support getUsedAddresses method");
-        }
-
-        if (typeof browserWallet.signData !== "function") {
-          throw new Error("Wallet does not support signData method");
-        }
-
-        // Get the addresses
-        const addresses = await browserWallet.getUsedAddresses();
-        console.log("Got addresses:", addresses);
-
-        if (addresses && addresses.length > 0) {
-          // Preserve a direct reference to the browserWallet instance without serializing it
-          set(walletInstanceAtom, browserWallet);
-
-          // Update the persisted state
-          set(walletStateAtom, {
-            connected: true,
-            address: addresses[0],
-            walletName: action.walletId,
-          });
-
-          return {
-            success: true,
-            address: addresses[0],
-          };
-        } else {
-          throw new Error("No addresses found in wallet");
-        }
+        return {
+          success: true,
+          address,
+        };
       } catch (error) {
         console.error("Error connecting wallet:", error);
 
         // Reset state on error
-        set(walletInstanceAtom, null);
+        set(lucidInstanceAtom, null);
         set(walletStateAtom, {
           connected: false,
           address: "",
@@ -135,10 +150,15 @@ export const walletOperationsAtom = atom(
         throw error;
       }
     } else if (action.type === "disconnect") {
-      // Clear wallet instance first
-      set(walletInstanceAtom, null);
+      // Clear lucid instance
+      set(lucidInstanceAtom, null);
 
-      // Then update persisted state
+      // Clear window reference
+      if (typeof window !== "undefined") {
+        (window as any).__lucidInstance = null;
+      }
+
+      // Update persisted state
       set(walletStateAtom, {
         connected: false,
         address: "",
@@ -150,54 +170,30 @@ export const walletOperationsAtom = atom(
   }
 );
 
-// Helper atom for wallet operations
+// Helper atom for signing data
 export const signDataAtom = atom(
   null,
   async (get, set, payload: { address: string; message: string }) => {
-    const { wallet } = get(walletAtom);
+    const { lucid } = get(walletAtom);
 
-    if (!wallet) {
+    if (!lucid) {
       throw new Error("Wallet not connected");
     }
 
     try {
-      // Ensure message meets minimum length for wallet signing (at least 6 characters)
-      let processedMessage = payload.message;
-      if (processedMessage.length < 6) {
-        console.warn(
-          "Message is too short, padding to meet minimum length requirement"
-        );
-        processedMessage = processedMessage.padEnd(6, " ");
-      }
+      // Lucid uses signMessage for data signing
+      const signature = await lucid.wallet.signMessage(
+        payload.address,
+        payload.message
+      );
 
-      // Check message length and handle if too long
-      if (processedMessage.length > 64) {
-        console.warn("Message is long, truncating for wallet signature");
-        // Truncate the message
-        processedMessage = processedMessage.substring(0, 64);
-      }
-
-      // Use lowercase as required by the error message
-      const lowercaseMessage = processedMessage.toLowerCase();
-      console.log("Using lowercase message:", lowercaseMessage);
-
-      // Try multiple approaches to handle different wallet implementations
-      try {
-        // First try: lowercase message directly
-        return await wallet.signData(payload.address, lowercaseMessage);
-      } catch (plainTextError) {
-        console.log(
-          "Lowercase text signing failed, trying hex format:",
-          plainTextError
-        );
-
-        // Second try: hex-encoded lowercase message
-        const messageHex = Buffer.from(lowercaseMessage).toString("hex");
-        return await wallet.signData(payload.address, messageHex);
-      }
+      return signature;
     } catch (error) {
       console.error("Error signing data:", error);
       throw error;
     }
   }
 );
+
+// Legacy export for backward compatibility
+export const walletInstanceAtom = lucidInstanceAtom;

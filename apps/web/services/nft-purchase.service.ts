@@ -1,67 +1,112 @@
-import { BrowserWallet, Transaction } from "@meshsdk/core";
+import { Lucid } from "lucid-cardano";
 import { NFT } from "@/types/nft";
+import { SaleContractService } from "./lucid/sale-contract.service";
+
+// Adresses de la plateforme et du fonds d'éducation (Placeholders pour la démo)
+const PLATFORM_ADDRESS =
+  "addr_test1qpg46968888888888888888888888888888888888888888888888888888888888888888888888888888888888abc";
+const SCHOOL_FUND_ADDRESS =
+  "addr_test1qpg46967777777777777777777777777777777777777777777777777777777777777777777777777777777777xyz";
 
 /**
- * Service pour acheter des NFTs avec Mesh SDK
+ * Service pour acheter des NFTs avec Lucid-Cardano
  */
 export class NFTPurchaseService {
   /**
-   * Acheter un NFT sur Cardano avec Mesh SDK
+   * Acheter un NFT sur Cardano avec Lucid
    *
-   * @param wallet - Le wallet BrowserWallet connecté
+   * @param lucid - L'instance Lucid connectée
    * @param nft - Le NFT à acheter
    * @param sellerAddress - L'adresse du vendeur (créateur du NFT)
-   * @param blockfrostApiKey - Clé API Blockfrost (optionnel, depuis env si non fourni)
    */
   static async purchaseNFT(
-    wallet: BrowserWallet,
+    lucid: Lucid,
     nft: NFT,
-    sellerAddress: string,
-    blockfrostApiKey?: string
+    sellerAddress: string
   ): Promise<{ txHash: string }> {
     try {
-      // Récupérer l'API key Blockfrost depuis l'environnement si non fournie
-      const apiKey =
-        blockfrostApiKey ||
-        (typeof window !== "undefined"
-          ? process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY
-          : undefined);
+      // 1. Tenter l'achat via Smart Contract si le NFT est listé on-chain
+      if (nft.policyId && nft.assetName) {
+        try {
+          const saleService = new SaleContractService(lucid);
+          const listingUtxo = await saleService.findListingUtxo(
+            nft.policyId,
+            nft.assetName
+          );
 
-      if (!apiKey) {
-        throw new Error(
-          "Blockfrost API key is required. Set NEXT_PUBLIC_BLOCKFROST_API_KEY in your .env file"
-        );
+          if (listingUtxo && listingUtxo.datum) {
+            console.log(
+              "Found on-chain listing for NFT, using Smart Contract..."
+            );
+            const datum = saleService.plutusDataToDatum(
+              listingUtxo.datum as string
+            );
+            if (datum) {
+              return await saleService.buyNFT(listingUtxo, datum);
+            }
+          }
+        } catch (contractError) {
+          console.warn(
+            "Smart Contract purchase failed, falling back to direct transfer:",
+            contractError
+          );
+        }
       }
 
-      // Récupérer les UTXOs pour vérifier le solde
-      const utxos = await wallet.getUtxos();
+      // 2. Fallback: Transfert direct avec répartition des revenus (simulé/off-chain listing)
+      console.log("Using direct transfer with revenue split...");
 
-      // Vérifier que le wallet a suffisamment d'ADA
+      // Get UTxOs to check balance
+      const utxos = await lucid.wallet.getUtxos();
       const totalLovelace = utxos.reduce(
-        (sum, utxo) => sum + Number(utxo.output.amount[0]?.quantity || 0),
-        0
+        (sum, utxo) => sum + (utxo.assets.lovelace || 0n),
+        0n
       );
-      const priceInLovelace = Number(nft.priceADA || 0) * 1_000_000; // Convertir ADA en Lovelace
+      const priceInLovelace = BigInt(
+        Math.floor((nft.priceADA || 0) * 1_000_000)
+      );
 
       if (totalLovelace < priceInLovelace) {
         throw new Error(
-          `Fonds insuffisants. Vous avez ${(totalLovelace / 1_000_000).toFixed(2)} ADA, mais ${nft.priceADA} ADA sont requis.`
+          `Fonds insuffisants. Vous avez ${(Number(totalLovelace) / 1_000_000).toFixed(2)} ₳, mais ${nft.priceADA} ₳ sont requis.`
         );
       }
 
-      // Créer la transaction de paiement
-      // Envoi d'ADA au vendeur
-      // Note: Transaction est utilisé pour les paiements simples
-      const tx = new Transaction({ initiator: wallet }).sendLovelace(
-        sellerAddress,
-        priceInLovelace.toString()
+      // Calcul des répartitions
+      const schoolPercent = BigInt(
+        Math.floor(nft.revenueDistribution?.schoolFundPercent || 0)
       );
+      const platformPercent = BigInt(
+        Math.floor(nft.revenueDistribution?.platformPercent || 0)
+      );
+      // Le reste va au vendeur (créateur)
 
-      const unsignedTx = await tx.build();
+      const schoolAmount = (priceInLovelace * schoolPercent) / 100n;
+      const platformAmount = (priceInLovelace * platformPercent) / 100n;
+      const sellerAmount = priceInLovelace - schoolAmount - platformAmount;
 
-      // Signer et soumettre
-      const signedTx = await wallet.signTx(unsignedTx);
-      const txHash = await wallet.submitTx(signedTx);
+      // Build the payment transaction
+      let tx = lucid.newTx();
+
+      // Paiement au vendeur
+      tx = tx.payToAddress(sellerAddress, { lovelace: sellerAmount });
+
+      // Paiement au fonds école (si > 0)
+      if (schoolAmount > 0n) {
+        // Utiliser une adresse valide pour la démo si non fournie
+        tx = tx.payToAddress(SCHOOL_FUND_ADDRESS, { lovelace: schoolAmount });
+      }
+
+      // Paiement plateforme (si > 0)
+      if (platformAmount > 0n) {
+        tx = tx.payToAddress(PLATFORM_ADDRESS, { lovelace: platformAmount });
+      }
+
+      const txComplete = await tx.complete();
+
+      // Sign and submit
+      const signedTx = await txComplete.sign().complete();
+      const txHash = await signedTx.submit();
 
       return {
         txHash,

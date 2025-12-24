@@ -53,7 +53,39 @@ export class AuthService {
       }
     }
 
-    const user = await this.userRepository.create(dto);
+    let user;
+    try {
+      user = await this.userRepository.create(dto);
+    } catch (error) {
+      // Gérer les erreurs de contrainte d'unicité PostgreSQL
+      if (error.code === '23505') {
+        // 23505 = unique_violation
+        const constraintName = error.constraint || '';
+
+        if (
+          constraintName.includes('email') ||
+          error.detail?.includes('email')
+        ) {
+          throw new ConflictException('Email already registered');
+        } else if (
+          constraintName.includes('phone') ||
+          error.detail?.includes('phone')
+        ) {
+          throw new ConflictException('Phone number already registered');
+        } else if (
+          constraintName.includes('wallet') ||
+          error.detail?.includes('walletAddress')
+        ) {
+          throw new ConflictException('Wallet address already registered');
+        } else {
+          throw new ConflictException(
+            'A user with these credentials already exists',
+          );
+        }
+      }
+      // Re-lancer l'erreur si ce n'est pas une violation d'unicité
+      throw error;
+    }
 
     // Générer les tokens pour connecter automatiquement l'utilisateur
     const accessToken = this.generateAccessToken(user);

@@ -12,6 +12,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { CloudinaryService } from '@/shared/cloudinary/cloudinary.service';
+import { IPFSService } from '@/shared/ipfs/ipfs.service';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 import {
   ApiTags,
@@ -32,7 +33,48 @@ import {
   }),
 )
 export class UploadController {
-  constructor(private readonly cloudinaryService: CloudinaryService) {}
+  constructor(
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly ipfsService: IPFSService,
+  ) {}
+
+  @Post('ipfs')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Uploader un fichier sur IPFS' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Fichier uploadé sur IPFS',
+    schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', example: 'ipfs://Qm...' },
+        cid: { type: 'string', example: 'Qm...' },
+      },
+    },
+  })
+  async uploadMsgIPFS(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+    const result = await this.ipfsService.uploadFile(file);
+    return {
+      url: `ipfs://${result.cid}`,
+      cid: result.cid,
+    };
+  }
 
   @Post('image')
   @HttpCode(HttpStatus.OK)

@@ -1,3 +1,5 @@
+import { Lucid } from "lucid-cardano";
+
 export interface WalletInfo {
   name: string;
   icon?: string;
@@ -26,6 +28,14 @@ export interface Asset {
   icon?: string;
 }
 
-export interface WalletInstance {
+// Legacy wallet interface for backward compatibility
+export interface LegacyWalletInstance {
   getBalance?: () => Promise<Asset[] | { lovelace?: string | number }>;
+  getLovelace?: () => Promise<string | number>;
+  getUsedAddresses?: () => Promise<string[]>;
+  getChangeAddress?: () => Promise<string>;
+  getNetworkId?: () => Promise<number>;
 }
+
+// Union type that supports both Lucid and legacy wallets
+export type WalletInstance = Lucid | LegacyWalletInstance | null;

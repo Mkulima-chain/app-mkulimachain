@@ -1,4 +1,9 @@
-import { type BrowserWallet, type DataSignature } from "@meshsdk/core";
+import { Lucid, fromText } from "lucid-cardano";
+
+export interface DataSignature {
+  signature: string;
+  key: string;
+}
 
 interface Proof {
   address: string;
@@ -46,41 +51,17 @@ export async function verifyDidProof(did: string): Promise<boolean> {
 
 /**
  * Create a proof for a DID using wallet signature
- * @param wallet The wallet to use for signing
+ * @param lucid The Lucid instance to use for signing
  * @param did The DID to create a proof for
  * @returns A Proof object containing the proof information
  */
 export async function createDidProof(
-  wallet: BrowserWallet,
+  lucid: Lucid,
   did: string
 ): Promise<Proof> {
   try {
-    // Comprehensive wallet validation
-    if (
-      !wallet ||
-      typeof wallet.getUsedAddresses !== "function" ||
-      typeof wallet.signData !== "function"
-    ) {
-      throw new Error("Invalid wallet object. Missing required methods.");
-    }
-
-    // Get address
-    let addresses;
-    try {
-      addresses = await wallet.getUsedAddresses();
-      console.log("Got addresses:", addresses);
-    } catch (addressError) {
-      console.error("Error getting addresses:", addressError);
-      throw new Error(
-        `Failed to get addresses: ${addressError instanceof Error ? addressError.message : "Unknown error"}`
-      );
-    }
-
-    if (!addresses || addresses.length === 0) {
-      throw new Error("No addresses found in wallet");
-    }
-
-    const address = addresses[0];
+    // Gets default address (already selected in Lucid)
+    const address = await lucid.wallet.address();
     console.log("Using address:", address);
 
     const nonce = Math.floor(Math.random() * 1000000).toString();
@@ -88,13 +69,18 @@ export async function createDidProof(
 
     const message = `Login to Genealogy App\nAddress: ${address}\nDID: ${did || "none"}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
-    try {
-      const signature = await signDataWithWallet(wallet, message, address);
+    // Encode message to hex
+    const messageHex = fromText(message);
 
+    try {
+      const signature = await lucid.wallet.signMessage(address, messageHex);
+
+      // Lucid matches the DataSignature interface { signature, key }
+      // but let's ensure it cast properly if needed, although standard CIP-30 returns this structure.
       const proof: Proof = {
         address,
         message,
-        signature,
+        signature: signature as DataSignature,
         did,
         timestamp,
         nonce,
@@ -119,34 +105,6 @@ export async function createDidProof(
 
     throw new Error(
       `Failed to create DID proof: ${JSON.stringify(errorDetails)}`
-    );
-  }
-}
-
-/**
- * Signs data with a wallet
- * @param wallet The wallet to use for signing
- * @param message The message to sign
- * @param address The address to sign with
- * @returns The signature
- */
-async function signDataWithWallet(
-  wallet: BrowserWallet,
-  message: string,
-  address: string
-): Promise<DataSignature> {
-  try {
-    return await wallet.signData(Buffer.from(message).toString("hex"), address);
-  } catch (signError) {
-    console.error("Error signing data:", signError);
-    // Provide more detailed error info
-    const errorDetails =
-      signError instanceof Error
-        ? { message: signError.message, stack: signError.stack }
-        : String(signError);
-
-    throw new Error(
-      `Failed to sign data with wallet: ${JSON.stringify(errorDetails)}`
     );
   }
 }

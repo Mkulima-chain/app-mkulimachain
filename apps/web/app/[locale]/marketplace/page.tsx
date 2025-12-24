@@ -7,33 +7,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
-    Search,
-    Filter,
-    SlidersHorizontal,
-    ShoppingCart,
-    Star,
-    MapPin,
-    TrendingUp,
-    Package,
-    Users,
-    Grid3x3,
-    List,
-    X,
-    Heart,
-    Share2,
-    ChevronLeft,
-    ChevronRight,
-    Minus,
-    Plus,
-    MessageCircle,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ShoppingCart,
+  Star,
+  MapPin,
+  TrendingUp,
+  Package,
+  Users,
+  Grid3x3,
+  List,
+  X,
+  Heart,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
+  MessageCircle,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -45,6 +45,7 @@ import { useCart, useActiveMarketplaceItems } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { MarketplaceItem } from "@/types/marketplace";
+import { PriceInUsd, formatAda } from "@/components/ui/price-display";
 
 // Types de produits
 // Types de produits
@@ -240,19 +241,21 @@ export default function MarketplacePage() {
   const { addToCart } = useCart();
 
   // Récupérer les produits depuis l'API
-  const { data: apiItems, isLoading: isLoadingItems } = useActiveMarketplaceItems();
+  const { data: apiItems, isLoading: isLoadingItems } =
+    useActiveMarketplaceItems();
 
   // Mapper les items API vers le format Product local
   const mapApiItemToProduct = (item: MarketplaceItem): Product => {
     // Déterminer la catégorie basée sur le produit du lot
     let category = "autres";
     const productName = item.batch?.harvests?.[0]?.product?.name;
-    
+
     if (productName) {
       // Normaliser le nom pour créer une catégorie (minuscule, sans accents, etc.)
       const normalized = productName.toLowerCase();
       if (normalized.includes("cacao")) category = "cacao";
-      else if (normalized.includes("café") || normalized.includes("cafe")) category = "cafe";
+      else if (normalized.includes("café") || normalized.includes("cafe"))
+        category = "cafe";
       else if (normalized.includes("manioc")) category = "manioc";
       else category = normalized; // Utiliser le nom brut comme catégorie si pas de correspondance
     }
@@ -263,8 +266,9 @@ export default function MarketplacePage() {
       name: item.title,
       category: category as ProductCategory,
       price: item.priceADA,
-      currency: "ADA",
-      images: item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls : ["📦"],
+      currency: "₳",
+      images:
+        item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls : ["📦"],
       description: item.description || "Produit du marketplace",
       producer: item.farmer?.name || "Producteur local",
       location: item.farmer?.location || "RDC",
@@ -279,9 +283,10 @@ export default function MarketplacePage() {
   };
 
   // utiliser les produits API si disponibles, sinon fallback sur mock
-  const products: Product[] = apiItems && apiItems.length > 0
-    ? apiItems.map(mapApiItemToProduct)
-    : mockProducts;
+  const products: Product[] =
+    apiItems && apiItems.length > 0
+      ? apiItems.map(mapApiItemToProduct)
+      : mockProducts;
 
   // Filtres avancés
   const [minPrice, setMinPrice] = useState("");
@@ -374,11 +379,11 @@ export default function MarketplacePage() {
   ];
 
   // Extraire les catégories uniques des produits
-  const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
-  
-  uniqueCategories.forEach(cat => {
+  const uniqueCategories = Array.from(new Set(products.map((p) => p.category)));
+
+  uniqueCategories.forEach((cat) => {
     if (cat === "all") return;
-    
+
     let label = cat.charAt(0).toUpperCase() + cat.slice(1);
     let icon = "🌾"; // Default icon
 
@@ -952,10 +957,10 @@ export default function MarketplacePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-3xl font-bold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                              {selectedProduct.price.toLocaleString()}{" "}
-                              {selectedProduct.currency}
+                              {formatAda(selectedProduct.price)} ₳
                             </p>
-                            <p className="text-sm text-[#004D73] dark:text-white/70">
+                            <PriceInUsd adaAmount={selectedProduct.price} />
+                            <p className="text-sm text-[#004D73] dark:text-white/70 mt-1">
                               Prix par unité
                             </p>
                           </div>

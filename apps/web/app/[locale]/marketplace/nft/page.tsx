@@ -208,7 +208,7 @@ export default function NFTMarketplacePage() {
   // Wallet
   const { connected, connect, wallets } = useCardanoWallet();
   const walletState = useAtomValue(walletAtom);
-  const wallet = walletState.wallet;
+  const lucid = walletState.lucid;
   const [showWalletModal, setShowWalletModal] = useState(false);
 
   // Récupérer les NFTs depuis l'API
@@ -283,7 +283,7 @@ export default function NFTMarketplacePage() {
     }
 
     // Si le wallet n'est pas connecté, ouvrir le modal de connexion
-    if (!wallet || !connected) {
+    if (!lucid || !connected) {
       setPendingPurchase(true); // Marquer qu'un achat est en attente
       if (wallets && wallets.length > 0) {
         // Si un seul wallet disponible, connecter directement
@@ -320,7 +320,7 @@ export default function NFTMarketplacePage() {
 
   // Fonction pour exécuter l'achat
   const executePurchase = useCallback(async () => {
-    if (!selectedNFT || !wallet || !connected) {
+    if (!selectedNFT || !lucid || !connected) {
       return;
     }
 
@@ -339,9 +339,9 @@ export default function NFTMarketplacePage() {
       // En production, il faudrait récupérer l'adresse du créateur depuis l'API
       const sellerAddress = walletState.address; // TODO: Récupérer depuis l'API
 
-      // Effectuer le paiement avec Mesh SDK
+      // Effectuer le paiement avec Lucid
       const result = await NFTPurchaseService.purchaseNFT(
-        wallet,
+        lucid,
         selectedNFT,
         sellerAddress
       );
@@ -365,14 +365,14 @@ export default function NFTMarketplacePage() {
       });
       console.error("Purchase error details:", error);
     }
-  }, [selectedNFT, wallet, connected, walletState.address, purchaseMutation]);
+  }, [selectedNFT, lucid, connected, walletState.address, purchaseMutation]);
 
   // Effectuer l'achat automatiquement après connexion du wallet
   useEffect(() => {
     if (
       pendingPurchase &&
       connected &&
-      wallet &&
+      lucid &&
       selectedNFT &&
       walletState.address
     ) {
@@ -385,7 +385,7 @@ export default function NFTMarketplacePage() {
   }, [
     pendingPurchase,
     connected,
-    wallet,
+    lucid,
     selectedNFT,
     walletState.address,
     executePurchase,
@@ -637,7 +637,7 @@ export default function NFTMarketplacePage() {
                   {/* Price Range */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
-                      Prix (ADA)
+                      Prix (₳)
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
@@ -735,7 +735,7 @@ export default function NFTMarketplacePage() {
                         .toFixed(2)}
                 </p>
                 <p className="text-xs text-[#004D73] dark:text-white/70">
-                  Volume total (ADA)
+                  Volume total (₳)
                 </p>
               </CardContent>
             </Card>
@@ -1579,11 +1579,6 @@ export default function NFTMarketplacePage() {
                       <p className="font-semibold text-[#5A3E36] dark:text-white">
                         {walletItem.name}
                       </p>
-                      {walletItem.version && (
-                        <p className="text-xs text-[#004D73] dark:text-white/70">
-                          Version {walletItem.version}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </Button>

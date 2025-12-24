@@ -49,7 +49,6 @@ import { STORAGE_KEYS } from "@/components/wallet/constants";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
-import { BrowserWallet } from "@meshsdk/core";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -65,7 +64,12 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
 
   // Wallet hooks
-  const { connected, wallet, name: walletName } = useCardanoWallet();
+  const {
+    connected,
+    wallet,
+    name: walletName,
+    address: walletAddress,
+  } = useCardanoWallet();
 
   const saveToStorage = useCallback(
     (key: keyof typeof STORAGE_KEYS, value: string) => {
@@ -78,7 +82,7 @@ export default function SettingsPage() {
 
   const { walletData } = useWalletData({
     connected,
-    wallet: wallet as unknown as BrowserWallet, // Type assertion pour compatibilité avec Mesh SDK
+    wallet: wallet as any, // Type assertion for compatibility
     saveToStorage,
   });
 

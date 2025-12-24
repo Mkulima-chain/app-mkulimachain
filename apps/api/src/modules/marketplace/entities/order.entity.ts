@@ -51,6 +51,9 @@ export class OrderEntity implements IOrder {
   @Column({ type: 'varchar', length: 255, nullable: true })
   trackingNumber?: string;
 
+  @Column({ type: 'json', nullable: true })
+  traceability?: any;
+
   @Column({ type: 'timestamp', nullable: true })
   paidAt?: Date;
 

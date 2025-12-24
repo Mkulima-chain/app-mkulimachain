@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      node-fetch:
+        specifier: '2'
+        version: 2.7.0(encoding@0.1.13)
     devDependencies:
       turbo:
         specifier: ^2.3.0

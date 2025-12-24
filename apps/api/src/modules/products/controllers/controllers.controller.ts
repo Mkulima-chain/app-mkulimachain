@@ -16,7 +16,6 @@ import {
   UpdateProductDto,
 } from '../dto/products.dto';
 import { ProductEntity } from '../entities/entities';
-import { IProduct } from '../interfaces/iproducts';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @Public() // À sécuriser quand l’admin enverra le JWT

@@ -314,7 +314,7 @@ export class LoanContractService {
     amountLovelace: bigint,
     interestRate: number
   ): bigint {
-    const interest = (amountLovelace * BigInt(interestRate)) / 100n;
+    const interest = (amountLovelace * BigInt(interestRate)) / BigInt(100);
     return amountLovelace + interest;
   }
 

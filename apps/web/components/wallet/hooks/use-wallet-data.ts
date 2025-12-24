@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Lucid } from "lucid-cardano";
 import { STORAGE_KEYS, LOVELACE_TO_ADA } from "../constants";
 import type { WalletData } from "../types";
 
@@ -10,7 +11,8 @@ interface Asset {
   [key: string]: unknown;
 }
 
-interface WalletInstance {
+// Support both Lucid and legacy Mesh-style wallets
+interface LegacyWalletInstance {
   getLovelace?: () => Promise<string | number>;
   getBalance?: () => Promise<
     { lovelace?: string | number; amount?: string | number } | Asset[]
@@ -22,14 +24,29 @@ interface WalletInstance {
   getNetwork?: () => Promise<string>;
 }
 
+type WalletInstance = Lucid | LegacyWalletInstance | null | undefined;
+
 interface UseWalletDataProps {
   connected: boolean;
-  wallet: WalletInstance | null | undefined;
+  wallet: WalletInstance;
   saveToStorage: (key: keyof typeof STORAGE_KEYS, value: string) => void;
 }
 
 /**
+ * Check if the wallet is a Lucid instance
+ */
+function isLucidInstance(wallet: WalletInstance): wallet is Lucid {
+  return (
+    wallet !== null &&
+    wallet !== undefined &&
+    typeof (wallet as Lucid).wallet === "object" &&
+    typeof (wallet as Lucid).wallet?.getUtxos === "function"
+  );
+}
+
+/**
  * Hook pour récupérer et gérer les données du wallet (balance, adresse, réseau)
+ * Supporte Lucid-Cardano et les wallets compatibles Mesh SDK
  */
 export function useWalletData({
   connected,
@@ -66,8 +83,29 @@ export function useWalletData({
     setWalletData((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const fetchBalance = useCallback(
-    async (walletInstance: WalletInstance) => {
+  const fetchBalanceLucid = useCallback(
+    async (lucid: Lucid) => {
+      try {
+        const utxos = await lucid.wallet.getUtxos();
+
+        // Sum up all lovelace in UTxOs
+        const totalLovelace = utxos.reduce((sum, utxo) => {
+          return sum + (utxo.assets.lovelace || 0n);
+        }, 0n);
+
+        const adaBalance = Number(totalLovelace) / LOVELACE_TO_ADA;
+        updateWalletData({ balance: adaBalance });
+        saveToStorage("BALANCE", adaBalance.toString());
+      } catch (error) {
+        console.error("Error fetching balance (Lucid):", error);
+        updateWalletData({ balance: null });
+      }
+    },
+    [updateWalletData, saveToStorage]
+  );
+
+  const fetchBalanceLegacy = useCallback(
+    async (walletInstance: LegacyWalletInstance) => {
       try {
         let lovelace: string | number = "0";
 
@@ -94,15 +132,30 @@ export function useWalletData({
         updateWalletData({ balance: adaBalance });
         saveToStorage("BALANCE", adaBalance.toString());
       } catch (error) {
-        console.error("Error fetching balance:", error);
+        console.error("Error fetching balance (legacy):", error);
         updateWalletData({ balance: null });
       }
     },
     [updateWalletData, saveToStorage]
   );
 
-  const fetchAddress = useCallback(
-    async (walletInstance: WalletInstance) => {
+  const fetchAddressLucid = useCallback(
+    async (lucid: Lucid) => {
+      try {
+        const address = await lucid.wallet.address();
+        if (address) {
+          updateWalletData({ address });
+          saveToStorage("WALLET_ADDRESS", address);
+        }
+      } catch (error) {
+        console.error("Error fetching address (Lucid):", error);
+      }
+    },
+    [updateWalletData, saveToStorage]
+  );
+
+  const fetchAddressLegacy = useCallback(
+    async (walletInstance: LegacyWalletInstance) => {
       try {
         let address: string | null = null;
 
@@ -125,14 +178,33 @@ export function useWalletData({
           saveToStorage("WALLET_ADDRESS", address);
         }
       } catch (error) {
-        console.error("Error fetching address:", error);
+        console.error("Error fetching address (legacy):", error);
       }
     },
     [updateWalletData, saveToStorage]
   );
 
-  const fetchNetwork = useCallback(
-    async (walletInstance: WalletInstance) => {
+  const fetchNetworkLucid = useCallback(
+    async (lucid: Lucid) => {
+      try {
+        // Lucid stores network in its instance
+        const network = lucid.network;
+        if (network) {
+          updateWalletData({ network });
+          saveToStorage("NETWORK", network);
+        } else {
+          updateWalletData({ network: "Unknown" });
+        }
+      } catch (error) {
+        console.error("Error fetching network (Lucid):", error);
+        updateWalletData({ network: "Unknown" });
+      }
+    },
+    [updateWalletData, saveToStorage]
+  );
+
+  const fetchNetworkLegacy = useCallback(
+    async (walletInstance: LegacyWalletInstance) => {
       try {
         let networkName: string | null = null;
 
@@ -155,7 +227,7 @@ export function useWalletData({
           updateWalletData({ network: "Unknown" });
         }
       } catch (error) {
-        console.error("Error fetching network:", error);
+        console.error("Error fetching network (legacy):", error);
         updateWalletData({ network: "Unknown" });
       }
     },
@@ -182,11 +254,22 @@ export function useWalletData({
           isLoadingAddress: true,
         }));
 
-        await Promise.all([
-          fetchBalance(wallet),
-          fetchAddress(wallet),
-          fetchNetwork(wallet),
-        ]);
+        // Check if wallet is Lucid instance
+        if (isLucidInstance(wallet)) {
+          await Promise.all([
+            fetchBalanceLucid(wallet),
+            fetchAddressLucid(wallet),
+            fetchNetworkLucid(wallet),
+          ]);
+        } else {
+          // Fall back to legacy methods
+          const legacyWallet = wallet as LegacyWalletInstance;
+          await Promise.all([
+            fetchBalanceLegacy(legacyWallet),
+            fetchAddressLegacy(legacyWallet),
+            fetchNetworkLegacy(legacyWallet),
+          ]);
+        }
       } catch (error) {
         console.error("Error fetching wallet info:", error);
       } finally {

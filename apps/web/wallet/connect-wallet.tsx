@@ -1,6 +1,5 @@
 "use client";
 
-import { useWalletList } from "@meshsdk/react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -10,6 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useWalletAtom } from "@/hooks/useWalletAtom";
+import { getAvailableWallets } from "@/lib/wallet";
 
 interface ConnectWalletProps {
   onConnect?: (address: string) => void;
@@ -22,12 +22,18 @@ export function ConnectWallet({
 }: ConnectWalletProps) {
   const { connect, disconnect, connected, address, walletName } =
     useWalletAtom();
-  const wallets = useWalletList();
 
   const [connecting, setConnecting] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [availableWallets, setAvailableWallets] = useState<string[]>([]);
+
+  // Load available wallets
+  useEffect(() => {
+    const wallets = getAvailableWallets();
+    setAvailableWallets(wallets);
+  }, []);
 
   const formatWalletName = (name: string): string => {
     const walletNameMap: Record<string, string> = {
@@ -168,7 +174,7 @@ export function ConnectWallet({
                 </div>
               </DialogHeader>
               <div className="p-6 max-h-[50vh] overflow-y-auto custom-scrollbar">
-                {wallets.length === 0 ? (
+                {availableWallets.length === 0 ? (
                   <div className="py-10 text-center">
                     <svg
                       className="mx-auto h-20 w-20 text-white/30"
@@ -186,22 +192,25 @@ export function ConnectWallet({
                     <p className="mt-5 text-white/60 text-xl font-medium">
                       No wallets found
                     </p>
+                    <p className="mt-2 text-white/40 text-sm">
+                      Install Nami, Eternl, or another Cardano wallet
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {wallets.map((walletItem) => (
+                    {availableWallets.map((walletId) => (
                       <button
-                        key={walletItem.name}
-                        onClick={() => handleWalletSelect(walletItem.name)}
+                        key={walletId}
+                        onClick={() => handleWalletSelect(walletId)}
                         className="w-full flex items-center p-5 rounded-xl text-white bg-white/10 hover:bg-white/20 transition-all border border-white/20 hover:border-white/40 hover:shadow-lg"
                       >
-                        <img
-                          src={walletItem.icon}
-                          alt={`${walletItem.name} icon`}
-                          className="w-12 h-12 mr-5"
-                        />
+                        <div className="w-12 h-12 mr-5 bg-white/20 rounded-lg flex items-center justify-center">
+                          <span className="text-2xl font-bold">
+                            {formatWalletName(walletId)[0]}
+                          </span>
+                        </div>
                         <span className="font-medium text-xl">
-                          {formatWalletName(walletItem.name)}
+                          {formatWalletName(walletId)}
                         </span>
                       </button>
                     ))}

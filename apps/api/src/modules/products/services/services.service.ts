@@ -4,92 +4,88 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ProductEntity } from '../entities/entities';
-import { Repository } from 'typeorm';
 import {
   CreateProductDto,
   UpdateProductDto,
   GetProductDto,
 } from '../dto/products.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IProduct } from '../interfaces/iproducts';
-import { Like } from 'typeorm';
+import { ProductRepository } from '../repositories/products.repository';
 
 @Injectable()
 export class ServicesService {
-  constructor(
-    @InjectRepository(ProductEntity)
-    private productRepository: Repository<ProductEntity>,
-  ) {}
+  constructor(private readonly productRepository: ProductRepository) {}
 
   async createProduct(product: CreateProductDto): Promise<ProductEntity> {
-    const exists = await this.productRepository.findOne({
-      where: { sku: product.sku },
-    });
-    if (exists) {
-      throw new ConflictException('SKU déjà utilisé');
+    try {
+      return await this.productRepository.create(product);
+    } catch (error) {
+      if (error.message === 'SKU déjà utilisé') {
+        throw new ConflictException('SKU déjà utilisé');
+      }
+      throw error;
     }
-
-    const newProduct = this.productRepository.create({
-      ...product,
-      currency: product.currency || 'USD',
-      stock: product.stock ?? 0,
-      isActive: product.isActive ?? true,
-    });
-    return this.productRepository.save(newProduct);
   }
+
   async updateProduct(
     id: string,
     product: UpdateProductDto,
   ): Promise<ProductEntity> {
-    const updatedProduct = await this.productRepository.preload({
-      id,
-      ...product,
-    });
+    const updatedProduct = await this.productRepository.update(id, product);
     if (!updatedProduct) {
       throw new NotFoundException('Produit introuvable');
     }
-    return this.productRepository.save(updatedProduct);
+    return updatedProduct;
   }
+
   async getProductById(id: string): Promise<ProductEntity> {
-    const product = await this.productRepository.findOne({ where: { id } });
+    const product = await this.productRepository.findById(id);
     if (!product) {
       throw new NotFoundException('Produit introuvable');
     }
     return product;
   }
+
   async getProducts(product: GetProductDto): Promise<ProductEntity[]> {
-    const qb = this.productRepository
-      .createQueryBuilder('product')
-      .where('1=1');
-
-    if (product.id) qb.andWhere('product.id = :id', { id: product.id });
-    if (product.sku) qb.andWhere('product.sku = :sku', { sku: product.sku });
-    if (product.category)
-      qb.andWhere('product.category = :category', {
-        category: product.category,
-      });
-    if (product.isActive !== undefined)
-      qb.andWhere('product.isActive = :isActive', {
-        isActive: product.isActive,
-      });
-    if (product.originCountry)
-      qb.andWhere('product.originCountry = :originCountry', {
-        originCountry: product.originCountry,
-      });
-    if (product.minPrice !== undefined)
-      qb.andWhere('product.price >= :minPrice', { minPrice: product.minPrice });
-    if (product.maxPrice !== undefined)
-      qb.andWhere('product.price <= :maxPrice', { maxPrice: product.maxPrice });
-    if (product.search) {
-      qb.andWhere(
-        '(product.name ILIKE :s OR product.description ILIKE :s OR product.sku ILIKE :s)',
-        { s: `%${product.search}%` },
-      );
-    }
-
-    return qb.getMany();
+    return this.productRepository.findAll(product);
   }
+
+  async getActiveProducts(): Promise<ProductEntity[]> {
+    return this.productRepository.findActive();
+  }
+
+  async getProductsByCategory(category: string): Promise<ProductEntity[]> {
+    return this.productRepository.findByCategory(category);
+  }
+
+  async updateStock(id: string, quantity: number): Promise<ProductEntity> {
+    const product = await this.productRepository.updateStock(id, quantity);
+    if (!product) {
+      throw new NotFoundException('Produit introuvable');
+    }
+    return product;
+  }
+
+  async activateProduct(id: string): Promise<ProductEntity> {
+    const product = await this.productRepository.activate(id);
+    if (!product) {
+      throw new NotFoundException('Produit introuvable');
+    }
+    return product;
+  }
+
+  async deactivateProduct(id: string): Promise<ProductEntity> {
+    const product = await this.productRepository.deactivate(id);
+    if (!product) {
+      throw new NotFoundException('Produit introuvable');
+    }
+    return product;
+  }
+
   async deleteProduct(id: string): Promise<void> {
-    await this.productRepository.softDelete(id);
+    await this.productRepository.delete(id);
+  }
+
+  async getProductStats() {
+    return this.productRepository.getStats();
   }
 }

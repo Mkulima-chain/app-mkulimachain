@@ -26,7 +26,7 @@ export function WalletHeader({
           className={`w-2 h-2 rounded-full ${NETWORK_STATUS_COLOR}`}
           aria-label="Network status"
         />
-        <span className="text-sm text-white font-medium">
+        <span className="text-sm text-gray-900 dark:text-white font-medium">
           {network || DEFAULT_NETWORK}
         </span>
       </div>
@@ -34,7 +34,7 @@ export function WalletHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10"
+          className="h-6 w-6 text-gray-500 dark:text-white/70 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10"
           onClick={onCopyAddress}
           aria-label={copied ? "Address copied" : "Copy address"}
         >

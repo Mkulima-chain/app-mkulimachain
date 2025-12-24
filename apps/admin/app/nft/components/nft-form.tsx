@@ -284,7 +284,7 @@ export const NFTForm = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="priceADA">Prix (ADA) *</Label>
+              <Label htmlFor="priceADA">Prix (₳) *</Label>
               <Input
                 id="priceADA"
                 type="number"

@@ -1,4 +1,4 @@
-import { type BrowserWallet } from "@meshsdk/core";
+import { Lucid } from "lucid-cardano";
 import { createDidProof } from "@/lib/did-generator";
 
 interface AuthSession {
@@ -14,12 +14,9 @@ const DID_KEY = "user_did";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
 
 export const walletAuthService = {
-  async createSession(
-    wallet: BrowserWallet,
-    did: string
-  ): Promise<AuthSession> {
+  async createSession(lucid: Lucid, did: string): Promise<AuthSession> {
     try {
-      const proof = await createDidProof(wallet, did);
+      const proof = await createDidProof(lucid, did);
       const proofString = JSON.stringify(proof);
 
       // Send DID and proof to backend

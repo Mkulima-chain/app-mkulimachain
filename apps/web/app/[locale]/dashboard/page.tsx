@@ -17,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import {
   ShoppingCart,
   Heart,
-  DollarSign,
   MapPin,
   Calendar,
   Star,
@@ -45,6 +44,12 @@ import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 import { useMyOrders } from "@/hooks";
 import type { Order as ApiOrder } from "@/types/order";
+import {
+  formatAda,
+  useAdaPrice,
+  formatUsd,
+  adaToUsd,
+} from "@/components/ui/price-display";
 
 // Types
 interface Order {
@@ -201,7 +206,7 @@ const mockUserNFTs: UserNFT[] = [
     collection: "Culture Lingala",
     images: ["📖", "🌙", "✨"],
     price: 120,
-    currency: "ADA",
+    currency: "₳",
     rarity: "legendary",
     type: "tale",
     standard: "CIP-25",
@@ -214,7 +219,7 @@ const mockUserNFTs: UserNFT[] = [
     collection: "Culture Lingala",
     images: ["🎵", "🎤", "👥"],
     price: 95,
-    currency: "ADA",
+    currency: "₳",
     rarity: "rare",
     type: "song",
     standard: "CIP-25",
@@ -227,7 +232,7 @@ const mockUserNFTs: UserNFT[] = [
     collection: "Agriculture",
     images: ["🌰", "🌰", "🌰"],
     price: 150,
-    currency: "ADA",
+    currency: "₳",
     rarity: "legendary",
     type: "product",
     purchasedAt: "2024-01-15",
@@ -238,7 +243,7 @@ const mockUserNFTs: UserNFT[] = [
     collection: "Terrains",
     images: ["🌾", "🌾", "🌾", "🌾"],
     price: 500,
-    currency: "ADA",
+    currency: "₳",
     rarity: "legendary",
     type: "land",
     purchasedAt: "2024-01-10",
@@ -344,12 +349,15 @@ const getStatusLabel = (status: Order["status"]) => {
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { adaPrice } = useAdaPrice();
   const [activeTab, setActiveTab] = useState<
     "overview" | "orders" | "favorites" | "profile" | "nfts"
   >("overview");
 
   // Récupérer les commandes depuis l'API
-  const { data: apiOrders, isLoading: ordersLoading } = useMyOrders(session?.user?.id);
+  const { data: apiOrders, isLoading: ordersLoading } = useMyOrders(
+    session?.user?.id
+  );
 
   // Mapper les commandes API vers le format local
   const mapApiOrderToLocal = (apiOrder: ApiOrder): Order => {
@@ -361,32 +369,46 @@ export default function DashboardPage() {
       completed: "delivered",
       cancelled: "cancelled",
     };
-    
+
     return {
       id: apiOrder.id,
       productName: apiOrder.item?.title || "Produit",
-      productImage: apiOrder.item?.imageUrls && apiOrder.item.imageUrls.length > 0 ? apiOrder.item.imageUrls[0] : "📦",
+      productImage:
+        apiOrder.item?.imageUrls && apiOrder.item.imageUrls.length > 0
+          ? apiOrder.item.imageUrls[0]
+          : "📦",
       price: apiOrder.unitPriceADA,
       quantity: apiOrder.quantityKg,
       status: statusMap[apiOrder.status] || "pending",
       date: apiOrder.createdAt,
       orderNumber: `ORD-${apiOrder.id.slice(0, 8).toUpperCase()}`,
-      traceability: {
+      traceability: apiOrder.traceability || {
         order: { completed: true, date: apiOrder.createdAt },
         preparation: { completed: apiOrder.status !== "pending" },
         harvest: { completed: apiOrder.status !== "pending" },
-        processing: { completed: ["paid", "shipped", "completed"].includes(apiOrder.status) },
-        packaging: { completed: ["shipped", "completed"].includes(apiOrder.status) },
-        shipping: { completed: ["shipped", "completed"].includes(apiOrder.status), date: apiOrder.shippedAt },
-        delivery: { completed: apiOrder.status === "completed", date: apiOrder.completedAt },
+        processing: {
+          completed: ["paid", "shipped", "completed"].includes(apiOrder.status),
+        },
+        packaging: {
+          completed: ["shipped", "completed"].includes(apiOrder.status),
+        },
+        shipping: {
+          completed: ["shipped", "completed"].includes(apiOrder.status),
+          date: apiOrder.shippedAt,
+        },
+        delivery: {
+          completed: apiOrder.status === "completed",
+          date: apiOrder.completedAt,
+        },
       },
     };
   };
 
   // Utiliser les commandes API si disponibles, sinon fallback sur mock
-  const orders: Order[] = apiOrders && apiOrders.length > 0
-    ? apiOrders.map(mapApiOrderToLocal)
-    : mockOrders;
+  const orders: Order[] =
+    apiOrders && apiOrders.length > 0
+      ? apiOrders.map(mapApiOrderToLocal)
+      : mockOrders;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -517,12 +539,15 @@ export default function DashboardPage() {
                     <CardTitle className="text-sm font-medium text-[#5A3E36] dark:text-white/90">
                       Total dépensé
                     </CardTitle>
-                    <DollarSign className="h-4 w-4 text-[#3A8F4C]" />
+                    <Coins className="h-4 w-4 text-[#3A8F4C]" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                      {totalSpent.toLocaleString()} USD
+                    <div className="text-2xl font-bold text-[#3A8F4C]">
+                      {formatAda(totalSpent)} ₳
                     </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      ≈ {formatUsd(adaToUsd(totalSpent, adaPrice))}
+                    </p>
                     <p className="text-xs text-[#004D73] dark:text-white/70 mt-1">
                       Toutes commandes confondues
                     </p>
@@ -654,8 +679,13 @@ export default function DashboardPage() {
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {(order.productImage.startsWith("http") || order.productImage.startsWith("/")) ? (
-                              <img src={order.productImage} alt={order.productName} className="w-full h-full object-cover" />
+                            {order.productImage.startsWith("http") ||
+                            order.productImage.startsWith("/") ? (
+                              <img
+                                src={order.productImage}
+                                alt={order.productName}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <span className="text-3xl">
                                 {order.productImage}
@@ -673,8 +703,13 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-[#3A8F4C] dark:text-[#3A8F4C]">
-                              {(order.price * order.quantity).toLocaleString()}{" "}
-                              USD
+                              {formatAda(order.price * order.quantity)} ₳
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ≈{" "}
+                              {formatUsd(
+                                adaToUsd(order.price * order.quantity, adaPrice)
+                              )}
                             </p>
                             <p className="text-xs text-[#004D73] dark:text-white/70">
                               Qté: {order.quantity}
@@ -722,10 +757,17 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-[#3A8F4C]/20 to-[#004D73]/20 dark:from-[#3A8F4C]/30 dark:to-[#004D73]/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {(order.productImage.startsWith("http") || order.productImage.startsWith("/")) ? (
-                            <img src={order.productImage} alt={order.productName} className="w-full h-full object-cover" />
+                          {order.productImage.startsWith("http") ||
+                          order.productImage.startsWith("/") ? (
+                            <img
+                              src={order.productImage}
+                              alt={order.productName}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <span className="text-4xl">{order.productImage}</span>
+                            <span className="text-4xl">
+                              {order.productImage}
+                            </span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -750,8 +792,13 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-xl text-[#3A8F4C] dark:text-[#3A8F4C] mb-1">
-                            {(order.price * order.quantity).toLocaleString()}{" "}
-                            USD
+                            {formatAda(order.price * order.quantity)} ₳
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            ≈{" "}
+                            {formatUsd(
+                              adaToUsd(order.price * order.quantity, adaPrice)
+                            )}
                           </p>
                           <p className="text-sm text-[#004D73] dark:text-white/70">
                             {order.quantity}{" "}
@@ -834,7 +881,10 @@ export default function DashboardPage() {
                               {favorite.category}
                             </p>
                             <p className="text-lg font-bold text-[#3A8F4C] dark:text-[#3A8F4C] mt-1">
-                              {favorite.price.toLocaleString()} USD
+                              {formatAda(favorite.price)} ₳
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ≈ {formatUsd(adaToUsd(favorite.price, adaPrice))}
                             </p>
                           </div>
                         </div>
@@ -876,7 +926,7 @@ export default function DashboardPage() {
                           Valeur totale
                         </p>
                         <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                          {totalNFTValue} ADA
+                          {totalNFTValue} ₳
                         </p>
                       </div>
                       <div className="p-3 rounded-full bg-[#F2C94C]/20 dark:bg-[#F2C94C]/30">
@@ -912,7 +962,7 @@ export default function DashboardPage() {
                           Fonds éducation
                         </p>
                         <p className="text-2xl font-bold text-[#5A3E36] dark:text-white">
-                          {totalEducationFund} ADA
+                          {totalEducationFund} ₳
                         </p>
                       </div>
                       <div className="p-3 rounded-full bg-blue-200 dark:bg-blue-800">
@@ -1018,7 +1068,7 @@ export default function DashboardPage() {
                                       Fonds éducation
                                     </p>
                                     <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                      {nft.educationFund} ADA
+                                      {nft.educationFund} ₳
                                     </p>
                                   </div>
                                 )}

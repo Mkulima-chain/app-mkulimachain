@@ -57,7 +57,6 @@ import { api } from "@/lib/api-client";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FileUpload } from "@/components/ui/file-upload";
 import { useWalletAtom } from "@/hooks/useWalletAtom";
-import { Transaction } from "@meshsdk/core";
 import { WalletConnectDialog } from "@/components/wallet-connect-dialog";
 
 enum LoanStatus {
@@ -411,35 +410,18 @@ export default function FinancePage() {
     }
 
     try {
-      const tx = new Transaction({ initiator: wallet });
-
-      // Verification du réseau de l'adresse
-      const isMainnetAddress = loan.farmer.walletAddress.startsWith("addr1");
-      const networkName =
-        (await wallet.getNetworkId()) === 1 ? "Mainnet" : "Testnet";
-
-      // Simple validation pour éviter l'erreur "Network Mismatch"
-      // Si on est sur Testnet/Preprod (qui attend addr_test1...) et qu'on envoie à addr1...
-      if (networkName === "Testnet" && isMainnetAddress) {
-        throw new Error(
-          `Conflit de réseau : Vous êtes connecté au Testnet mais l'adresse du destinataire est Mainnet (${loan.farmer.walletAddress.slice(0, 15)}...).`
-        );
-      }
-
       // Convert ADA to Lovelace (1 ADA = 1,000,000 Lovelace)
-      const amountLovelace = (loan.amountADA * 1000000).toString();
+      const amountLovelace = BigInt(Math.floor(loan.amountADA * 1000000));
 
-      tx.sendLovelace(loan.farmer.walletAddress, amountLovelace);
+      const tx = await wallet
+        .newTx()
+        .payToAddress(loan.farmer.walletAddress, {
+          lovelace: amountLovelace,
+        })
+        .complete();
 
-      const unsignedTx = await tx.build();
-
-      // Signer la transaction avec gestion du refus utilisateur
-  
-       const signedTx = await wallet.signTx(unsignedTx);
-      const txHash = await wallet.submitTx(signedTx);
-    
-
-      // const txHash = await wallet.submitTx(signedTx);
+      const signedTx = await tx.sign().complete();
+      const txHash = await signedTx.submit();
 
       toast.success("Transaction soumise avec succès", {
         description: `Hash: ${txHash.slice(0, 10)}...${txHash.slice(-8)}`,
@@ -462,15 +444,13 @@ export default function FinancePage() {
         error instanceof Error ? error.message : String(error);
       const errorMessageLower = errorMessage.toLowerCase();
 
-      // Gestion spécifique pour l'annulation utilisateur (double vérification)
+      // Gestion spécifique pour l'annulation utilisateur
       if (
         errorMessageLower.includes("declined") ||
         errorMessageLower.includes("cancelled") ||
         errorMessageLower.includes("refused") ||
-        errorMessageLower.includes("rejected") ||
         errorMessageLower.includes("user declined") ||
-        errorMessageLower.includes("user canceled") ||
-        errorMessageLower.includes("sign tx")
+        errorMessageLower.includes("user canceled")
       ) {
         toast.info("Transaction annulée", {
           description: "Vous avez annulé la signature de la transaction.",
@@ -998,7 +978,7 @@ export default function FinancePage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="amountADA">Montant (ADA) *</Label>
+                    <Label htmlFor="amountADA">Montant (₳) *</Label>
                     <Input
                       id="amountADA"
                       type="number"
@@ -1500,7 +1480,12 @@ export default function FinancePage() {
                   <Button
                     variant="outline"
                     className="w-full flex items-center justify-center gap-2"
-                    onClick={() => window.open(`https://preprod.cardanoscan.io/transaction/${selectedLoan.transactionHash}`, '_blank')}
+                    onClick={() =>
+                      window.open(
+                        `https://preprod.cardanoscan.io/transaction/${selectedLoan.transactionHash}`,
+                        "_blank"
+                      )
+                    }
                   >
                     <Eye className="h-4 w-4" />
                     Voir sur Cardanoscan

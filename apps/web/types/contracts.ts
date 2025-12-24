@@ -138,6 +138,29 @@ export interface AuthRedeemer {
 }
 
 /**
+ * Sale Contract Types
+ */
+
+export interface SaleDatum {
+  sellerAddress: string;
+  nftPolicyId: string;
+  nftAssetName: string;
+  price: bigint;
+  creatorAddress: string;
+  schoolFundAddress: string;
+  platformAddress: string;
+  creatorPercent: number;
+  schoolFundPercent: number;
+  platformPercent: number;
+}
+
+export type SaleAction = { Buy: { buyerAddress: string } } | { Cancel: {} };
+
+export interface SaleRedeemer {
+  action: SaleAction;
+}
+
+/**
  * Utility Types
  */
 

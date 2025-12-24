@@ -329,15 +329,19 @@ export function AddFarmerDialog({
                   </p>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="mobileMoneyProvider">Réseau Mobile Money</Label>
+                  <Label htmlFor="mobileMoneyProvider">
+                    Réseau Mobile Money
+                  </Label>
                   <select
                     id="mobileMoneyProvider"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={formData.mobileMoneyProvider || ""}
-                    onChange={(e) => handleChange("mobileMoneyProvider", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("mobileMoneyProvider", e.target.value)
+                    }
                   >
                     <option value="">Sélectionner...</option>
                     <option value="Airtel">Airtel Money</option>
@@ -353,7 +357,9 @@ export function AddFarmerDialog({
                     type="tel"
                     placeholder="+243..."
                     value={formData.mobileMoneyNumber || ""}
-                    onChange={(e) => handleChange("mobileMoneyNumber", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("mobileMoneyNumber", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -439,10 +445,10 @@ export function AddFarmerDialog({
                 {isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout...
+                    Enregistrement (DB + Blockchain)...
                   </>
                 ) : (
-                  "Ajouter"
+                  "Ajouter et Enregistrer sur Blockchain"
                 )}
               </Button>
             </DialogFooter>

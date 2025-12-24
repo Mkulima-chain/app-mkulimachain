@@ -79,7 +79,7 @@ export function EditWalletDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-balanceADA">Solde (ADA)</Label>
+              <Label htmlFor="edit-balanceADA">Solde (\u20b3)</Label>
               <Input
                 id="edit-balanceADA"
                 type="number"

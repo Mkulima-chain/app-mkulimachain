@@ -5,16 +5,23 @@ import { usePathname } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useCartSync } from "./use-cart-sync";
+import {
+  useAdaPrice,
+  formatAda,
+  formatUsd,
+  adaToUsd,
+} from "@/components/ui/price-display";
 
 export function CartDropdown() {
   const pathname = usePathname();
   const { cart, cartItemCount, getTotal } = useCartSync();
+  const { adaPrice } = useAdaPrice();
 
   return (
     <Popover>
@@ -40,7 +47,7 @@ export function CartDropdown() {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="p-4">
           <h3 className="font-bold text-lg text-[#5A3E36] dark:text-white mb-4">
-            Shopping cart
+            Panier
           </h3>
 
           {cart.length === 0 ? (
@@ -59,8 +66,13 @@ export function CartDropdown() {
                     className="flex items-center gap-3 pb-3 border-b border-[#004D73]/10 dark:border-white/10 last:border-0"
                   >
                     <div className="w-16 h-16 rounded-lg bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 flex items-center justify-center shrink-0 overflow-hidden">
-                      {(item.productImage.startsWith('http') || item.productImage.startsWith('/')) ? (
-                        <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                      {item.productImage.startsWith("http") ||
+                      item.productImage.startsWith("/") ? (
+                        <img
+                          src={item.productImage}
+                          alt={item.productName}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <span className="text-2xl">{item.productImage}</span>
                       )}
@@ -70,32 +82,43 @@ export function CartDropdown() {
                         {item.productName}
                       </p>
                       <p className="text-xs text-[#004D73] dark:text-white/70">
-                        {item.price.toLocaleString()} {item.currency} x{" "}
-                        {item.quantity}
+                        {formatAda(item.price)} ₳ x {item.quantity}
                       </p>
                     </div>
-                    <p className="font-semibold text-sm text-[#3A8F4C] dark:text-[#3A8F4C]">
-                      {(item.price * item.quantity).toLocaleString()}{" "}
-                      {item.currency}
-                    </p>
+                    <div className="text-right">
+                      <p className="font-semibold text-sm text-[#3A8F4C] dark:text-[#3A8F4C]">
+                        {formatAda(item.price * item.quantity)} ₳
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ≈{" "}
+                        {formatUsd(
+                          adaToUsd(item.price * item.quantity, adaPrice)
+                        )}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-4 p-3 bg-muted/30 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#004D73] dark:text-white/70">
-                    Subtotal excl. tax
+                    Total
                   </span>
-                  <span className="font-semibold text-[#5A3E36] dark:text-white">
-                    {getTotal().toLocaleString()} USD
-                  </span>
+                  <div className="text-right">
+                    <span className="font-bold text-[#3A8F4C]">
+                      {formatAda(getTotal())} ₳
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      ≈ {formatUsd(adaToUsd(getTotal(), adaPrice))}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <Link href="/cart" className="block">
                 <Button className="w-full bg-[#3A8F4C] hover:bg-[#2E7D32] text-white">
-                  Go to cart
+                  Voir le panier
                 </Button>
               </Link>
             </>

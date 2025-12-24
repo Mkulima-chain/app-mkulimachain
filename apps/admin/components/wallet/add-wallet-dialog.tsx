@@ -114,7 +114,7 @@ export function AddWalletDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="balanceADA">Solde initial (ADA)</Label>
+              <Label htmlFor="balanceADA">Solde initial (₳)</Label>
               <Input
                 id="balanceADA"
                 type="number"

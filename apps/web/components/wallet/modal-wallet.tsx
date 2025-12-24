@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { signIn, signOut } from "next-auth/react";
 import { useCardanoWallet } from "@/hooks";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useWalletStorage } from "./hooks/use-wallet-storage";
@@ -35,7 +36,7 @@ export function ModalWallet({
   } = useCardanoWallet();
   const router = useRouter();
   const pathname = usePathname();
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname?.endsWith("/login") || pathname === "/login";
 
   const [isOpen, setIsOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -48,7 +49,7 @@ export function ModalWallet({
 
   const { walletData: displayWalletData } = useWalletData({
     connected,
-    wallet,
+    wallet: wallet as any, // Lucid instance - type assertion for compatibility
     saveToStorage,
   });
 
@@ -57,7 +58,27 @@ export function ModalWallet({
       try {
         setIsConnecting(true);
         setConnectingWalletName(name);
-        await connect(name);
+
+        // Connect to wallet
+        const result = await connect(name);
+
+        // Get the address from the connected wallet
+        const cardano = (window as any).cardano;
+        if (cardano && cardano[name]) {
+          const walletApi = await cardano[name].enable();
+          // Use the Lucid instance to get the address
+          const lucidInstance = (window as any).__lucidInstance;
+          if (lucidInstance) {
+            const address = await lucidInstance.wallet.address();
+
+            // Create NextAuth session with wallet
+            await signIn("wallet", {
+              address,
+              walletName: name,
+              redirect: false,
+            });
+          }
+        }
 
         if (typeof window !== "undefined") {
           localStorage.setItem(STORAGE_KEYS.WALLET_NAME, name);
@@ -65,7 +86,10 @@ export function ModalWallet({
 
         setIsOpen(false);
         if (isLoginPage) {
-          router.push("/");
+          router.push("/dashboard");
+        } else {
+          // Refresh the page to update session
+          router.refresh();
         }
       } catch (error) {
         console.error("Error connecting wallet:", error);
@@ -81,6 +105,8 @@ export function ModalWallet({
     try {
       await disconnect();
       clearStorage();
+      // Also sign out from NextAuth session
+      await signOut({ redirect: false });
       setIsOpen(false);
       router.push("/login");
     } catch (error) {

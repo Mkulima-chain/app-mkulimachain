@@ -63,19 +63,18 @@ export class EscrowContractService {
       datum.arbiterAddress
     );
 
-    const data = Data.to(
-      new Constr(0, [
-        payerCredential.hash,
-        beneficiaryCredential.hash,
-        datum.amountLovelace,
-        arbiterCredential.hash,
-        BigInt(datum.deadlineTimestamp),
-        fromText(datum.description),
-        new Constr(statusIndex, []),
-      ])
-    );
+    const datumRecord = new Constr(0, [
+      payerCredential.hash,
+      beneficiaryCredential.hash,
+      datum.amountLovelace,
+      arbiterCredential.hash,
+      BigInt(datum.deadlineTimestamp),
+      fromText(datum.description),
+      new Constr(statusIndex, []),
+    ]);
 
-    return data;
+    // Wrap in Option (Some)
+    return Data.to(new Constr(0, [datumRecord]));
   }
 
   /**
@@ -283,7 +282,8 @@ export class EscrowContractService {
     } else if ("Split" in params.decision) {
       const beneficiaryPercent = params.decision.Split.beneficiaryPercent;
       const beneficiaryAmount =
-        (params.datum.amountLovelace * BigInt(beneficiaryPercent)) / 100n;
+        (params.datum.amountLovelace * BigInt(beneficiaryPercent)) /
+        BigInt(100);
       const payerAmount = params.datum.amountLovelace - beneficiaryAmount;
 
       tx = tx

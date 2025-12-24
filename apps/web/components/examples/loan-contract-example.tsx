@@ -63,7 +63,7 @@ export function LoanContractExample() {
       setRepaymentAmount(repayment);
 
       const repaymentADA = Number(repayment) / 1_000_000;
-      toast.info(`Repayment: ${repaymentADA.toFixed(2)} ADA`);
+      toast.info(`Repayment: ${repaymentADA.toFixed(2)} ₳`);
     } catch (err: any) {
       toast.error(err.message || "Failed to calculate");
     }
@@ -75,7 +75,7 @@ export function LoanContractExample() {
         <h2 className="text-2xl font-bold">Request Loan (DeFi)</h2>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Amount (ADA)</label>
+          <label className="text-sm font-medium">Amount (₳)</label>
           <Input
             type="number"
             placeholder="100"

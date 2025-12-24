@@ -58,22 +58,20 @@ export class OrderContractService {
       datum.platformAddress
     );
 
-    const data = Data.to(
-      new Constr(0, [
-        buyerCredential.hash, // Use credential hash instead of full address
-        sellerCredential.hash,
-        fromText(datum.itemId),
-        BigInt(datum.quantityKg),
-        datum.unitPriceLovelace,
-        datum.totalLovelace,
-        BigInt(datum.platformFeePercent),
-        platformCredential.hash,
-        new Constr(statusIndex, []),
-        BigInt(datum.createdAt),
-      ])
-    );
+    const datumRecord = new Constr(0, [
+      buyerCredential.hash, // Use credential hash instead of full address
+      sellerCredential.hash,
+      fromText(datum.itemId),
+      BigInt(datum.quantityKg),
+      datum.unitPriceLovelace,
+      datum.totalLovelace,
+      BigInt(datum.platformFeePercent),
+      platformCredential.hash,
+      new Constr(statusIndex, []),
+      BigInt(datum.createdAt),
+    ]);
 
-    return data;
+    return Data.to(new Constr(0, [datumRecord]));
   }
 
   /**
@@ -114,7 +112,8 @@ export class OrderContractService {
 
     const unitPriceLovelace = adaToLovelace(params.pricePerKgADA);
     const totalLovelace =
-      (unitPriceLovelace * BigInt(Math.floor(params.quantityKg * 100))) / 100n;
+      (unitPriceLovelace * BigInt(Math.floor(params.quantityKg * 100))) /
+      BigInt(100);
 
     const datum: OrderDatum = {
       buyerAddress,
@@ -215,7 +214,7 @@ export class OrderContractService {
     // Calculate distribution
     const platformFee =
       (params.datum.totalLovelace * BigInt(params.datum.platformFeePercent)) /
-      100n;
+      BigInt(100);
     const sellerAmount = params.datum.totalLovelace - platformFee;
 
     const redeemer: OrderRedeemer = {

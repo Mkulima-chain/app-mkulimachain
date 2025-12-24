@@ -232,7 +232,7 @@ export default function CartPage() {
               beneficiaryAddress: beneficiaryAddress,
               arbiterAddress: arbiterAddress,
               deadlineHours: 72, // 3 days deadline
-              description: `Commande: ${item.productName} x${item.quantity} (${totalAmount} ADA)`,
+              description: `Commande: ${item.productName} x${item.quantity} (${totalAmount} ₳)`,
             });
 
             txHashes.push(txHash);
@@ -357,7 +357,7 @@ export default function CartPage() {
     }
     return {
       amount: totalADA,
-      currency: "ADA",
+      currency: "₳",
     };
   };
 
