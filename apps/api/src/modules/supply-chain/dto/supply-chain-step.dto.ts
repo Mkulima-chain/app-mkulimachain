@@ -47,6 +47,38 @@ export class CreateSupplyChainStepDto {
   @IsNotEmpty()
   @MaxLength(255)
   metadataHash!: string;
+
+  @ApiPropertyOptional({ description: 'Latitude', example: -1.2921 })
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude', example: 36.8219 })
+  @IsOptional()
+  longitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Nom du lieu',
+    example: 'Nairobi Warehouse',
+  })
+  @IsOptional()
+  @IsString()
+  locationName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Description détaillée',
+    example: 'Inspection qualité terminée.',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Hash de transaction blockchain',
+    example: '0x...',
+  })
+  @IsOptional()
+  @IsString()
+  txHash?: string;
 }
 
 export class UpdateSupplyChainStepDto extends PartialType(
@@ -94,6 +126,21 @@ export class SupplyChainStepResponseDto {
 
   @ApiProperty({ example: '0xabc123def456...' })
   metadataHash!: string;
+
+  @ApiProperty({ example: -1.2921, nullable: true })
+  latitude?: number;
+
+  @ApiProperty({ example: 36.8219, nullable: true })
+  longitude?: number;
+
+  @ApiProperty({ example: 'Nairobi Warehouse', nullable: true })
+  locationName?: string;
+
+  @ApiProperty({ example: 'Description...', nullable: true })
+  description?: string;
+
+  @ApiProperty({ example: '0x...', nullable: true })
+  txHash?: string;
 
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   createdAt!: Date;

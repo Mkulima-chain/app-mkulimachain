@@ -22,4 +22,15 @@ export class StatsController {
   async getRecentActivities() {
     return this.statsService.getRecentActivities();
   }
+
+  @Get('charts')
+  @Public()
+  @ApiOperation({ summary: 'Données pour les graphiques du dashboard' })
+  @ApiResponse({
+    status: 200,
+    description: 'Données mensuelles pour graphiques',
+  })
+  async getChartsData() {
+    return this.statsService.getChartsData();
+  }
 }
