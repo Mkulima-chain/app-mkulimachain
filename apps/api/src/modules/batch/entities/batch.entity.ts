@@ -3,8 +3,6 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  ManyToMany,
-  JoinTable,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -12,19 +10,20 @@ import {
 import { IBatch, BatchStatus } from '../interfaces/ibatch';
 import { HarvestEntity } from '@/modules/harvest/entities/entities';
 import { SupplyChainStepEntity } from '@/modules/supply-chain/entities/supply-chain-step.entity';
+import { BatchHarvestEntity } from './batch-harvest.entity';
 
 @Entity('batches')
 export class BatchEntity implements IBatch {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToMany(() => HarvestEntity)
-  @JoinTable({
-    name: 'batch_harvests',
-    joinColumn: { name: 'batchId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'harvestId', referencedColumnName: 'id' },
-  })
-  harvests!: HarvestEntity[];
+  @OneToMany(() => BatchHarvestEntity, (batchHarvest) => batchHarvest.batch, { cascade: true })
+  batchHarvests!: BatchHarvestEntity[];
+
+  // Propriété calculée pour compatibilité avec l'interface
+  get harvests(): HarvestEntity[] {
+    return this.batchHarvests?.map(bh => bh.harvest) || [];
+  }
 
   @Column({ type: 'varchar', length: 255, unique: true })
   qrCode!: string;

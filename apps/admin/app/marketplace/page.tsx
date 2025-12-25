@@ -43,6 +43,7 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { Batch } from "@/types/batch";
 import { Farmer } from "@/types/farmer";
 import { Harvest } from "@/types/harvest";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type MarketplaceItem = {
   id: string;
@@ -112,6 +113,116 @@ export default function MarketplacePage() {
     ["harvests"],
     "/harvests"
   );
+  const { data: products = [] } = useApiQuery<any[]>(
+    ["products"],
+    "/products"
+  );
+
+  // Fonction pour calculer la quantité totale d'un batch
+  const getBatchTotalQuantity = (batch: Batch): number => {
+    if (!batch) return 0;
+    
+    let totalQuantity = 0;
+    
+    // Utiliser batchHarvests si disponible (avec quantités partielles)
+    if (batch.batchHarvests && batch.batchHarvests.length > 0) {
+      totalQuantity = batch.batchHarvests.reduce((total, bh) => {
+        return total + Number(bh.quantity || 0);
+      }, 0);
+    } else if (batch.harvests) {
+      // Fallback: utiliser les quantités complètes des récoltes
+      batch.harvests.forEach(hRef => {
+        const harvest = harvests.find(h => h.id === hRef.id);
+        if (harvest) {
+          totalQuantity += Number(harvest.quantity || 0);
+        }
+      });
+    }
+    
+    return totalQuantity;
+  };
+
+  // Fonction helper pour extraire les noms d'agriculteurs et produits d'un batch
+  const getBatchInfo = (batch: Batch) => {
+    const farmerNames = new Set<string>();
+    const productNames = new Set<string>();
+    
+    // Utiliser batchHarvests si disponible (avec relations chargées)
+    if (batch.batchHarvests && batch.batchHarvests.length > 0) {
+      batch.batchHarvests.forEach(bh => {
+        if (bh.harvest?.farmer?.name) {
+          farmerNames.add(bh.harvest.farmer.name);
+        }
+        if (bh.harvest?.product?.name) {
+          productNames.add(bh.harvest.product.name);
+        }
+      });
+    } else if (batch.harvests) {
+      // Fallback: utiliser les harvests chargés séparément
+      batch.harvests.forEach(hRef => {
+        const harvest = harvests.find(h => h.id === hRef.id);
+        if (harvest?.farmer?.name) {
+          farmerNames.add(harvest.farmer.name);
+        }
+        if (harvest?.product?.name) {
+          productNames.add(harvest.product.name);
+        }
+      });
+    }
+    
+    return { farmerNames, productNames };
+  };
+
+  // Fonction pour obtenir le label de recherche (contient tous les termes de recherche)
+  const getBatchSearchLabel = (batch: Batch): string => {
+    const { farmerNames, productNames } = getBatchInfo(batch);
+    
+    // Construire une chaîne avec tous les termes de recherche
+    const searchTerms: string[] = [batch.qrCode, batch.batchHash.substring(0, 8)];
+    if (farmerNames.size > 0) {
+      searchTerms.push(...Array.from(farmerNames));
+    }
+    if (productNames.size > 0) {
+      searchTerms.push(...Array.from(productNames));
+    }
+    
+    return searchTerms.join(' ');
+  };
+
+  // Fonction pour obtenir le label d'affichage (format lisible)
+  const getBatchDisplayLabel = (batch: Batch): string => {
+    const { farmerNames, productNames } = getBatchInfo(batch);
+    
+    const parts: string[] = [batch.qrCode];
+    const infoParts: string[] = [];
+    
+    if (productNames.size > 0) {
+      const products = Array.from(productNames);
+      if (products.length === 1) {
+        infoParts.push(products[0]);
+      } else if (products.length <= 2) {
+        infoParts.push(products.join(', '));
+      } else {
+        infoParts.push(`${products[0]}, ${products[1]}... (+${products.length - 2})`);
+      }
+    }
+    if (farmerNames.size > 0) {
+      const farmers = Array.from(farmerNames);
+      if (farmers.length === 1) {
+        infoParts.push(farmers[0]);
+      } else if (farmers.length <= 2) {
+        infoParts.push(farmers.join(', '));
+      } else {
+        infoParts.push(`${farmers[0]}, ${farmers[1]}... (+${farmers.length - 2})`);
+      }
+    }
+    
+    if (infoParts.length > 0) {
+      parts.push(`(${infoParts.join(' • ')})`);
+    }
+    
+    return parts.join(' ');
+  };
 
   const createMutation = useApiMutation<
     MarketplaceItem,
@@ -192,20 +303,55 @@ export default function MarketplacePage() {
 
   const handleSubmitAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { status, ...dataToSend } = formData;
+    
+    // Valider que le stock ne dépasse pas la quantité du batch
+    if (formData.batchId) {
+      const batch = batches.find((b) => b.id === formData.batchId);
+      if (batch) {
+        const batchTotalQuantity = getBatchTotalQuantity(batch);
+        const requestedStock = Number(formData.stockKg);
+        
+        if (requestedStock > batchTotalQuantity) {
+          toast.error(
+            `Le stock (${requestedStock.toFixed(2)}kg) ne peut pas dépasser la quantité totale du lot (${batchTotalQuantity.toFixed(2)}kg)`
+          );
+          return;
+        }
+      }
+    }
+    
     createMutation.mutate({
-      ...dataToSend,
+      batchId: formData.batchId,
+      farmerId: formData.farmerId,
+      title: formData.title,
+      description: formData.description,
       priceADA: Number(formData.priceADA),
       stockKg: Number(formData.stockKg),
-
       imageUrls: formData.imageUrls,
+      status: formData.status || "draft",
     });
   };
 
   const handleSubmitEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
+    
+    // Valider que le stock ne dépasse pas la quantité du batch
+    if (formData.batchId) {
+      const batch = batches.find((b) => b.id === formData.batchId);
+      if (batch) {
+        const batchTotalQuantity = getBatchTotalQuantity(batch);
+        const requestedStock = Number(formData.stockKg);
+        
+        if (requestedStock > batchTotalQuantity) {
+          toast.error(
+            `Le stock (${requestedStock.toFixed(2)}kg) ne peut pas dépasser la quantité totale du lot (${batchTotalQuantity.toFixed(2)}kg)`
+          );
+          return;
+        }
+      }
+    }
+    
     updateMutation.mutate({
       ...formData,
       priceADA: Number(formData.priceADA),
@@ -421,52 +567,85 @@ export default function MarketplacePage() {
           <form onSubmit={handleSubmitAdd}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="batchId">Batch *</Label>
-                <select
-                  id="batchId"
-                  className="border rounded-md px-3 py-2 bg-background w-full"
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="batchId">Batch *</Label>
+                  {formData.batchId && (() => {
+                    const batch = batches.find((b) => b.id === formData.batchId);
+                    const totalQuantity = batch ? getBatchTotalQuantity(batch) : 0;
+                    return (
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Quantité du lot : {totalQuantity.toFixed(2)} kg
+                      </span>
+                    );
+                  })()}
+                </div>
+                <SearchableSelect
                   value={formData.batchId}
-                  onChange={(e) => {
-                    const batchId = e.target.value;
+                  onValueChange={(batchId) => {
                     // Reset dependant fields
-                    const updates: any = { batchId, title: "", stockKg: 0 };
+                    const updates: any = { batchId, title: "", stockKg: 0, description: "" };
 
                     if (batchId) {
                       const batch = batches.find((b) => b.id === batchId);
                       if (batch) {
                         // Find associated harvests
-                        const batchHarvests =
-                          batch.harvests
-                            ?.map((hRef) =>
-                              harvests.find((h) => h.id === hRef.id)
-                            )
-                            .filter(Boolean) || [];
+                        let batchHarvests: Harvest[] = [];
+                        
+                        // Utiliser batchHarvests si disponible (avec relations chargées)
+                        if (batch.batchHarvests && batch.batchHarvests.length > 0) {
+                          batchHarvests = batch.batchHarvests
+                            .map(bh => {
+                              // Utiliser harvest depuis batchHarvests si disponible
+                              if (bh.harvest) {
+                                return {
+                                  ...bh.harvest,
+                                  farmerId: (bh.harvest.farmer as any)?.id || bh.harvestId,
+                                  productId: (bh.harvest.product as any)?.id || bh.harvestId,
+                                } as Harvest;
+                              }
+                              // Sinon chercher dans harvests
+                              return harvests.find((h) => h.id === bh.harvestId);
+                            })
+                            .filter(Boolean) as Harvest[];
+                        } else if (batch.harvests) {
+                          // Fallback: utiliser les harvests chargés séparément
+                          batchHarvests = batch.harvests
+                            .map((hRef) => harvests.find((h) => h.id === hRef.id))
+                            .filter(Boolean) as Harvest[];
+                        }
 
-                        // Auto-select farmer if unique
-                        const startFarmerIds = Array.from(
-                          new Set(
-                            batchHarvests
-                              .map((h) => h?.farmerId)
-                              .filter(Boolean)
-                          )
-                        );
-                        if (startFarmerIds.length === 1) {
-                          updates.farmerId = startFarmerIds[0] as string;
+                        // Auto-select farmer (prendre le premier ou le plus fréquent)
+                        const farmerIds = batchHarvests
+                          .map((h) => h?.farmerId)
+                          .filter(Boolean) as string[];
+                        
+                        if (farmerIds.length > 0) {
+                          // Prendre le premier agriculteur trouvé
+                          updates.farmerId = farmerIds[0];
+                        }
+
+                        // Auto-remplir la description avec celle du produit (prendre le premier produit trouvé)
+                        const firstHarvest = batchHarvests.find(h => h?.productId);
+                        if (firstHarvest?.productId) {
+                          // Chercher le produit complet dans la liste des produits chargés
+                          const product = products.find((p) => p.id === firstHarvest.productId);
+                          if (product && product.description) {
+                            updates.description = product.description;
+                          }
                         }
                       }
                     }
 
                     setFormData({ ...formData, ...updates });
                   }}
-                  required
-                >
-                  <option value="">Sélectionner un lot</option>
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.qrCode} ({batch.batchHash.substring(0, 8)}...)
-                    </option>
-                  ))}
-                </select>
+                  options={batches}
+                  getOptionValue={(batch) => batch.id}
+                  getOptionLabel={(batch) => getBatchSearchLabel(batch)}
+                  getDisplayLabel={(batch) => getBatchDisplayLabel(batch)}
+                  placeholder="Sélectionner un lot"
+                  searchPlaceholder="Rechercher par QR Code, Hash, Agriculteur ou Produit..."
+                  emptyMessage="Aucun lot trouvé"
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="farmerId">Agriculteur *</Label>
@@ -581,20 +760,49 @@ export default function MarketplacePage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="stockKg">Stock (kg) *</Label>
-                  <Input
-                    id="stockKg"
-                    type="number"
-                    step="0.01"
-                    value={formData.stockKg}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        stockKg: Number(e.target.value),
-                      })
-                    }
-                    required
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stockKg">Stock </Label>
+                    {formData.batchId && (() => {
+                      const batch = batches.find((b) => b.id === formData.batchId);
+                      const totalQuantity = batch ? getBatchTotalQuantity(batch) : 0;
+                      return (
+                        <span className="text-sm text-muted-foreground font-medium">
+                          Quantité du lot : {totalQuantity.toFixed(2)} kg
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  {(() => {
+                    const batch = batches.find((b) => b.id === formData.batchId);
+                    const maxStock = batch ? getBatchTotalQuantity(batch) : undefined;
+                    return (
+                      <>
+                        <Input
+                          id="stockKg"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={maxStock}
+                          value={formData.stockKg}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            // Limiter la valeur au maximum si défini
+                            const finalValue = maxStock && value > maxStock ? maxStock : value;
+                            setFormData({
+                              ...formData,
+                              stockKg: finalValue,
+                            });
+                          }}
+                          required
+                        />
+                        {maxStock !== undefined && (
+                          <p className="text-xs text-muted-foreground">
+                            Quantité maximale disponible : {maxStock.toFixed(2)} kg
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="grid gap-2">
@@ -696,23 +904,85 @@ export default function MarketplacePage() {
           <form onSubmit={handleSubmitEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-batchId">Batch *</Label>
-                <select
-                  id="edit-batchId"
-                  className="border rounded-md px-3 py-2 bg-background w-full"
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-batchId">Batch *</Label>
+                  {formData.batchId && (() => {
+                    const batch = batches.find((b) => b.id === formData.batchId);
+                    const totalQuantity = batch ? getBatchTotalQuantity(batch) : 0;
+                    return (
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Quantité du lot : {totalQuantity.toFixed(2)} kg
+                      </span>
+                    );
+                  })()}
+                </div>
+                <SearchableSelect
                   value={formData.batchId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, batchId: e.target.value })
-                  }
-                  required
-                >
-                  <option value="">Sélectionner un lot</option>
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.qrCode} ({batch.batchHash.substring(0, 8)}...)
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(batchId) => {
+                    // Reset dependant fields
+                    const updates: any = { batchId, title: "", stockKg: 0, description: "" };
+
+                    if (batchId) {
+                      const batch = batches.find((b) => b.id === batchId);
+                      if (batch) {
+                        // Find associated harvests
+                        let batchHarvests: Harvest[] = [];
+                        
+                        // Utiliser batchHarvests si disponible (avec relations chargées)
+                        if (batch.batchHarvests && batch.batchHarvests.length > 0) {
+                          batchHarvests = batch.batchHarvests
+                            .map(bh => {
+                              // Utiliser harvest depuis batchHarvests si disponible
+                              if (bh.harvest) {
+                                return {
+                                  ...bh.harvest,
+                                  farmerId: (bh.harvest.farmer as any)?.id || bh.harvestId,
+                                  productId: (bh.harvest.product as any)?.id || bh.harvestId,
+                                } as Harvest;
+                              }
+                              // Sinon chercher dans harvests
+                              return harvests.find((h) => h.id === bh.harvestId);
+                            })
+                            .filter(Boolean) as Harvest[];
+                        } else if (batch.harvests) {
+                          // Fallback: utiliser les harvests chargés séparément
+                          batchHarvests = batch.harvests
+                            .map((hRef) => harvests.find((h) => h.id === hRef.id))
+                            .filter(Boolean) as Harvest[];
+                        }
+
+                        // Auto-select farmer (prendre le premier trouvé)
+                        const farmerIds = batchHarvests
+                          .map((h) => h?.farmerId)
+                          .filter(Boolean) as string[];
+                        
+                        if (farmerIds.length > 0) {
+                          // Prendre le premier agriculteur trouvé
+                          updates.farmerId = farmerIds[0];
+                        }
+
+                        // Auto-remplir la description avec celle du produit (prendre le premier produit trouvé)
+                        const firstHarvest = batchHarvests.find(h => h?.productId);
+                        if (firstHarvest?.productId) {
+                          // Chercher le produit complet dans la liste des produits chargés
+                          const product = products.find((p) => p.id === firstHarvest.productId);
+                          if (product && product.description) {
+                            updates.description = product.description;
+                          }
+                        }
+                      }
+                    }
+
+                    setFormData({ ...formData, ...updates });
+                  }}
+                  options={batches}
+                  getOptionValue={(batch) => batch.id}
+                  getOptionLabel={(batch) => getBatchSearchLabel(batch)}
+                  getDisplayLabel={(batch) => getBatchDisplayLabel(batch)}
+                  placeholder="Sélectionner un lot"
+                  searchPlaceholder="Rechercher par QR Code, Hash, Agriculteur ou Produit..."
+                  emptyMessage="Aucun lot trouvé"
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-farmerId">Agriculteur *</Label>
@@ -772,20 +1042,49 @@ export default function MarketplacePage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-stockKg">Stock (kg) *</Label>
-                  <Input
-                    id="edit-stockKg"
-                    type="number"
-                    step="0.01"
-                    value={formData.stockKg}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        stockKg: Number(e.target.value),
-                      })
-                    }
-                    required
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-stockKg">Stock </Label>
+                    {formData.batchId && (() => {
+                      const batch = batches.find((b) => b.id === formData.batchId);
+                      const totalQuantity = batch ? getBatchTotalQuantity(batch) : 0;
+                      return (
+                        <span className="text-sm text-muted-foreground font-medium">
+                          Quantité du lot : {totalQuantity.toFixed(2)} kg
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  {(() => {
+                    const batch = batches.find((b) => b.id === formData.batchId);
+                    const maxStock = batch ? getBatchTotalQuantity(batch) : undefined;
+                    return (
+                      <>
+                        <Input
+                          id="edit-stockKg"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={maxStock}
+                          value={formData.stockKg}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            // Limiter la valeur au maximum si défini
+                            const finalValue = maxStock && value > maxStock ? maxStock : value;
+                            setFormData({
+                              ...formData,
+                              stockKg: finalValue,
+                            });
+                          }}
+                          required
+                        />
+                        {maxStock !== undefined && (
+                          <p className="text-xs text-muted-foreground">
+                            Quantité maximale disponible : {maxStock.toFixed(2)} kg
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="grid gap-2">

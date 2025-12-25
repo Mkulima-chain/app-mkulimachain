@@ -32,6 +32,9 @@ import {
 import { toast } from "sonner"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import { AddFarmerDialog } from "./add-farmer-dialog"
+import { ViewCooperativeDialog } from "./view-cooperative-dialog"
+import { UserPlus, Eye } from "lucide-react"
 
 type Cooperative = {
   id: string
@@ -53,6 +56,8 @@ export default function CooperativesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [isAddFarmerDialogOpen, setIsAddFarmerDialogOpen] = React.useState(false)
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false)
   const [selectedCooperative, setSelectedCooperative] = React.useState<Cooperative | null>(null)
   const [formData, setFormData] = React.useState<CreateCooperativeDto>({
     name: "",
@@ -274,6 +279,26 @@ export default function CooperativesPage() {
                               <PopoverContent align="end" className="w-48 p-2">
                                 <div className="space-y-1">
                                   <button
+                                    onClick={() => {
+                                      setSelectedCooperative(cooperative)
+                                      setIsViewDialogOpen(true)
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    Voir les détails
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedCooperative(cooperative)
+                                      setIsAddFarmerDialogOpen(true)
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <UserPlus className="h-4 w-4" />
+                                    Adhérer un agriculteur
+                                  </button>
+                                  <button
                                     onClick={() => handleEdit(cooperative)}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
                                   >
@@ -469,6 +494,28 @@ export default function CooperativesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedCooperative && (
+        <>
+          <ViewCooperativeDialog
+            open={isViewDialogOpen}
+            onOpenChange={setIsViewDialogOpen}
+            cooperativeId={selectedCooperative.id}
+            onSuccess={() => {
+              refetch();
+            }}
+          />
+          <AddFarmerDialog
+            open={isAddFarmerDialogOpen}
+            onOpenChange={setIsAddFarmerDialogOpen}
+            cooperativeId={selectedCooperative.id}
+            cooperativeName={selectedCooperative.name}
+            onSuccess={() => {
+              refetch()
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

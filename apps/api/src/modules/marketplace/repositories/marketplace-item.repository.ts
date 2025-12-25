@@ -34,7 +34,7 @@ export class MarketplaceItemRepository {
       priceADA: dto.priceADA,
       stockKg: dto.stockKg,
       imageUrls: dto.imageUrls,
-      status: MarketplaceItemStatus.DRAFT,
+      status: dto.status || MarketplaceItemStatus.DRAFT,
     });
 
     return this.repository.save(item);
@@ -46,8 +46,10 @@ export class MarketplaceItemRepository {
       relations: [
         'batch',
         'farmer',
-        'batch.harvests',
-        'batch.harvests.product',
+        'batch.batchHarvests',
+        'batch.batchHarvests.harvest',
+        'batch.batchHarvests.harvest.product',
+        'batch.batchHarvests.harvest.farmer',
       ],
     });
   }
@@ -59,8 +61,10 @@ export class MarketplaceItemRepository {
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.batch', 'batch')
       .leftJoinAndSelect('item.farmer', 'farmer')
-      .leftJoinAndSelect('batch.harvests', 'harvests')
-      .leftJoinAndSelect('harvests.product', 'product');
+      .leftJoinAndSelect('batch.batchHarvests', 'batchHarvests')
+      .leftJoinAndSelect('batchHarvests.harvest', 'harvest')
+      .leftJoinAndSelect('harvest.product', 'product')
+      .leftJoinAndSelect('harvest.farmer', 'harvestFarmer');
 
     if (query.id) qb.andWhere('item.id = :id', { id: query.id });
     if (query.batchId)
@@ -90,8 +94,10 @@ export class MarketplaceItemRepository {
       relations: [
         'batch',
         'farmer',
-        'batch.harvests',
-        'batch.harvests.product',
+        'batch.batchHarvests',
+        'batch.batchHarvests.harvest',
+        'batch.batchHarvests.harvest.product',
+        'batch.batchHarvests.harvest.farmer',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -103,8 +109,10 @@ export class MarketplaceItemRepository {
       relations: [
         'batch',
         'farmer',
-        'batch.harvests',
-        'batch.harvests.product',
+        'batch.batchHarvests',
+        'batch.batchHarvests.harvest',
+        'batch.batchHarvests.harvest.product',
+        'batch.batchHarvests.harvest.farmer',
       ],
       order: { createdAt: 'DESC' },
     });

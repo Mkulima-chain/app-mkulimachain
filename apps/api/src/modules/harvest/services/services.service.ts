@@ -26,20 +26,40 @@ export class ServicesService {
   }
 
   async getHarvestById(id: string): Promise<HarvestEntity> {
-    const harvest = await this.harvestRepository.findOne({
-      where: { id },
-      relations: ['farmer', 'product'],
-    });
-    if (!harvest) {
+    const qb = this.harvestRepository.createQueryBuilder('harvest');
+    qb.leftJoinAndSelect('harvest.farmer', 'farmer');
+    qb.leftJoinAndSelect('harvest.product', 'product');
+    qb.where('harvest.id = :id', { id });
+    
+    // Inclure explicitement farmerId et productId dans la réponse
+    qb.addSelect('harvest.farmerId', 'harvest_farmerId');
+    qb.addSelect('harvest.productId', 'harvest_productId');
+    
+    const { entities, raw } = await qb.getRawAndEntities();
+    
+    if (!entities || entities.length === 0) {
       throw new NotFoundException('Récolte introuvable');
     }
-    return harvest;
+    
+    const harvest = entities[0];
+    const rawData = raw[0];
+    
+    // Mapper les IDs depuis les résultats bruts vers l'entité
+    return {
+      ...harvest,
+      farmerId: rawData?.harvest_farmerId || harvest.farmer?.id,
+      productId: rawData?.harvest_productId || harvest.product?.id,
+    } as HarvestEntity;
   }
 
   async getHarvests(query: GetHarvestDto): Promise<HarvestEntity[]> {
     const qb = this.harvestRepository.createQueryBuilder('harvest');
     qb.leftJoinAndSelect('harvest.farmer', 'farmer');
     qb.leftJoinAndSelect('harvest.product', 'product');
+    
+    // Inclure explicitement farmerId et productId dans la réponse
+    qb.addSelect('harvest.farmerId', 'harvest_farmerId');
+    qb.addSelect('harvest.productId', 'harvest_productId');
 
     if (query.id) {
       qb.andWhere('harvest.id = :id', { id: query.id });
@@ -63,26 +83,57 @@ export class ServicesService {
 
     qb.orderBy('harvest.harvestAt', 'DESC');
 
-    return qb.getMany();
+    const { entities, raw } = await qb.getRawAndEntities();
+    
+    // Mapper les IDs depuis les résultats bruts vers les entités
+    return entities.map((harvest, index) => {
+      const rawData = raw[index];
+      return {
+        ...harvest,
+        farmerId: rawData?.harvest_farmerId || harvest.farmer?.id,
+        productId: rawData?.harvest_productId || harvest.product?.id,
+      } as HarvestEntity;
+    });
   }
 
   async updateHarvest(
     id: string,
     harvest: UpdateHarvestDto,
   ): Promise<HarvestEntity> {
-    const updatedHarvest = await this.harvestRepository.preload({
-      id,
-      ...harvest,
-      harvestAt: harvest.harvestAt ? new Date(harvest.harvestAt) : undefined,
-      farmer: harvest.farmerId ? ({ id: harvest.farmerId } as any) : undefined,
-      product: harvest.productId
-        ? ({ id: harvest.productId } as any)
-        : undefined,
+    // Charger l'entité existante avec ses relations
+    const existingHarvest = await this.harvestRepository.findOne({
+      where: { id },
+      relations: ['farmer', 'product'],
     });
-    if (!updatedHarvest) {
+    
+    if (!existingHarvest) {
       throw new NotFoundException('Récolte introuvable');
     }
-    return this.harvestRepository.save(updatedHarvest);
+    
+    // Mettre à jour les champs fournis
+    if (harvest.farmerId !== undefined) {
+      existingHarvest.farmer = { id: harvest.farmerId } as any;
+    }
+    if (harvest.productId !== undefined) {
+      existingHarvest.product = { id: harvest.productId } as any;
+    }
+    if (harvest.quantity !== undefined) {
+      existingHarvest.quantity = harvest.quantity;
+    }
+    if (harvest.harvestAt !== undefined) {
+      existingHarvest.harvestAt = new Date(harvest.harvestAt);
+    }
+    if (harvest.latitude !== undefined) {
+      existingHarvest.latitude = harvest.latitude;
+    }
+    if (harvest.longitude !== undefined) {
+      existingHarvest.longitude = harvest.longitude;
+    }
+    if (harvest.proofHash !== undefined) {
+      existingHarvest.proofHash = harvest.proofHash;
+    }
+    
+    return this.harvestRepository.save(existingHarvest);
   }
 
   async deleteHarvest(id: string): Promise<void> {
