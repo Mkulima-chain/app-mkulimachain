@@ -21,6 +21,7 @@ import {
 } from '../dto/auth.dto';
 import { WalletConnectDto } from '../dto/wallet-auth.dto';
 import { UserStatus, UserRole } from '../interfaces/iuser';
+import { MailService } from '../../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +29,8 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly mailService: MailService,
+  ) { }
 
   async register(dto: RegisterDto): Promise<LoginResponseDto> {
     // Empêcher la création de comptes admin via l'endpoint public
@@ -85,6 +87,14 @@ export class AuthService {
       }
       // Re-lancer l'erreur si ce n'est pas une violation d'unicité
       throw error;
+    }
+
+    // Envoyer l'email de bienvenue
+    try {
+      await this.mailService.sendWelcomeEmail(user);
+    } catch (error) {
+      // Ne pas bloquer l'inscription si l'email échoue
+      console.error('Failed to send welcome email', error);
     }
 
     // Générer les tokens pour connecter automatiquement l'utilisateur
@@ -321,6 +331,13 @@ export class AuthService {
         lastName: dto.lastName,
         role: dto.role,
       });
+
+      // Envoyer l'email de bienvenue pour les nouveaux utilisateurs wallet
+      try {
+        await this.mailService.sendWelcomeEmail(user);
+      } catch (error) {
+        console.error('Failed to send welcome email', error);
+      }
     } else {
       // Mettre à jour les infos si fournies
       if (dto.email || dto.firstName || dto.lastName) {
@@ -381,6 +398,13 @@ export class AuthService {
         lastName: googleUser.lastName,
         role: googleUser.role,
       });
+
+      // Envoyer l'email de bienvenue
+      try {
+        await this.mailService.sendWelcomeEmail(user);
+      } catch (error) {
+        console.error('Failed to send welcome email', error);
+      }
     }
 
     await this.userRepository.updateLastLogin(user.id);
