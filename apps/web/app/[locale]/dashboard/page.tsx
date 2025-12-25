@@ -355,9 +355,11 @@ export default function DashboardPage() {
   >("overview");
 
   // Récupérer les commandes depuis l'API
-  const { data: apiOrders, isLoading: ordersLoading } = useMyOrders(
-    session?.user?.id
-  );
+  const {
+    data: apiOrders,
+    isLoading: ordersLoading,
+    isError: ordersError,
+  } = useMyOrders(session?.user?.id);
 
   // Mapper les commandes API vers le format local
   const mapApiOrderToLocal = (apiOrder: ApiOrder): Order => {
@@ -405,8 +407,9 @@ export default function DashboardPage() {
   };
 
   // Utiliser les commandes API si disponibles, sinon fallback sur mock
+  // Fallback vers mockOrders si: pas de données, en cours de chargement, erreur, ou tableau vide
   const orders: Order[] =
-    apiOrders && apiOrders.length > 0
+    !ordersLoading && !ordersError && apiOrders && apiOrders.length > 0
       ? apiOrders.map(mapApiOrderToLocal)
       : mockOrders;
 

@@ -96,18 +96,108 @@ export default function SupplyChainPage() {
     txHash: "",
   });
 
+  // Mock data for demonstration
+  const mockSteps: SupplyChainStep[] = [
+    {
+      id: "mock-1",
+      batchId: "batch-demo-001",
+      stepType: StepType.HARVEST,
+      timestamp: "2024-01-15T08:00:00Z",
+      metadataHash: "QmDemo1234567890abcdef",
+      latitude: -4.0383,
+      longitude: 21.7587,
+      locationName: "Ferme Cooperative Kivu, RDC",
+      description: "Récolte du cacao premium bio - 500kg récoltés",
+      txHash: "0xdemo1234567890abcdef",
+      createdAt: "2024-01-15T08:00:00Z",
+      updatedAt: "2024-01-15T08:00:00Z",
+    },
+    {
+      id: "mock-2",
+      batchId: "batch-demo-001",
+      stepType: StepType.DRYING,
+      timestamp: "2024-01-18T14:30:00Z",
+      metadataHash: "QmDemo2345678901bcdefg",
+      latitude: -4.045,
+      longitude: 21.76,
+      locationName: "Centre de Séchage Kinshasa",
+      description: "Séchage naturel au soleil pendant 5 jours",
+      txHash: "0xdemo2345678901bcdefg",
+      createdAt: "2024-01-18T14:30:00Z",
+      updatedAt: "2024-01-18T14:30:00Z",
+    },
+    {
+      id: "mock-3",
+      batchId: "batch-demo-001",
+      stepType: StepType.PACKAGING,
+      timestamp: "2024-01-22T10:15:00Z",
+      metadataHash: "QmDemo3456789012cdefgh",
+      latitude: -4.325,
+      longitude: 15.3222,
+      locationName: "Usine d'emballage - Matadi",
+      description: "Mise en sac de 50kg, contrôle qualité effectué",
+      txHash: "0xdemo3456789012cdefgh",
+      createdAt: "2024-01-22T10:15:00Z",
+      updatedAt: "2024-01-22T10:15:00Z",
+    },
+    {
+      id: "mock-4",
+      batchId: "batch-demo-001",
+      stepType: StepType.EXPORT,
+      timestamp: "2024-01-25T16:00:00Z",
+      metadataHash: "QmDemo4567890123defghi",
+      latitude: -4.0435,
+      longitude: 39.6682,
+      locationName: "Port de Mombasa, Kenya",
+      description: "Chargement pour export international - Destination Europe",
+      txHash: "0xdemo4567890123defghi",
+      createdAt: "2024-01-25T16:00:00Z",
+      updatedAt: "2024-01-25T16:00:00Z",
+    },
+  ];
+
+  const mockBatches: Batch[] = [
+    {
+      id: "batch-demo-001",
+      qrCode: "BATCH-2024-001-CACAO",
+      status: "exported",
+    },
+    {
+      id: "batch-demo-002",
+      qrCode: "BATCH-2024-002-CAFE",
+      status: "packaging",
+    },
+    { id: "batch-demo-003", qrCode: "BATCH-2024-003-MANIOC", status: "drying" },
+  ];
+
   // Fetch steps
   const {
-    data: steps = [],
+    data: apiSteps,
     isLoading,
+    isError: stepsError,
     refetch,
   } = useApiQuery<SupplyChainStep[]>(
     ["supply-chain-steps", searchQuery],
     `/supply-chain-steps${searchQuery ? `?batchId=${encodeURIComponent(searchQuery)}` : ""}`
   );
 
+  // Fallback to mock data if API fails or returns empty
+  const steps =
+    !isLoading && !stepsError && apiSteps && apiSteps.length > 0
+      ? apiSteps
+      : mockSteps;
+
   // Fetch batches for selection
-  const { data: batches = [] } = useApiQuery<Batch[]>(["batches"], "/batches");
+  const { data: apiBatches, isError: batchesError } = useApiQuery<Batch[]>(
+    ["batches"],
+    "/batches"
+  );
+
+  // Fallback to mock batches
+  const batches =
+    !batchesError && apiBatches && apiBatches.length > 0
+      ? apiBatches
+      : mockBatches;
 
   // Create mutation
   const createMutation = useApiMutation<

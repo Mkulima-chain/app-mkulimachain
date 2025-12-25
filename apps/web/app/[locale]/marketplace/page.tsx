@@ -241,8 +241,11 @@ export default function MarketplacePage() {
   const { addToCart } = useCart();
 
   // Récupérer les produits depuis l'API
-  const { data: apiItems, isLoading: isLoadingItems } =
-    useActiveMarketplaceItems();
+  const {
+    data: apiItems,
+    isLoading: isLoadingItems,
+    isError: isErrorItems,
+  } = useActiveMarketplaceItems();
 
   // Mapper les items API vers le format Product local
   const mapApiItemToProduct = (item: MarketplaceItem): Product => {
@@ -282,9 +285,10 @@ export default function MarketplacePage() {
     };
   };
 
-  // utiliser les produits API si disponibles, sinon fallback sur mock
+  // Utiliser les produits API si disponibles, sinon fallback sur mock
+  // Fallback vers mockProducts si: pas de données, en cours de chargement, erreur, ou tableau vide
   const products: Product[] =
-    apiItems && apiItems.length > 0
+    !isLoadingItems && !isErrorItems && apiItems && apiItems.length > 0
       ? apiItems.map(mapApiItemToProduct)
       : mockProducts;
 
