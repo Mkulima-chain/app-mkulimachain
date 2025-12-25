@@ -6,20 +6,51 @@ import {
   IsEnum,
   IsArray,
   MaxLength,
+  IsNumber,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { BatchStatus } from '../interfaces/ibatch';
+
+export class HarvestQuantityDto {
+  @ApiProperty({
+    description: 'ID de la récolte',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  harvestId!: string;
+
+  @ApiProperty({
+    description: 'Quantité à utiliser de cette récolte (kg)',
+    example: 80.5,
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  quantity!: number;
+}
 
 export class CreateBatchDto {
   @ApiProperty({
-    description: 'Liste des IDs de récoltes à inclure dans le lot',
-    example: ['123e4567-e89b-12d3-a456-426614174000'],
+    description: 'Liste des récoltes avec leurs quantités à inclure dans le lot',
+    type: [HarvestQuantityDto],
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HarvestQuantityDto)
+  @IsNotEmpty()
+  harvests!: HarvestQuantityDto[];
+
+  @ApiPropertyOptional({
+    description: 'Liste des IDs de récoltes (déprécié, utiliser harvests)',
     type: [String],
+    deprecated: true,
   })
   @IsArray()
   @IsUUID('4', { each: true })
-  @IsNotEmpty()
-  harvestIds!: string[];
+  @IsOptional()
+  harvestIds?: string[];
 
   @ApiProperty({
     description: 'Code QR unique pour la traçabilité',

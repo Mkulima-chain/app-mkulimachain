@@ -14,12 +14,23 @@ export interface Batch {
     batchHash: string;
     status: BatchStatus;
     harvests?: { id: string }[];
+    batchHarvests?: Array<{
+        harvestId: string;
+        quantity: number;
+        harvest?: { id: string; quantity: number; product?: { name: string }; farmer?: { name: string }; harvestAt: string };
+    }>;
     createdAt: string;
     updatedAt?: string;
 }
 
+export interface HarvestQuantity {
+    harvestId: string;
+    quantity: number;
+}
+
 export interface CreateBatchDto {
-    harvestIds: string[];
+    harvests?: HarvestQuantity[];
+    harvestIds?: string[]; // Pour compatibilité avec l'ancien format
     qrCode: string;
     batchHash: string;
     status?: BatchStatus;

@@ -10,6 +10,11 @@ import {
   Trash2,
   MoreVertical,
   Loader2,
+  Eye,
+  Copy,
+  Power,
+  PowerOff,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -85,6 +90,7 @@ export default function ProductsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(
     null
   );
@@ -194,6 +200,23 @@ export default function ProductsPage() {
     }
   );
 
+  // Toggle active status mutation
+  const toggleActiveMutation = useApiMutation<Product, { isActive: boolean }>(
+    (variables) => `/products/${selectedProduct?.id}`,
+    "PUT",
+    {
+      onSuccess: (_, variables) => {
+        toast.success(
+          variables.isActive
+            ? "Produit activé avec succès"
+            : "Produit désactivé avec succès"
+        );
+        setSelectedProduct(null);
+        refetch();
+      },
+    }
+  );
+
   const handleAdd = () => {
     setFormData({
       sku: "",
@@ -234,6 +257,35 @@ export default function ProductsPage() {
   const handleDelete = (product: Product) => {
     setSelectedProduct(product);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleView = (product: Product) => {
+    setSelectedProduct(product);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleDuplicate = (product: Product) => {
+    setFormData({
+      sku: generateSKU(product.name + " (Copie)"),
+      name: product.name + " (Copie)",
+      unit: product.unit,
+      category: product.category,
+      description: product.description || "",
+      price: Number(product.price),
+      currency: product.currency,
+      stock: 0,
+      originCountry: product.originCountry || "",
+      isActive: false,
+      tags: product.tags || [],
+      image: [],
+    });
+    setIsAddDialogOpen(true);
+    toast.success("Produit dupliqué, veuillez compléter les informations");
+  };
+
+  const handleToggleActive = (product: Product) => {
+    setSelectedProduct(product);
+    toggleActiveMutation.mutate({ isActive: !product.isActive });
   };
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
@@ -463,12 +515,44 @@ export default function ProductsPage() {
                               <PopoverContent align="end" className="w-48 p-2">
                                 <div className="space-y-1">
                                   <button
+                                    onClick={() => handleView(product)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    Voir les détails
+                                  </button>
+                                  <button
                                     onClick={() => handleEdit(product)}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
                                   >
                                     <Edit className="h-4 w-4" />
                                     Modifier
                                   </button>
+                                  <button
+                                    onClick={() => handleDuplicate(product)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                    Dupliquer
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleActive(product)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                                    disabled={toggleActiveMutation.isPending}
+                                  >
+                                    {product.isActive ? (
+                                      <>
+                                        <PowerOff className="h-4 w-4" />
+                                        Désactiver
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Power className="h-4 w-4" />
+                                        Activer
+                                      </>
+                                    )}
+                                  </button>
+                                  <div className="border-t my-1" />
                                   <button
                                     onClick={() => handleDelete(product)}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors"
@@ -723,14 +807,13 @@ export default function ProductsPage() {
                 <Input
                   id="edit-sku"
                   value={formData.sku}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sku: e.target.value.toUpperCase(),
-                    })
-                  }
-                  required
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Le SKU ne peut pas être modifié après la création
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-name">Nom du produit *</Label>
@@ -919,6 +1002,127 @@ export default function ProductsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-[#3A8F4C]" />
+              Détails du produit
+            </DialogTitle>
+            <DialogDescription>
+              Informations complètes sur le produit
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProduct ? (
+            <div className="space-y-6">
+              {/* Image */}
+              {selectedProduct.image && selectedProduct.image.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {selectedProduct.image.map((img, index) => (
+                    <div
+                      key={index}
+                      className="w-32 h-32 rounded-lg border bg-muted flex-shrink-0 overflow-hidden"
+                    >
+                      <img
+                        src={img}
+                        alt={`${selectedProduct.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Informations principales */}
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">SKU</p>
+                    <p className="text-base font-mono font-semibold">{selectedProduct.sku}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Nom</p>
+                    <p className="text-base font-semibold">{selectedProduct.name}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Catégorie</p>
+                    <Badge variant="outline">{selectedProduct.category}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Unité</p>
+                    <p className="text-base">{selectedProduct.unit}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Prix</p>
+                    <p className="text-base font-semibold">
+                      {Number(selectedProduct.price).toFixed(2)} {selectedProduct.currency}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Stock</p>
+                    <p className="text-base font-semibold">{selectedProduct.stock}</p>
+                  </div>
+                </div>
+                {selectedProduct.originCountry && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Pays d'origine</p>
+                    <p className="text-base">{selectedProduct.originCountry}</p>
+                  </div>
+                )}
+                {selectedProduct.description && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Description</p>
+                    <p className="text-base">{selectedProduct.description}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Statut</p>
+                    <Badge
+                      variant={selectedProduct.isActive ? "default" : "secondary"}
+                    >
+                      {selectedProduct.isActive ? "Actif" : "Inactif"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Date de création</p>
+                    <p className="text-base text-sm">
+                      {new Date(selectedProduct.createdAt).toLocaleDateString("fr-FR", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+                {selectedProduct.tags && selectedProduct.tags.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Tags</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProduct.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Chargement des détails...</p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

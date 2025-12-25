@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarClock, Loader2, Plus, Search } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Search, MapPin } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -11,6 +11,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { useApiMutation } from "@/hooks/use-api-mutation";
@@ -18,6 +27,19 @@ import { AddHarvestDialog } from "./add-harvest-dialog";
 import { EditHarvestDialog } from "./edit-harvest-dialog";
 import { DeleteHarvestDialog } from "./delete-harvest-dialog";
 import { HarvestActionsMenu } from "./harvest-actions-menu";
+import dynamic from "next/dynamic";
+
+const LocationPicker = dynamic(
+  () => import("@/components/location-picker").then((mod) => ({ default: mod.LocationPicker })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-96 flex items-center justify-center border rounded-lg bg-muted/30">
+        <p className="text-sm text-muted-foreground">Chargement de la carte...</p>
+      </div>
+    ),
+  }
+);
 
 type Harvest = {
   id: string;
@@ -65,6 +87,8 @@ export default function HarvestPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
+  const [isMapDialogOpen, setIsMapDialogOpen] = React.useState(false);
   const [selectedHarvest, setSelectedHarvest] = React.useState<Harvest | null>(
     null
   );
@@ -135,6 +159,39 @@ export default function HarvestPage() {
     }
   );
 
+  // Fonction pour générer un hash automatique
+  const generateProofHash = async (data: CreateHarvestDto): Promise<string> => {
+    const dataString = JSON.stringify({
+      farmerId: data.farmerId,
+      productId: data.productId,
+      quantity: data.quantity,
+      harvestAt: data.harvestAt,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timestamp: Date.now(),
+    });
+    
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(dataString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  };
+
+  // Wrapper pour onFormDataChange qui génère automatiquement le hash
+  const handleFormDataChange = React.useCallback(async (data: CreateHarvestDto) => {
+    // Générer le hash seulement lors de l'ajout (quand le hash est vide ou lors de l'ajout) et si les champs requis sont remplis
+    const shouldGenerateHash = isAddDialogOpen && !data.proofHash && data.farmerId && data.productId && data.quantity > 0 && data.harvestAt;
+    
+    if (shouldGenerateHash) {
+      const hash = await generateProofHash(data);
+      setFormData({ ...data, proofHash: hash });
+    } else {
+      setFormData(data);
+    }
+  }, [isAddDialogOpen]);
+
   const handleAdd = () => {
     setFormData({
       farmerId: "",
@@ -150,9 +207,13 @@ export default function HarvestPage() {
 
   const handleEdit = (harvest: Harvest) => {
     setSelectedHarvest(harvest);
+    // Récupérer les IDs depuis farmerId/productId ou depuis les objets farmer/product
+    const farmerId = harvest.farmerId || harvest.farmer?.id || "";
+    const productId = harvest.productId || harvest.product?.id || "";
+    
     setFormData({
-      farmerId: harvest.farmerId || "",
-      productId: harvest.productId || "",
+      farmerId,
+      productId,
       quantity: harvest.quantity,
       harvestAt: harvest.harvestAt?.slice(0, 16) || "",
       latitude: harvest.latitude,
@@ -165,6 +226,39 @@ export default function HarvestPage() {
   const handleDelete = (harvest: Harvest) => {
     setSelectedHarvest(harvest);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleView = (harvest: Harvest) => {
+    setSelectedHarvest(harvest);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleDuplicate = (harvest: Harvest) => {
+    // Récupérer les IDs depuis farmerId/productId ou depuis les objets farmer/product
+    const farmerId = harvest.farmerId || harvest.farmer?.id || "";
+    const productId = harvest.productId || harvest.product?.id || "";
+    
+    setFormData({
+      farmerId,
+      productId,
+      quantity: harvest.quantity,
+      harvestAt: new Date().toISOString().slice(0, 16),
+      latitude: harvest.latitude,
+      longitude: harvest.longitude,
+      proofHash: "", // Le hash sera généré automatiquement
+    });
+    setIsAddDialogOpen(true);
+    toast.success("Récolte dupliquée, veuillez compléter les informations");
+  };
+
+  const handleViewMap = (harvest: Harvest) => {
+    setSelectedHarvest(harvest);
+    setIsMapDialogOpen(true);
+  };
+
+  const handleCopyHash = (harvest: Harvest) => {
+    navigator.clipboard.writeText(harvest.proofHash);
+    toast.success("Hash de preuve copié dans le presse-papiers");
   };
 
   const handleSubmitAdd = (e: React.FormEvent) => {
@@ -180,8 +274,17 @@ export default function HarvestPage() {
   const handleSubmitEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHarvest) return;
+    
+    // Convertir harvestAt en format ISO si nécessaire
+    let harvestAtValue = formData.harvestAt;
+    if (harvestAtValue && !harvestAtValue.includes('Z') && !harvestAtValue.includes('+')) {
+      // Si c'est un format datetime-local, le convertir en ISO
+      harvestAtValue = new Date(harvestAtValue).toISOString();
+    }
+    
     updateMutation.mutate({
       ...formData,
+      harvestAt: harvestAtValue,
       quantity: Number(formData.quantity),
       latitude: formData.latitude ? Number(formData.latitude) : undefined,
       longitude: formData.longitude ? Number(formData.longitude) : undefined,
@@ -300,6 +403,10 @@ export default function HarvestPage() {
                             <HarvestActionsMenu
                               onEdit={() => handleEdit(harvest)}
                               onDelete={() => handleDelete(harvest)}
+                              onView={() => handleView(harvest)}
+                              onDuplicate={() => handleDuplicate(harvest)}
+                              onViewMap={() => handleViewMap(harvest)}
+                              onCopyHash={() => handleCopyHash(harvest)}
                             />
                           </td>
                         </tr>
@@ -317,7 +424,7 @@ export default function HarvestPage() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         formData={formData}
-        onFormDataChange={setFormData}
+        onFormDataChange={handleFormDataChange}
         onSubmit={handleSubmitAdd}
         isLoading={createMutation.isPending}
         farmers={farmers}
@@ -328,7 +435,7 @@ export default function HarvestPage() {
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         formData={formData}
-        onFormDataChange={setFormData}
+        onFormDataChange={handleFormDataChange}
         onSubmit={handleSubmitEdit}
         isLoading={updateMutation.isPending}
         farmers={farmers}
@@ -341,6 +448,141 @@ export default function HarvestPage() {
         onConfirm={handleConfirmDelete}
         isLoading={deleteMutation.isPending}
       />
+
+      {/* View Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-[#3A8F4C]" />
+              Détails de la récolte
+            </DialogTitle>
+            <DialogDescription>
+              Informations complètes sur la récolte
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedHarvest ? (
+            <div className="space-y-6">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Agriculteur</p>
+                    <p className="text-base font-semibold">
+                      {selectedHarvest.farmer?.name ||
+                        farmers.find((f) => f.id === selectedHarvest.farmerId)?.name ||
+                        selectedHarvest.farmerId ||
+                        "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Produit</p>
+                    <p className="text-base font-semibold">
+                      {selectedHarvest.product?.name ||
+                        products.find((p) => p.id === selectedHarvest.productId)?.name ||
+                        selectedHarvest.productId ||
+                        "-"}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Quantité</p>
+                    <p className="text-base font-semibold">{selectedHarvest.quantity} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Date de récolte</p>
+                    <p className="text-base">
+                      {new Date(selectedHarvest.harvestAt).toLocaleString("fr-FR", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+                {(selectedHarvest.latitude && selectedHarvest.longitude) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Latitude</p>
+                      <p className="text-base font-mono">{Number(selectedHarvest.latitude).toFixed(6)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Longitude</p>
+                      <p className="text-base font-mono">{Number(selectedHarvest.longitude).toFixed(6)}</p>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Hash de preuve</p>
+                  <div className="p-2 bg-muted rounded-md">
+                    <p className="text-xs font-mono break-all">{selectedHarvest.proofHash}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Date de création</p>
+                  <p className="text-base text-sm">
+                    {new Date(selectedHarvest.createdAt).toLocaleDateString("fr-FR", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Chargement des détails...</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Map Dialog */}
+      <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-[#3A8F4C]" />
+              Localisation de la récolte
+            </DialogTitle>
+            <DialogDescription>
+              Position géographique de la récolte sur la carte
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedHarvest && selectedHarvest.latitude && selectedHarvest.longitude ? (
+            <div className="mt-4">
+              <div className="h-96 rounded-lg border overflow-hidden">
+                <LocationPicker
+                  latitude={selectedHarvest.latitude}
+                  longitude={selectedHarvest.longitude}
+                  onLocationChange={() => {}}
+                  height="h-full"
+                />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Latitude</p>
+                  <p className="font-mono">{Number(selectedHarvest.latitude).toFixed(6)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Longitude</p>
+                  <p className="font-mono">{Number(selectedHarvest.longitude).toFixed(6)}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucune localisation disponible pour cette récolte</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

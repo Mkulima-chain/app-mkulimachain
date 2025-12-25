@@ -75,6 +75,15 @@ export class CreateMarketplaceItemDto {
   @IsString({ each: true })
   @IsOptional()
   imageUrls?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Statut de l\'article',
+    enum: MarketplaceItemStatus,
+    default: MarketplaceItemStatus.DRAFT,
+  })
+  @IsEnum(MarketplaceItemStatus)
+  @IsOptional()
+  status?: MarketplaceItemStatus;
 }
 
 export class UpdateMarketplaceItemDto extends PartialType(

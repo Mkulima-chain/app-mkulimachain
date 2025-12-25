@@ -107,11 +107,6 @@ export class GetHarvestDto {
 }
 
 export class UpdateHarvestDto extends PartialType(CreateHarvestDto) {
-  @ApiProperty({
-    description: 'ID de la récolte',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  @IsNotEmpty()
-  id!: string;
+  // Tous les champs sont optionnels grâce à PartialType
+  // L'id est passé dans l'URL, pas dans le body
 }
