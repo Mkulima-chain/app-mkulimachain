@@ -20,6 +20,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { NotificationModule } from './modules/notifications/notification.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -42,7 +43,9 @@ import { NotificationModule } from './modules/notifications/notification.module'
     StatsModule,
     SettingsModule,
     ChatModule,
+    ChatModule,
     NotificationModule,
+    MailModule,
   ],
   controllers: [],
   providers: [
