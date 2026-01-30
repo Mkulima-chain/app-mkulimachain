@@ -458,7 +458,7 @@ export default function NFTMarketplacePage() {
 
   const collections: { value: NFTCollection; label: string; icon: string }[] = [
     { value: "all", label: "Tous", icon: "📦" },
-    { value: "culture", label: "Culture Lingala", icon: "📚" },
+    { value: "culture", label: "Culture Mkulima Chain", icon: "📚" },
     { value: "agriculture", label: "Agriculture", icon: "🌾" },
     { value: "art", label: "Art", icon: "🎨" },
     { value: "collectibles", label: "Collection", icon: "💎" },
@@ -489,7 +489,7 @@ export default function NFTMarketplacePage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3A8F4C]/10 dark:bg-[#3A8F4C]/20 border border-[#3A8F4C]/30 mb-4">
               <Sparkles className="w-4 h-4 text-[#3A8F4C]" />
               <span className="text-sm font-medium text-[#3A8F4C]">
-                Marketplace NFT - Lingala Chain
+                Marketplace NFT - Mkulima Chain
               </span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-[#5A3E36] dark:text-white mb-4">
@@ -497,7 +497,7 @@ export default function NFTMarketplacePage() {
             </h1>
             <p className="text-xl text-[#004D73] dark:text-white/80 max-w-2xl mx-auto mb-4">
               Découvrez et collectionnez des NFTs uniques : recettes, contes,
-              chants lingala et produits agricoles certifiés
+              chants Mkulima Chain et produits agricoles certifiés
             </p>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F2C94C]/10 dark:bg-[#F2C94C]/20 border border-[#F2C94C]/30">
               <span className="text-2xl">🎓</span>
@@ -760,9 +760,9 @@ export default function NFTMarketplacePage() {
                       Impact Éducatif des NFTs Culturels
                     </h3>
                     <p className="text-sm text-[#004D73] dark:text-white/80 mb-2">
-                      Les NFTs culturels Lingala (recettes, contes, chants,
-                      traditions) financent directement la scolarité des enfants
-                      d&apos;agriculteurs congolais.
+                      Les NFTs culturels Mkulima Chain (recettes, contes,
+                      chants, traditions) financent directement la scolarité des
+                      enfants d&apos;agriculteurs congolais.
                     </p>
                     <div className="flex items-center gap-4 text-sm">
                       <div>
@@ -1208,7 +1208,7 @@ export default function NFTMarketplacePage() {
                             </h3>
                             <p className="text-sm text-[#004D73] dark:text-white/70">
                               Enregistrement audio authentique de ce chant
-                              traditionnel lingala
+                              traditionnel Mkulima Chain
                             </p>
                           </div>
                         </div>

@@ -55,6 +55,9 @@ type MarketplaceItem = {
   stockKg: number;
   status: string;
   imageUrls?: string[];
+  onPromotion?: boolean;
+  originalPriceADA?: number;
+  discountPercent?: number;
   createdAt: string;
   batch?: { id: string; qrCode: string; batchHash: string };
   farmer?: { id: string; name: string };
@@ -69,6 +72,9 @@ type CreateMarketplaceItemDto = {
   stockKg: number;
   imageUrls?: string[];
   status?: string;
+  onPromotion?: boolean;
+  originalPriceADA?: number;
+  discountPercent?: number;
 };
 
 const statuses = [
@@ -93,9 +99,11 @@ export default function MarketplacePage() {
     description: "",
     priceADA: 0,
     stockKg: 0,
-
     imageUrls: [],
     status: "draft",
+    onPromotion: false,
+    originalPriceADA: undefined,
+    discountPercent: undefined,
   });
 
   const {
@@ -284,9 +292,11 @@ export default function MarketplacePage() {
       description: item.description || "",
       priceADA: item.priceADA,
       stockKg: item.stockKg,
-
       imageUrls: item.imageUrls || [],
       status: item.status,
+      onPromotion: item.onPromotion || false,
+      originalPriceADA: item.originalPriceADA,
+      discountPercent: item.discountPercent,
     });
     setIsEditDialogOpen(true);
   };
@@ -329,6 +339,9 @@ export default function MarketplacePage() {
       stockKg: Number(formData.stockKg),
       imageUrls: formData.imageUrls,
       status: formData.status || "draft",
+      onPromotion: formData.onPromotion || false,
+      originalPriceADA: formData.originalPriceADA ? Number(formData.originalPriceADA) : undefined,
+      discountPercent: formData.discountPercent ? Number(formData.discountPercent) : undefined,
     });
   };
 
@@ -356,8 +369,10 @@ export default function MarketplacePage() {
       ...formData,
       priceADA: Number(formData.priceADA),
       stockKg: Number(formData.stockKg),
-
       imageUrls: formData.imageUrls,
+      onPromotion: formData.onPromotion || false,
+      originalPriceADA: formData.originalPriceADA ? Number(formData.originalPriceADA) : undefined,
+      discountPercent: formData.discountPercent ? Number(formData.discountPercent) : undefined,
     });
   };
 
@@ -864,6 +879,78 @@ export default function MarketplacePage() {
                   ))}
                 </select>
               </div>
+
+              {/* Promotion Section */}
+              <div className="grid gap-4 p-4 bg-muted/20 rounded-md border border-dashed">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="onPromotion" className="text-[#3A8F4C] font-semibold">
+                    Promotion
+                  </Label>
+                  <input
+                    id="onPromotion"
+                    type="checkbox"
+                    checked={formData.onPromotion || false}
+                    onChange={(e) => {
+                      const isPromotion = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        onPromotion: isPromotion,
+                        // Si on désactive la promotion, réinitialiser les champs
+                        originalPriceADA: isPromotion ? formData.originalPriceADA : undefined,
+                        discountPercent: isPromotion ? formData.discountPercent : undefined,
+                      });
+                    }}
+                    className="rounded"
+                  />
+                </div>
+                {formData.onPromotion && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="originalPriceADA">
+                        Prix original (₳/kg)
+                      </Label>
+                      <Input
+                        id="originalPriceADA"
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        value={formData.originalPriceADA || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            originalPriceADA: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="Prix avant réduction"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="discountPercent">
+                        Réduction (%)
+                      </Label>
+                      <Input
+                        id="discountPercent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.discountPercent || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discountPercent: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="Ex: 20"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -1145,6 +1232,78 @@ export default function MarketplacePage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Promotion Section */}
+              <div className="grid gap-4 p-4 bg-muted/20 rounded-md border border-dashed">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="edit-onPromotion" className="text-[#3A8F4C] font-semibold">
+                    Promotion
+                  </Label>
+                  <input
+                    id="edit-onPromotion"
+                    type="checkbox"
+                    checked={formData.onPromotion || false}
+                    onChange={(e) => {
+                      const isPromotion = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        onPromotion: isPromotion,
+                        // Si on désactive la promotion, réinitialiser les champs
+                        originalPriceADA: isPromotion ? formData.originalPriceADA : undefined,
+                        discountPercent: isPromotion ? formData.discountPercent : undefined,
+                      });
+                    }}
+                    className="rounded"
+                  />
+                </div>
+                {formData.onPromotion && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-originalPriceADA">
+                        Prix original (₳/kg)
+                      </Label>
+                      <Input
+                        id="edit-originalPriceADA"
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        value={formData.originalPriceADA || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            originalPriceADA: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="Prix avant réduction"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-discountPercent">
+                        Réduction (%)
+                      </Label>
+                      <Input
+                        id="edit-discountPercent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.discountPercent || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discountPercent: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="Ex: 20"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>

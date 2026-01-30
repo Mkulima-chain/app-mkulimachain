@@ -122,7 +122,7 @@ importers:
         specifier: ^20
         version: 20.19.25
       '@types/react':
-        specifier: ^19
+        specifier: ^19.2.6
         version: 19.2.6
       '@types/react-dom':
         specifier: ^19
@@ -332,6 +332,9 @@ importers:
       '@meshsdk/react':
         specifier: 1.9.0-beta.87
         version: 1.9.0-beta.87(@babel/core@7.28.5)(@bufbuild/protobuf@1.10.1)(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/crypto@0.2.5)(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(bare-url@2.3.2)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(rxjs@7.8.2)(tailwindcss@4.1.17)(utf-8-validate@6.0.5)
+      '@peculiar/webcrypto':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@radix-ui/react-avatar':
         specifier: ^1.1.11
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -419,6 +422,9 @@ importers:
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4

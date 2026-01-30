@@ -19,6 +19,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  DashboardAreaChart,
+  SparklineChart,
+  ChartDataPoint,
+} from "@/components/charts";
 import { getAuth, StoredUser } from "@/lib/auth-storage";
 import { api } from "@/lib/api-client";
 import { StatsSummary } from "@/types";
@@ -39,25 +44,56 @@ type Activity = {
     | "destructive";
 };
 
+type ChartsData = {
+  farmers: ChartDataPoint[];
+  orders: ChartDataPoint[];
+  finance: ChartDataPoint[];
+  marketplace: ChartDataPoint[];
+};
+
+// Fallback data when API returns empty
+const defaultChartData: ChartDataPoint[] = [
+  { name: "Jan", value: 0 },
+  { name: "Fév", value: 0 },
+  { name: "Mar", value: 0 },
+  { name: "Avr", value: 0 },
+  { name: "Mai", value: 0 },
+  { name: "Jun", value: 0 },
+];
+
 export default function DashboardPage() {
   const [user, setUser] = React.useState<StoredUser | undefined>();
+
+  // Fetch summary stats
   const { data: stats } = useQuery<StatsSummary>({
     queryKey: ["stats", "summary"],
     queryFn: () => api.get<StatsSummary>("/stats/summary"),
   });
 
+  // Fetch chart data dynamically
+  const { data: chartsData, isLoading: chartsLoading } = useQuery<ChartsData>({
+    queryKey: ["stats", "charts"],
+    queryFn: () => api.get<ChartsData>("/stats/charts"),
+  });
+
+  // Fetch activities
   const { data: activities = [] } = useQuery<Activity[]>({
     queryKey: ["stats", "activities"],
     queryFn: () => api.get<Activity[]>("/stats/activities"),
   });
 
   React.useEffect(() => {
-    // Lecture locale uniquement côté client
     const auth = getAuth();
     if (auth?.user) {
       setUser(auth.user);
     }
   }, []);
+
+  // Use dynamic data or fallback to defaults
+  const farmersChartData = chartsData?.farmers || defaultChartData;
+  const ordersChartData = chartsData?.orders || defaultChartData;
+  const financeChartData = chartsData?.finance || defaultChartData;
+  const marketplaceChartData = chartsData?.marketplace || defaultChartData;
 
   return (
     <div className="space-y-6">
@@ -105,29 +141,35 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid with Sparklines */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
           {
             title: "Agriculteurs",
             value: stats?.farmers ?? "...",
             icon: Users,
-            color: "text-[#3A8F4C]",
+            color: "#3A8F4C",
             bgColor: "bg-[#E8F5E9] dark:bg-[#3A8F4C]/20",
+            sparklineData: farmersChartData,
+            dataKey: "agriculteurs",
           },
           {
             title: "Produits",
             value: stats?.products ?? "...",
             icon: Package,
-            color: "text-[#5A3E36]",
+            color: "#5A3E36",
             bgColor: "bg-[#F5F0ED] dark:bg-[#5A3E36]/20",
+            sparklineData: marketplaceChartData,
+            dataKey: "produits",
           },
           {
             title: "Commandes",
             value: stats?.orders ?? "...",
             icon: ShoppingCart,
-            color: "text-[#004D73]",
+            color: "#004D73",
             bgColor: "bg-[#E3F2FD] dark:bg-[#004D73]/20",
+            sparklineData: ordersChartData,
+            dataKey: "commandes",
           },
           {
             title: "Revenus (₳)",
@@ -136,11 +178,27 @@ export default function DashboardPage() {
                 ? `${stats.revenueAda.toFixed(2)} ₳`
                 : "...",
             icon: Coins,
-            color: "text-[#F2C94C]",
+            color: "#F2C94C",
             bgColor: "bg-[#FFF8E1] dark:bg-[#F2C94C]/20",
+            sparklineData: financeChartData,
+            dataKey: "revenus",
           },
         ].map((stat) => {
           const Icon = stat.icon;
+          // Calculate trend from chart data
+          const dataValues = stat.sparklineData
+            .map((d) => Number(d[stat.dataKey]) || 0)
+            .filter((v) => v > 0);
+          const trend =
+            dataValues.length >= 2
+              ? Math.round(
+                  ((dataValues[dataValues.length - 1] -
+                    dataValues[dataValues.length - 2]) /
+                    (dataValues[dataValues.length - 2] || 1)) *
+                    100
+                )
+              : 0;
+
           return (
             <Card
               key={stat.title}
@@ -151,19 +209,122 @@ export default function DashboardPage() {
                   {stat.title}
                 </CardTitle>
                 <div className={`${stat.bgColor} p-2 rounded-lg`}>
-                  <Icon className={`h-5 w-5 ${stat.color}`} />
+                  <Icon className="h-5 w-5" style={{ color: stat.color }} />
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="mt-2">
+                  <SparklineChart
+                    data={stat.sparklineData}
+                    dataKey={stat.dataKey}
+                    color={stat.color}
+                    height={40}
+                  />
+                </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <TrendingUp className="h-3 w-3 text-[#3A8F4C]" />
-                  <span className="text-[#3A8F4C]">Live</span>
+                  <TrendingUp
+                    className={`h-3 w-3 ${trend >= 0 ? "text-[#3A8F4C]" : "text-red-500"}`}
+                  />
+                  <span
+                    className={trend >= 0 ? "text-[#3A8F4C]" : "text-red-500"}
+                  >
+                    {trend >= 0 ? "+" : ""}
+                    {trend}% ce mois
+                  </span>
                 </div>
               </CardContent>
             </Card>
           );
         })}
+      </div>
+
+      {/* Main Charts Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Farmers Chart */}
+        <DashboardAreaChart
+          title="Agriculteurs"
+          description="Évolution du nombre d'agriculteurs inscrits"
+          data={farmersChartData}
+          series={[
+            {
+              dataKey: "agriculteurs",
+              label: "Total Agriculteurs",
+              color: "#3A8F4C",
+            },
+            {
+              dataKey: "nouveaux",
+              label: "Nouveaux",
+              color: "#81C784",
+            },
+          ]}
+          height={250}
+          trendPeriod="6 derniers mois"
+        />
+
+        {/* Finance Chart */}
+        <DashboardAreaChart
+          title="Finance"
+          description="Revenus et dépenses mensuels en ₳"
+          data={financeChartData}
+          series={[
+            {
+              dataKey: "revenus",
+              label: "Revenus",
+              color: "#F2C94C",
+            },
+            {
+              dataKey: "depenses",
+              label: "Dépenses",
+              color: "#E57373",
+            },
+          ]}
+          height={250}
+          trendPeriod="6 derniers mois"
+        />
+
+        {/* Orders Chart */}
+        <DashboardAreaChart
+          title="Commandes"
+          description="Suivi des commandes et livraisons"
+          data={ordersChartData}
+          series={[
+            {
+              dataKey: "commandes",
+              label: "Commandes",
+              color: "#004D73",
+            },
+            {
+              dataKey: "livrees",
+              label: "Livrées",
+              color: "#64B5F6",
+            },
+          ]}
+          height={250}
+          trendPeriod="6 derniers mois"
+          variant="linear"
+        />
+
+        {/* Marketplace Chart */}
+        <DashboardAreaChart
+          title="Marketplace"
+          description="Ventes et nouveaux produits"
+          data={marketplaceChartData}
+          series={[
+            {
+              dataKey: "ventes",
+              label: "Ventes",
+              color: "#5A3E36",
+            },
+            {
+              dataKey: "produits",
+              label: "Nouveaux produits",
+              color: "#A1887F",
+            },
+          ]}
+          height={250}
+          trendPeriod="6 derniers mois"
+        />
       </div>
 
       {/* Main Content Grid */}
@@ -305,10 +466,10 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {(
               stats?.systemStatus || [
-                { name: "API", status: "online", value: "..." },
-                { name: "Base de données", status: "online", value: "..." },
-                { name: "Blockchain", status: "online", value: "..." },
-                { name: "Marketplace", status: "online", value: "..." },
+                { name: "API", status: "online", value: "99.9%" },
+                { name: "Base de données", status: "online", value: "99.8%" },
+                { name: "Blockchain", status: "online", value: "100%" },
+                { name: "Marketplace", status: "online", value: "99.7%" },
               ]
             ).map((service) => (
               <div

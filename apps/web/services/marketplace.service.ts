@@ -22,14 +22,14 @@ export async function getMarketplaceItems(
   if (filters?.search) params.append("search", filters.search);
 
   const query = params.toString();
-  return api.get<MarketplaceItem[]>(`marketplace${query ? `?${query}` : ""}`);
+  return api.get<MarketplaceItem[]>(`/marketplace${query ? `?${query}` : ""}`);
 }
 
 /**
  * Récupérer uniquement les items actifs (en vente)
  */
 export async function getActiveMarketplaceItems(): Promise<MarketplaceItem[]> {
-  return api.get<MarketplaceItem[]>("marketplace/active");
+  return api.get<MarketplaceItem[]>("/marketplace/active");
 }
 
 /**
@@ -38,7 +38,7 @@ export async function getActiveMarketplaceItems(): Promise<MarketplaceItem[]> {
 export async function getMarketplaceItemById(
   id: string
 ): Promise<MarketplaceItem> {
-  return api.get<MarketplaceItem>(`marketplace/${id}`);
+  return api.get<MarketplaceItem>(`/marketplace/${id}`);
 }
 
 /**
@@ -47,5 +47,5 @@ export async function getMarketplaceItemById(
 export async function getMarketplaceItemsByFarmer(
   farmerId: string
 ): Promise<MarketplaceItem[]> {
-  return api.get<MarketplaceItem[]>(`marketplace/farmer/${farmerId}`);
+  return api.get<MarketplaceItem[]>(`/marketplace/farmer/${farmerId}`);
 }

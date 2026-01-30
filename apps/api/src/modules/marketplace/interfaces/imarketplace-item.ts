@@ -18,6 +18,9 @@ export interface IMarketplaceItem {
   stockKg: number;
   status: MarketplaceItemStatus;
   imageUrls?: string[];
+  onPromotion?: boolean;
+  originalPriceADA?: number;
+  discountPercent?: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

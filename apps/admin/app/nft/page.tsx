@@ -351,7 +351,7 @@ export default function NFTPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">NFTs Culturels</h1>
           <p className="text-muted-foreground mt-1">
-            Gérez les NFTs culturels Lingala et leurs ventes
+            Gérez les NFTs culturels Mkulima Chain et leurs ventes
           </p>
         </div>
         <Button onClick={handleAdd} className="bg-[#3A8F4C] hover:bg-[#2E7D32]">

@@ -202,8 +202,8 @@ const mockFavorites: Favorite[] = [
 const mockUserNFTs: UserNFT[] = [
   {
     id: "2",
-    name: "Conte Lingala : Mwinda na Mputu",
-    collection: "Culture Lingala",
+    name: "Conte Mkulima Chain : Mwinda na Mputu",
+    collection: "Culture Mkulima Chain",
     images: ["📖", "🌙", "✨"],
     price: 120,
     currency: "₳",
@@ -216,7 +216,7 @@ const mockUserNFTs: UserNFT[] = [
   {
     id: "3",
     name: "Chant Traditionnel : Mokili Mobimba",
-    collection: "Culture Lingala",
+    collection: "Culture Mkulima Chain",
     images: ["🎵", "🎤", "👥"],
     price: 95,
     currency: "₳",
@@ -355,9 +355,11 @@ export default function DashboardPage() {
   >("overview");
 
   // Récupérer les commandes depuis l'API
-  const { data: apiOrders, isLoading: ordersLoading } = useMyOrders(
-    session?.user?.id
-  );
+  const {
+    data: apiOrders,
+    isLoading: ordersLoading,
+    isError: ordersError,
+  } = useMyOrders(session?.user?.id);
 
   // Mapper les commandes API vers le format local
   const mapApiOrderToLocal = (apiOrder: ApiOrder): Order => {
@@ -405,8 +407,9 @@ export default function DashboardPage() {
   };
 
   // Utiliser les commandes API si disponibles, sinon fallback sur mock
+  // Fallback vers mockOrders si: pas de données, en cours de chargement, erreur, ou tableau vide
   const orders: Order[] =
-    apiOrders && apiOrders.length > 0
+    !ordersLoading && !ordersError && apiOrders && apiOrders.length > 0
       ? apiOrders.map(mapApiOrderToLocal)
       : mockOrders;
 
@@ -982,7 +985,7 @@ export default function DashboardPage() {
                         Ma Collection NFT
                       </CardTitle>
                       <CardDescription className="text-[#004D73] dark:text-white/70">
-                        Vos NFTs Lingala Chain
+                        Vos NFTs Mkulima Chain
                       </CardDescription>
                     </div>
                     <Link href="/marketplace/nft">

@@ -8,6 +8,8 @@ import {
   MaxLength,
   Min,
   IsArray,
+  IsBoolean,
+  Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { MarketplaceItemStatus } from '../interfaces/imarketplace-item';
@@ -77,13 +79,44 @@ export class CreateMarketplaceItemDto {
   imageUrls?: string[];
 
   @ApiPropertyOptional({
-    description: 'Statut de l\'article',
+    description: "Statut de l'article",
     enum: MarketplaceItemStatus,
     default: MarketplaceItemStatus.DRAFT,
   })
   @IsEnum(MarketplaceItemStatus)
   @IsOptional()
   status?: MarketplaceItemStatus;
+
+  @ApiPropertyOptional({
+    description: 'Produit en promotion',
+    example: false,
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  onPromotion?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Prix original avant réduction (en ADA)',
+    example: 3.0,
+    minimum: 0.000001,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(0.000001)
+  originalPriceADA?: number;
+
+  @ApiPropertyOptional({
+    description: 'Pourcentage de réduction',
+    example: 20,
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(100)
+  discountPercent?: number;
 }
 
 export class UpdateMarketplaceItemDto extends PartialType(
@@ -197,6 +230,24 @@ export class MarketplaceItemResponseDto {
     example: ['https://cdn.mkulimachain.com/products/cacao.jpg'],
   })
   imageUrls?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Produit en promotion',
+    example: false,
+  })
+  onPromotion?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Prix original avant réduction (en ADA)',
+    example: 3.0,
+  })
+  originalPriceADA?: number;
+
+  @ApiPropertyOptional({
+    description: 'Pourcentage de réduction',
+    example: 20,
+  })
+  discountPercent?: number;
 
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   createdAt!: Date;

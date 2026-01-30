@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlinePrice } from "@/components/ui/price-display";
+import { useShare } from "@/hooks/use-share";
 
 interface Product {
   id: string;
@@ -31,6 +32,9 @@ interface Product {
   stock: number;
   certified: boolean;
   blockchainHash?: string;
+  onPromotion?: boolean;
+  originalPrice?: number;
+  discountPercent?: number;
 }
 
 interface ProductCardProps {
@@ -48,6 +52,19 @@ export function ProductCard({
   onToggleFavorite,
   onClick,
 }: ProductCardProps) {
+  const { shareProduct } = useShare();
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    shareProduct({
+      productId: product.id,
+      productName: product.name,
+      productDescription: product.description,
+      productImage: product.images[0],
+      productPrice: product.price,
+    });
+  };
+
   if (viewMode === "list") {
     return (
       <Card
@@ -74,11 +91,15 @@ export function ProductCard({
                   {product.images.length}
                 </div>
               )}
-              {product.certified && (
-                <div className="absolute top-2 right-2">
+              {/* Badges */}
+              <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end z-10">
+                {product.onPromotion && (
+                  <StatusBadge status="promotion" />
+                )}
+                {product.certified && (
                   <StatusBadge status="certified" />
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Product Info */}
@@ -114,8 +135,9 @@ export function ProductCard({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={handleShare}
                     className="h-8 w-8 text-[#5A3E36] dark:text-white/90"
+                    title="Partager ce produit"
                   >
                     <Share2 className="w-4 h-4" />
                   </Button>
@@ -149,7 +171,23 @@ export function ProductCard({
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <InlinePrice adaAmount={product.price} />
+                  <div className="flex flex-col">
+                    {product.onPromotion && product.originalPrice ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <InlinePrice adaAmount={product.price} />
+                          <span className="text-xs text-red-500 font-semibold">
+                            -{product.discountPercent || Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                          </span>
+                        </div>
+                        <span className="text-xs text-[#004D73]/60 dark:text-white/60 line-through">
+                          {product.originalPrice.toLocaleString()} {product.currency}
+                        </span>
+                      </>
+                    ) : (
+                      <InlinePrice adaAmount={product.price} />
+                    )}
+                  </div>
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -199,6 +237,13 @@ export function ProductCard({
             </div>
           )}
 
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
+            {product.onPromotion && (
+              <StatusBadge status="promotion" />
+            )}
+          </div>
+
           {/* Action buttons */}
           <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
             {product.certified && (
@@ -225,8 +270,9 @@ export function ProductCard({
             <Button
               variant="ghost"
               size="icon"
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleShare}
               className="h-8 w-8 bg-white/90 dark:bg-[#003D5C]/90 backdrop-blur-sm text-[#5A3E36] dark:text-white/90"
+              title="Partager ce produit"
             >
               <Share2 className="w-4 h-4" />
             </Button>
@@ -273,7 +319,21 @@ export function ProductCard({
           {/* Price & Stock */}
           <div className="flex items-center justify-between pt-2 border-t border-[#004D73]/10 dark:border-white/10">
             <div>
-              <InlinePrice adaAmount={product.price} />
+              {product.onPromotion && product.originalPrice ? (
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <InlinePrice adaAmount={product.price} />
+                    <span className="text-xs text-red-500 font-semibold">
+                      -{product.discountPercent || Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                    </span>
+                  </div>
+                  <span className="text-xs text-[#004D73]/60 dark:text-white/60 line-through">
+                    {product.originalPrice.toLocaleString()} {product.currency}
+                  </span>
+                </div>
+              ) : (
+                <InlinePrice adaAmount={product.price} />
+              )}
               <p className="text-xs text-[#004D73] dark:text-white/60">
                 Stock: {Math.round(product.stock)} unités
               </p>

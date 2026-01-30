@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useState, useEffect } from "react";
 import { MapPin, Navigation, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,15 +10,25 @@ import { toast } from "sonner";
 function LeafletStyles() {
   useEffect(() => {
     if (typeof window !== "undefined") {
-      import("leaflet/dist/leaflet.css");
-      
+      // Charger le CSS de Leaflet via un élément <link> dans le DOM
+      const linkId = "leaflet-stylesheet";
+      if (!document.getElementById(linkId)) {
+        const link = document.createElement("link");
+        link.id = linkId;
+        link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+        link.crossOrigin = "";
+        document.head.appendChild(link);
+      }
+
       // Fix pour les icônes par défaut de Leaflet
       import("leaflet").then((L) => {
         // Supprimer la méthode _getIconUrl si elle existe
         if ((L.Icon.Default.prototype as any)._getIconUrl) {
           delete (L.Icon.Default.prototype as any)._getIconUrl;
         }
-        
+
         // Configurer les URLs des icônes avec des URLs CDN
         L.Icon.Default.mergeOptions({
           iconRetinaUrl:
@@ -61,20 +70,22 @@ export function LocationPicker({
 
   // Position par défaut (Kenya - centre approximatif)
   const defaultPosition: [number, number] = [-1.2921, 36.8219];
-  const currentPosition: [number, number] = 
-    latitude && longitude ? [Number(latitude), Number(longitude)] : defaultPosition;
+  const currentPosition: [number, number] =
+    latitude && longitude
+      ? [Number(latitude), Number(longitude)]
+      : defaultPosition;
 
   useEffect(() => {
     const loadComponents = async () => {
       try {
         // Charger et configurer Leaflet avant de charger react-leaflet
         const L = await import("leaflet");
-        
+
         // Supprimer la méthode _getIconUrl si elle existe
         if ((L.Icon.Default.prototype as any)._getIconUrl) {
           delete (L.Icon.Default.prototype as any)._getIconUrl;
         }
-        
+
         // Configurer les URLs des icônes avec des URLs CDN
         L.Icon.Default.mergeOptions({
           iconRetinaUrl:
@@ -84,7 +95,7 @@ export function LocationPicker({
           shadowUrl:
             "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
-        
+
         // Maintenant charger react-leaflet
         const mod = await import("react-leaflet");
         setMapContainer(() => mod.MapContainer);
@@ -103,7 +114,9 @@ export function LocationPicker({
 
   const handleGetCurrentLocation = () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      toast.error("La géolocalisation n'est pas supportée par votre navigateur");
+      toast.error(
+        "La géolocalisation n'est pas supportée par votre navigateur"
+      );
       return;
     }
 
@@ -114,7 +127,7 @@ export function LocationPicker({
         onLocationChange(lat, lng);
         setIsGettingLocation(false);
         toast.success("Position récupérée avec succès");
-        
+
         // Centrer la carte sur la position
         if (mapInstance) {
           mapInstance.setView([lat, lng], 15);
@@ -122,24 +135,27 @@ export function LocationPicker({
       },
       (error: GeolocationPositionError) => {
         setIsGettingLocation(false);
-        
+
         let errorMessage = "Impossible de récupérer votre position.";
-        
+
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = "Accès à la géolocalisation refusé. Veuillez autoriser l'accès dans les paramètres de votre navigateur.";
+            errorMessage =
+              "Accès à la géolocalisation refusé. Veuillez autoriser l'accès dans les paramètres de votre navigateur.";
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = "Position indisponible. Vérifiez que votre GPS est activé.";
+            errorMessage =
+              "Position indisponible. Vérifiez que votre GPS est activé.";
             break;
           case error.TIMEOUT:
             errorMessage = "Délai d'attente dépassé. Veuillez réessayer.";
             break;
           default:
-            errorMessage = "Erreur lors de la récupération de la position. Veuillez réessayer.";
+            errorMessage =
+              "Erreur lors de la récupération de la position. Veuillez réessayer.";
             break;
         }
-        
+
         toast.error(errorMessage);
       },
       {
@@ -157,11 +173,19 @@ export function LocationPicker({
 
   if (isLoading || !MapContainer || !TileLayer || !Marker || !Popup) {
     return (
-      <div className={cn("relative rounded-lg border overflow-hidden bg-muted/30", className, height)}>
+      <div
+        className={cn(
+          "relative rounded-lg border overflow-hidden bg-muted/30",
+          className,
+          height
+        )}
+      >
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <Loader2 className="h-6 w-6 animate-spin text-[#3A8F4C] mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Chargement de la carte...</p>
+            <p className="text-sm text-muted-foreground">
+              Chargement de la carte...
+            </p>
           </div>
         </div>
       </div>
@@ -171,7 +195,13 @@ export function LocationPicker({
   return (
     <>
       <LeafletStyles />
-      <div className={cn("relative rounded-lg border overflow-hidden bg-muted/30", className, height)}>
+      <div
+        className={cn(
+          "relative rounded-lg border overflow-hidden bg-muted/30",
+          className,
+          height
+        )}
+      >
         <div className="absolute top-2 right-2 z-[1000] flex gap-2">
           <Button
             type="button"
@@ -228,7 +258,8 @@ export function LocationPicker({
                   <MapPin className="h-4 w-4 text-[#3A8F4C] mx-auto mb-1" />
                   <p className="text-xs font-medium">Position sélectionnée</p>
                   <p className="text-xs text-muted-foreground">
-                    {Number(latitude).toFixed(6)}, {Number(longitude).toFixed(6)}
+                    {Number(latitude).toFixed(6)},{" "}
+                    {Number(longitude).toFixed(6)}
                   </p>
                 </div>
               </Popup>

@@ -272,7 +272,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <CardTitle className="text-[#5A3E36] dark:text-white">
-                  NFT Culture Lingala
+                  NFT Culture Mkulima Chain
                 </CardTitle>
                 <CardDescription className="text-[#004D73] dark:text-white/70">
                   Recettes, contes, proverbes, chants en NFT CIP-25. Revenus
@@ -355,7 +355,7 @@ export default function Home() {
                 En République Démocratique du Congo, 70% des ruraux sont non
                 bancarisés. Les intermédiaires capturent jusqu&apos;à 40% des
                 revenus des agriculteurs. Il n&apos;y a aucune traçabilité
-                certifiée, et le patrimoine culturel lingala se perd.
+                certifiée, et le patrimoine culturel Mkulima Chain se perd.
               </p>
               <p className="text-lg text-[#004D73] dark:text-white/80 mb-8 leading-relaxed">
                 Mkulima Chain utilise la blockchain Cardano pour créer un
@@ -420,7 +420,7 @@ export default function Home() {
                     </h3>
                     <p className="text-[#004D73] dark:text-white/70">
                       NFTs culturels pour préserver et valoriser le patrimoine
-                      lingala
+                      Mkulima Chain
                     </p>
                   </div>
                 </div>
@@ -527,7 +527,7 @@ export default function Home() {
                   Enfants scolarisés
                 </h3>
                 <p className="text-[#004D73] dark:text-white/70">
-                  Financés grâce aux revenus des NFTs culturels Lingala
+                  Financés grâce aux revenus des NFTs culturels Mkulima Chain
                 </p>
               </CardContent>
             </Card>
@@ -689,7 +689,8 @@ export default function Home() {
                   "Les agriculteurs peuvent demander des micro-prêts basés sur leur proof-of-harvest (preuve de récolte). Les prêts sont gérés par des smart contracts Plutus et remboursés automatiquement lors de la vente des produits.",
               },
               {
-                question: "Qu&apos;est-ce que les NFTs culturels Lingala ?",
+                question:
+                  "Qu&apos;est-ce que les NFTs culturels Mkulima Chain ?",
                 answer:
                   "Ce sont des NFTs (CIP-25) qui préservent le patrimoine culturel congolais : recettes traditionnelles, contes, proverbes, chants. Les revenus de vente sont redistribués pour financer la scolarité des enfants d&apos;agriculteurs.",
               },

@@ -10,7 +10,7 @@
 - **70% des ruraux congolais sont non bancarisés**
 - **40% des revenus des agriculteurs sont capturés par les intermédiaires**
 - **Aucune traçabilité certifiée** pour les produits agricoles
-- **Perte du patrimoine culturel Lingala**
+- **Perte du patrimoine culturel Mkulima Chain**
 - **Difficultés d'accès aux marchés internationaux**
 
 ### Script suggéré :
@@ -38,7 +38,7 @@
 - **Vente directe** de cacao, café, manioc
 - **Paiements instantanés** en ADA via smart contracts
 - **Élimination des intermédiaires** → +60% de revenus pour les agriculteurs
-- **Interface multilingue** (Lingala, Swahili, Français, Anglais)
+- **Interface multilingue** (Mkulima Chain, Swahili, Français, Anglais)
 
 ### B. Traçabilité Blockchain
 - **QR code sur chaque sac** de produit
@@ -53,7 +53,7 @@
 - **Bridge ADA ↔️ M-Pesa / Airtel Money** pour zones rurales
 
 ### D. NFTs Culturels
-- **Préservation du patrimoine Lingala** (recettes, contes, proverbes, chansons)
+- **Préservation du patrimoine Mkulima Chain** (recettes, contes, proverbes, chansons)
 - **NFTs CIP-25** sur Cardano
 - **Revenus redistribués** pour financer l'éducation des enfants
 - **Impact social durable**
@@ -64,7 +64,7 @@
 - **Interface simple** pour agriculteurs
 
 ### Script suggéré :
-> "Notre plateforme offre 5 fonctionnalités principales : un marketplace décentralisé qui élimine les intermédiaires, une traçabilité blockchain certifiée avec QR codes, des micro-prêts DeFi pour l'inclusion financière, des NFTs culturels pour préserver le patrimoine Lingala, et un wallet mobile qui fonctionne même sans internet."
+> "Notre plateforme offre 5 fonctionnalités principales : un marketplace décentralisé qui élimine les intermédiaires, une traçabilité blockchain certifiée avec QR codes, des micro-prêts DeFi pour l'inclusion financière, des NFTs culturels pour préserver le patrimoine Mkulima Chain, et un wallet mobile qui fonctionne même sans internet."
 
 ---
 
@@ -107,7 +107,7 @@
 ### Points de différenciation :
 - **Première plateforme** blockchain agricole pour la RDC
 - **Focus sur l'inclusion financière** des non-bancarisés
-- **Préservation culturelle** unique (NFTs Lingala)
+- **Préservation culturelle** unique (NFTs Mkulima Chain)
 - **Wallet offline-first** adapté aux zones rurales
 - **Smart contracts complets** (pas juste un marketplace)
 
@@ -224,7 +224,7 @@
 > 
 > **[0:30-1:00]** MkulimaChain connecte directement les agriculteurs congolais aux acheteurs internationaux via un marketplace décentralisé. Nous utilisons des smart contracts Plutus pour automatiser les paiements, éliminer les intermédiaires, et garantir une traçabilité certifiée avec QR codes.
 > 
-> **[1:00-1:30]** Notre plateforme offre 5 fonctionnalités clés : un marketplace direct qui augmente les revenus de 60%, une traçabilité blockchain avec QR codes, des micro-prêts DeFi en ADA pour les non-bancarisés, des NFTs culturels pour préserver le patrimoine Lingala, et un wallet mobile qui fonctionne sans internet.
+> **[1:00-1:30]** Notre plateforme offre 5 fonctionnalités clés : un marketplace direct qui augmente les revenus de 60%, une traçabilité blockchain avec QR codes, des micro-prêts DeFi en ADA pour les non-bancarisés, des NFTs culturels pour préserver le patrimoine Mkulima Chain, et un wallet mobile qui fonctionne sans internet.
 > 
 > **[1:30-2:00]** Nous avons développé 6 smart contracts Plutus qui automatisent toutes les transactions : gestion des commandes, micro-prêts, paiements sécurisés, et authentification. Notre architecture moderne utilise Next.js, NestJS, et s'intègre parfaitement avec Cardano.
 > 
