@@ -1,0 +1,40 @@
+{
+  "common": {
+    "welcome": "Mwamuke",
+    "home": "Mukala",
+    "marketplace": "Zando",
+    "dashboard": "Tableau de bord",
+    "settings": "Paramètres",
+    "profile": "Profil",
+    "cart": "Panier",
+    "language": "Ludimi",
+    "theme": "Thème",
+    "login": "Kwingila",
+    "logout": "Kufuma",
+    "register": "Kusaina",
+    "search": "Kusakula",
+    "filter": "Kusala filtre",
+    "sort": "Kusala tri",
+    "price": "Ntalu",
+    "quantity": "Muntu",
+    "total": "Muntu wa total",
+    "addToCart": "Kubakisha na panier",
+    "buyNow": "Kusomba sika",
+    "description": "Nkombo",
+    "details": "Makambo",
+    "contact": "Kusangisha",
+    "about": "Makambo",
+    "help": "Lisalisi",
+    "support": "Lisalisi",
+    "terms": "Mitema",
+    "privacy": "Bokitani",
+    "copyright": "© 2024 Mkulima Chain. Bileko nyonso biyaki."
+  },
+  "nav": {
+    "home": "Mukala",
+    "marketplace": "Zando",
+    "dashboard": "Tableau de bord",
+    "settings": "Paramètres",
+    "profile": "Profil"
+  }
+}

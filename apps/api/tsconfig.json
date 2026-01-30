@@ -19,6 +19,7 @@
     "noFallthroughCasesInSwitch": false,
     "moduleResolution": "node",
     "resolveJsonModule": true,
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["./src/*"],
       "@mkulimachain/shared-types": ["../../packages/shared-types/src/index.ts"],

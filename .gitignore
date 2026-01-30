@@ -14,6 +14,7 @@ dist/
 
 # Production
 *.log
+logs/
 
 # Misc
 .DS_Store
@@ -41,3 +42,9 @@ pnpm-debug.log*
 *.swp
 *.swo
 *~
+
+# Sauvegardes de base de données (ne doivent jamais entrer dans Git)
+backups/
+*.dump
+*.dump.gpg
+*.sha256

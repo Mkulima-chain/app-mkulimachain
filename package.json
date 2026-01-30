@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:api": "turbo run dev --filter=api",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
@@ -16,5 +18,11 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "volta": {
+    "node": "24.12.0"
+  },
+  "dependencies": {
+    "node-fetch": "2"
   }
 }

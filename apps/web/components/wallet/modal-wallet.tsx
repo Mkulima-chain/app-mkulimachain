@@ -1,0 +1,181 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { signIn, signOut } from "next-auth/react";
+import { useCardanoWallet } from "@/hooks";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { useWalletStorage } from "./hooks/use-wallet-storage";
+import { useWalletData } from "./hooks/use-wallet-data";
+import { WalletGrid } from "./components/wallet-grid";
+import { WalletInfoCard } from "./components/wallet-info-card";
+import { PopularWallets } from "./components/popular-wallets";
+import { ModalHeader } from "./components/modal-header";
+import { ModalFooter } from "./components/modal-footer";
+import { WalletTriggerButton } from "./components/wallet-trigger-button";
+import { STORAGE_KEYS } from "./constants";
+
+interface ModalWalletProps {
+  triggerClassName?: string;
+  triggerIconClassName?: string;
+  triggerTextClassName?: string;
+}
+
+export function ModalWallet({
+  triggerClassName,
+  triggerIconClassName,
+  triggerTextClassName,
+}: ModalWalletProps = {}) {
+  const {
+    wallets,
+    connect,
+    disconnect,
+    connected,
+    wallet,
+    name: walletName,
+  } = useCardanoWallet();
+  const router = useRouter();
+  const pathname = usePathname();
+  const isLoginPage = pathname?.endsWith("/login") || pathname === "/login";
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectingWalletName, setConnectingWalletName] = useState<
+    string | null
+  >(null);
+  const [copied, setCopied] = useState(false);
+
+  const { saveToStorage, clearStorage } = useWalletStorage();
+
+  const { walletData: displayWalletData } = useWalletData({
+    connected,
+    wallet: wallet as any, // Lucid instance - type assertion for compatibility
+    saveToStorage,
+  });
+
+  const handleConnect = useCallback(
+    async (name: string) => {
+      try {
+        setIsConnecting(true);
+        setConnectingWalletName(name);
+
+        // Connect to wallet
+        const result = await connect(name);
+
+        // Get the address from the connected wallet
+        const cardano = (window as any).cardano;
+        if (cardano && cardano[name]) {
+          const walletApi = await cardano[name].enable();
+          // Use the Lucid instance to get the address
+          const lucidInstance = (window as any).__lucidInstance;
+          if (lucidInstance) {
+            const address = await lucidInstance.wallet.address();
+
+            // Create NextAuth session with wallet
+            await signIn("wallet", {
+              address,
+              walletName: name,
+              redirect: false,
+            });
+          }
+        }
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEYS.WALLET_NAME, name);
+        }
+
+        setIsOpen(false);
+        if (isLoginPage) {
+          router.push("/dashboard");
+        } else {
+          // Refresh the page to update session
+          router.refresh();
+        }
+      } catch (error) {
+        console.error("Error connecting wallet:", error);
+      } finally {
+        setIsConnecting(false);
+        setConnectingWalletName(null);
+      }
+    },
+    [connect, isLoginPage, router]
+  );
+
+  const handleDisconnect = useCallback(async () => {
+    try {
+      await disconnect();
+      clearStorage();
+      // Also sign out from NextAuth session
+      await signOut({ redirect: false });
+      setIsOpen(false);
+      router.push("/login");
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+    }
+  }, [disconnect, clearStorage, router]);
+
+  const handleCopyAddress = useCallback(async () => {
+    if (displayWalletData.address) {
+      try {
+        await navigator.clipboard.writeText(displayWalletData.address);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (error) {
+        console.error("Error copying address:", error);
+      }
+    }
+  }, [displayWalletData.address]);
+
+  // Redirection automatique si connecté sur la page de login
+  useEffect(() => {
+    if (connected && isLoginPage) {
+      router.push("/");
+    }
+  }, [connected, isLoginPage, router]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <WalletTriggerButton
+          onClick={() => setIsOpen(true)}
+          connected={connected}
+          walletName={walletName}
+          address={displayWalletData.address}
+          className={triggerClassName}
+          iconClassName={triggerIconClassName}
+          textClassName={triggerTextClassName}
+        />
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md overflow-hidden p-0 [&>button]:text-foreground [&>button]:hover:text-foreground/80">
+        <div className="p-5 space-y-4">
+          <ModalHeader />
+
+          {connected ? (
+            <WalletInfoCard
+              walletName={walletName || "Unknown"}
+              walletData={displayWalletData}
+              onCopyAddress={handleCopyAddress}
+              copied={copied}
+              onDisconnect={handleDisconnect}
+            />
+          ) : (
+            <div className="space-y-4">
+              {wallets.length === 0 ? (
+                <PopularWallets />
+              ) : (
+                <WalletGrid
+                  wallets={wallets}
+                  onConnect={handleConnect}
+                  isConnecting={isConnecting}
+                  connectingWalletName={connectingWalletName}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        <ModalFooter walletsCount={wallets.length} />
+      </DialogContent>
+    </Dialog>
+  );
+}
