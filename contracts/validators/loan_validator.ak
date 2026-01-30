@@ -1,8 +1,8 @@
-use cardano/transaction.{Transaction, OutputReference}
 use aiken/collection/list
 use cardano/script_context.{ScriptContext}
+use cardano/transaction.{OutputReference, Transaction}
 
-/// Statut d'un prêt
+/// Loan status
 pub type LoanStatus {
   Pending
   Approved
@@ -12,12 +12,13 @@ pub type LoanStatus {
   Rejected
 }
 
-/// Datum pour un micro-prêt DeFi
-/// Contient toutes les informations pour gérer le cycle de vie d'un prêt
+/// Datum for a DeFi microloan
+/// Contains all information to manage the lifecycle of a loan
 pub type LoanDatum {
   farmer_address: ByteArray,
   amount_lovelace: Int,
-  interest_rate: Int, // Base 100 (ex: 5 = 5%)
+  interest_rate: Int,
+  // Base 100 (ex: 5 = 5%)
   duration_days: Int,
   start_timestamp: Int,
   due_timestamp: Int,
@@ -27,130 +28,128 @@ pub type LoanDatum {
   approved_by: Option<ByteArray>,
 }
 
-/// Actions possibles sur un prêt
+/// Possible actions on a loan
 pub type LoanAction {
-  /// Approuver une demande de prêt
+  /// Approve a loan request
   Approve { approver_signature: ByteArray }
-  /// Activer le prêt et débloquer les fonds
+  /// Activate the loan and unlock funds
   Activate { transaction_hash: ByteArray }
-  /// Rembourser le prêt avec intérêts
+  /// Repay the loan with interest
   Repay { payment_amount: Int }
-  /// Marquer le prêt en défaut de paiement
+  /// Mark the loan in default
   MarkDefaulted
-  /// Rejeter une demande de prêt
+  /// Reject a loan request
   Reject { reason: ByteArray }
 }
 
-/// Redeemer pour les actions sur les prêts
+/// Redeemer for loan actions
 pub type LoanRedeemer {
   action: LoanAction,
 }
 
-/// Calcule le montant total à rembourser (capital + intérêts)
+/// Calculate the total repayment amount (principal + interest)
 fn calculate_repayment_amount(amount: Int, interest_rate: Int) -> Int {
-  amount + (amount * interest_rate) / 100
+  amount + amount * interest_rate / 100
 }
 
-/// Vérifie que la transaction est signée
+/// Checks that the transaction is signed
 fn is_transaction_signed(context: ScriptContext) -> Bool {
   list.length(context.transaction.extra_signatories) > 0
 }
 
-/// Vérifie que le fermier a signé la transaction
+/// Checks that the farmer has signed the transaction
 fn farmer_signed(datum: LoanDatum, context: ScriptContext) -> Bool {
   list.has(context.transaction.extra_signatories, datum.farmer_address)
 }
 
-/// Vérifie que le prêteur a signé la transaction
+/// Checks that the lender has signed the transaction
 fn lender_signed(datum: LoanDatum, context: ScriptContext) -> Bool {
   list.has(context.transaction.extra_signatories, datum.lender_address)
 }
 
-/// Vérifie que la plateforme a signé la transaction
+/// Checks that the platform has signed the transaction
 fn platform_signed(datum: LoanDatum, context: ScriptContext) -> Bool {
   list.has(context.transaction.extra_signatories, datum.platform_address)
 }
 
-/// Vérifie que le timestamp de la transaction est après la date d'échéance
+/// Checks that the transaction timestamp is after the due date
 fn is_overdue(datum: LoanDatum, context: ScriptContext) -> Bool {
-  // Note: En production, utiliser context.transaction.validity_range
-  // Pour simplifier, on vérifie juste que la transaction est signée
+  // Note: In production, use context.transaction.validity_range
+  // For simplicity, we just check that the transaction is signed
   is_transaction_signed(context)
 }
 
-/// Validateur principal pour la gestion des prêts
-/// Gère le cycle de vie complet d'un micro-prêt DeFi
+/// Main validator for loan management
+/// Manages the complete lifecycle of a DeFi microloan
 validator loan_validator {
-  spend(datum: Option<LoanDatum>, redeemer: LoanRedeemer, _utxo: OutputReference, context: ScriptContext) {
+  spend(
+    datum: Option<LoanDatum>,
+    redeemer: LoanRedeemer,
+    _utxo: OutputReference,
+    context: ScriptContext,
+  ) {
     when datum is {
-      Some(d) -> {
+      Some(d) ->
         when redeemer.action is {
-          // Action: Approuver un prêt
-          Approve { approver_signature } -> {
-            // Vérifier que le prêt est en statut Pending
-            d.status == Pending
-              // Vérifier que la plateforme approuve
-              && platform_signed(d, context)
-              // Vérifier que le montant est valide
-              && d.amount_lovelace > 0
-              // Vérifier que le taux d'intérêt est raisonnable (max 50%)
-              && d.interest_rate > 0
-              && d.interest_rate <= 50
-              // Vérifier que la durée est valide (min 1 jour)
-              && d.duration_days > 0
-          }
-          
-          // Action: Activer le prêt et débloquer les fonds
-          Activate { transaction_hash } -> {
-            // Vérifier que le prêt a été approuvé
-            d.status == Approved
-              // Vérifier que la plateforme active le prêt
-              && platform_signed(d, context)
-              // Note: transaction_hash est un ByteArray, pas besoin de vérifier la longueur
-          }
-          
-          // Action: Rembourser le prêt
-          Repay { payment_amount } -> {
-            // Vérifier que le prêt est actif
-            d.status == Active
-              // Vérifier que le fermier rembourse
-              && farmer_signed(d, context)
-              // Calculer le montant attendu
-              && {
-                let expected_amount = calculate_repayment_amount(d.amount_lovelace, d.interest_rate)
-                // Vérifier que le montant payé est suffisant
-                payment_amount >= expected_amount
-              }
-          }
-          
-          // Action: Marquer en défaut de paiement
-          MarkDefaulted -> {
-            // Vérifier que le prêt est actif
-            d.status == Active
-              // Vérifier que la plateforme marque le défaut
-              && platform_signed(d, context)
-              // Vérifier que la date d'échéance est dépassée
-              && is_overdue(d, context)
-          }
-          
-          // Action: Rejeter une demande de prêt
-          Reject { reason } -> {
-            // Vérifier que le prêt est en statut Pending
-            d.status == Pending
-              // Vérifier que la plateforme rejette
-              && platform_signed(d, context)
-              // Note: reason est un ByteArray, pas besoin de vérifier la longueur
-          }
+          // Action: Approve a loan
+          Approve { approver_signature } ->
+            // Check that the loan is in Pending status
+            d.status == Pending && // Check that the platform approves
+            platform_signed(d, context) && // Check that the amount is valid
+            d.amount_lovelace > 0 && // Check that the interest rate is reasonable (max 50%)
+            d.interest_rate > 0 && d.interest_rate <= 50 && // Check that the duration is valid (min 1 day)
+            d.duration_days > 0
+          // Action: Activate the loan and unlock funds
+          Activate { transaction_hash } ->
+            // Check that the loan has been approved
+            d.status == Approved && // Check that the platform activates the loan
+            platform_signed(d, context)
+          // Note: transaction_hash is a ByteArray, no need to check length
+          // Action: Repay the loan
+          Repay { payment_amount } ->
+            // Check that the loan is active
+            d.status == Active && // Check that the farmer repays
+            farmer_signed(d, context) && // Calculate the expected amount
+            {
+              let expected_amount =
+                calculate_repayment_amount(d.amount_lovelace, d.interest_rate)
+              // Check that the paid amount is sufficient
+              payment_amount >= expected_amount
+            }
+          // Action: Mark in default
+          MarkDefaulted ->
+            // Check that the loan is active
+            d.status == Active && // Check that the platform marks the default
+            platform_signed(d, context) && // Check that the due date is passed
+            is_overdue(d, context)
+          // Action: Reject a loan request
+          Reject { reason } ->
+            // Check that the loan is in Pending status
+            d.status == Pending && // Check that the platform rejects
+            platform_signed(d, context)
         }
-      }
+      // Note: reason is a ByteArray, no need to check length
       None -> False
     }
   }
+
+  else(_) {
+    fail
+  }
 }
 
-/// Version simplifiée pour les tests
+/// Simplified version for testing
 validator simple_loan_validator {
-  spend(_datum: Option<LoanDatum>, _redeemer: LoanRedeemer, _utxo: OutputReference, _context: ScriptContext) {
+  spend(
+    _datum: Option<LoanDatum>,
+    _redeemer: LoanRedeemer,
+    _utxo: OutputReference,
+    _context: ScriptContext,
+  ) {
     True
+  }
+
+  else(_) {
+    fail
   }
 }

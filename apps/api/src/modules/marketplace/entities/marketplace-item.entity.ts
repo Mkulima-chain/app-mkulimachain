@@ -53,6 +53,15 @@ export class MarketplaceItemEntity implements IMarketplaceItem {
   @Column({ type: 'simple-array', nullable: true })
   imageUrls?: string[];
 
+  @Column({ type: 'boolean', default: false })
+  onPromotion?: boolean;
+
+  @Column({ type: 'decimal', precision: 18, scale: 6, nullable: true })
+  originalPriceADA?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  discountPercent?: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

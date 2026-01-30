@@ -36,6 +36,9 @@ export interface MarketplaceItem {
     stockKg: number;
     status: MarketplaceItemStatus;
     imageUrls?: string[];
+    onPromotion?: boolean;
+    originalPriceADA?: number;
+    discountPercent?: number;
     createdAt: string;
     updatedAt: string;
 }

@@ -202,8 +202,8 @@ const mockFavorites: Favorite[] = [
 const mockUserNFTs: UserNFT[] = [
   {
     id: "2",
-    name: "Conte Lingala : Mwinda na Mputu",
-    collection: "Culture Lingala",
+    name: "Conte Mkulima Chain : Mwinda na Mputu",
+    collection: "Culture Mkulima Chain",
     images: ["📖", "🌙", "✨"],
     price: 120,
     currency: "₳",
@@ -216,7 +216,7 @@ const mockUserNFTs: UserNFT[] = [
   {
     id: "3",
     name: "Chant Traditionnel : Mokili Mobimba",
-    collection: "Culture Lingala",
+    collection: "Culture Mkulima Chain",
     images: ["🎵", "🎤", "👥"],
     price: 95,
     currency: "₳",
@@ -985,7 +985,7 @@ export default function DashboardPage() {
                         Ma Collection NFT
                       </CardTitle>
                       <CardDescription className="text-[#004D73] dark:text-white/70">
-                        Vos NFTs Lingala Chain
+                        Vos NFTs Mkulima Chain
                       </CardDescription>
                     </div>
                     <Link href="/marketplace/nft">

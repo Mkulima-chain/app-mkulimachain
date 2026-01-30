@@ -41,7 +41,9 @@ import { ImageGallery } from "@/components/image-gallery";
 import { ProductLocationMap } from "@/components/product-location-map";
 import { ProductTraceability } from "@/components/product-traceability";
 import { ProductChat } from "@/components/product-chat";
+import { AddressQRCode } from "@/components/address-qr-code";
 import { useCart, useActiveMarketplaceItems } from "@/hooks";
+import { useShare } from "@/hooks/use-share";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { MarketplaceItem } from "@/types/marketplace";
@@ -70,6 +72,10 @@ interface Product {
   stock: number;
   certified: boolean;
   blockchainHash?: string;
+  walletAddress?: string; // Adresse Cardano du cultivateur pour le paiement
+  onPromotion?: boolean; // Produit en promotion
+  originalPrice?: number; // Prix original avant réduction
+  discountPercent?: number; // Pourcentage de réduction
 }
 
 // Données de démonstration
@@ -78,7 +84,7 @@ const mockProducts: Product[] = [
     id: "1",
     name: "Cacao Premium Bio",
     category: "cacao",
-    price: 4500,
+    price: 3600,
     currency: "USD",
     images: ["🌰", "🌰", "🌰", "🌰"],
     description: "Cacao biologique certifié, origine Kongo Central",
@@ -91,6 +97,9 @@ const mockProducts: Product[] = [
     stock: 250,
     certified: true,
     blockchainHash: "0x1234...5678",
+    onPromotion: true,
+    originalPrice: 4500,
+    discountPercent: 20,
   },
   {
     id: "2",
@@ -223,6 +232,7 @@ const mockProducts: Product[] = [
 
 export default function MarketplacePage() {
   const router = useRouter();
+  const { shareProduct } = useShare();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] =
     useState<ProductCategory>("all");
@@ -282,6 +292,11 @@ export default function MarketplacePage() {
       stock: item.stockKg,
       certified: true,
       blockchainHash: `0x${item.id.slice(0, 8)}...${item.id.slice(-4)}`,
+      onPromotion: item.onPromotion || false,
+      originalPrice: item.originalPriceADA,
+      discountPercent: item.discountPercent,
+      // TODO: Récupérer l'adresse du wallet depuis l'API quand disponible
+      // walletAddress: item.farmer?.walletAddress,
     };
   };
 
@@ -857,7 +872,21 @@ export default function MarketplacePage() {
                         )}
                       />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => {
+                        shareProduct({
+                          productId: selectedProduct.id,
+                          productName: selectedProduct.name,
+                          productDescription: selectedProduct.description,
+                          productImage: selectedProduct.images[0],
+                          productPrice: selectedProduct.price,
+                        });
+                      }}
+                      title="Partager ce produit"
+                    >
                       <Share2 className="w-5 h-5" />
                     </Button>
                   </div>
@@ -920,6 +949,16 @@ export default function MarketplacePage() {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* QR Code de l'adresse de paiement */}
+                    {selectedProduct.walletAddress && (
+                      <AddressQRCode
+                        address={selectedProduct.walletAddress}
+                        title="Adresse de paiement du cultivateur"
+                        description="Scannez ce QR code pour payer directement le cultivateur"
+                        size={180}
+                      />
+                    )}
 
                     {/* Traçabilité complète */}
                     <ProductTraceability
@@ -1035,8 +1074,19 @@ export default function MarketplacePage() {
                             variant="outline"
                             className="w-full border-[#004D73]/20 dark:border-white/20 text-[#5A3E36] dark:text-white hover:bg-[#004D73]/10 dark:hover:bg-white/10 h-11 text-base font-semibold"
                             onClick={() => {
-                              setIsChatOpen(true);
+                              if (selectedProduct?.sellerId) {
+                                setIsChatOpen(true);
+                              } else {
+                                toast.error(
+                                  "Impossible de contacter le vendeur",
+                                  {
+                                    description:
+                                      "L'ID du vendeur n'est pas disponible pour ce produit.",
+                                  }
+                                );
+                              }
                             }}
+                            disabled={!selectedProduct?.sellerId}
                           >
                             <MessageCircle className="w-5 h-5 mr-2" />
                             Contacter le vendeur
@@ -1108,12 +1158,12 @@ export default function MarketplacePage() {
       </Dialog>
 
       {/* Chat avec le vendeur */}
-      {selectedProduct && (
+      {selectedProduct && selectedProduct.sellerId && (
         <ProductChat
           productId={selectedProduct.id}
           productName={selectedProduct.name}
           sellerName={selectedProduct.producer}
-          sellerId={selectedProduct.sellerId || "mock-seller-id"}
+          sellerId={selectedProduct.sellerId}
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
         />

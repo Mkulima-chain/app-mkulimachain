@@ -28,10 +28,88 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title:
-    "Mkulima Chain  - Marketplace décentralisée pour agriculteurs congolais",
+  title: {
+    default:
+      "Mkulima Chain - Marketplace décentralisée pour agriculteurs congolais",
+    template: "%s | Mkulima Chain",
+  },
   description:
     "Plateforme Cardano connectant directement les producteurs de cacao, café et manioc aux acheteurs internationaux. Traçabilité blockchain, paiements décentralisés, impact social.",
+  keywords: [
+    "agriculture congolaise",
+    "blockchain Cardano",
+    "marketplace décentralisée",
+    "traçabilité blockchain",
+    "cacao Congo",
+    "café Congo",
+    "manioc",
+    "NFT culturel",
+    "micro-prêts ADA",
+    "agriculteurs RDC",
+    "inclusion financière",
+  ],
+  authors: [{ name: "Mkulima Chain" }],
+  creator: "Mkulima Chain",
+  publisher: "Mkulima Chain",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://app.mkulimachain.com"
+  ),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    url: "/",
+    siteName: "Mkulima Chain",
+    title:
+      "Mkulima Chain - Marketplace décentralisée pour agriculteurs congolais",
+    description:
+      "Plateforme Cardano connectant directement les producteurs de cacao, café et manioc aux acheteurs internationaux. Traçabilité blockchain, paiements décentralisés, impact social.",
+    images: [
+      {
+        url: "/logo-mkulima.png",
+        width: 1200,
+        height: 630,
+        alt: "Mkulima Chain",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title:
+      "Mkulima Chain - Marketplace décentralisée pour agriculteurs congolais",
+    description:
+      "Plateforme Cardano connectant directement les producteurs de cacao, café et manioc aux acheteurs internationaux.",
+    images: ["/logo-mkulima.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: [
+      { url: "/logo-mkulima-leaf.png", sizes: "any" },
+      { url: "/logo-mkulima-leaf.png", type: "image/png", sizes: "32x32" },
+      { url: "/logo-mkulima-leaf.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [
+      { url: "/logo-mkulima-leaf.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/logo-mkulima-leaf.png",
+  },
 };
 
 export function generateStaticParams() {

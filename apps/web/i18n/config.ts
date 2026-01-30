@@ -1,10 +1,10 @@
-export const locales = ["ln", "kg", "sw", "lua", "fr", "en"] as const;
-export type Locale = (typeof locales)[number];
+export const locales = [ "ln", "kg", "sw", "lua", "fr", "en" ] as const;
+export type Locale = (typeof locales)[ number ];
 
 export const defaultLocale: Locale = "ln";
 
 export const localeNames: Record<Locale, string> = {
-  ln: "Lingala",
+  ln: "Mkulima Chain",
   kg: "Chicongo",
   sw: "Kiswahili",
   lua: "TChiluba",

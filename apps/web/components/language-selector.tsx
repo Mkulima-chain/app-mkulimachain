@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const languages = [
-  { code: "ln", name: "Lingala", flag: "🇨🇩" },
+  { code: "ln", name: "Mkulima Chain", flag: "🇨🇩" },
   { code: "kg", name: "Chicongo", flag: "🇨🇩" },
   { code: "sw", name: "Kiswahili", flag: "🇹🇿" },
   { code: "lua", name: "TChiluba", flag: "🇨🇩" },

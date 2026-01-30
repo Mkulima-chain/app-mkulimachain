@@ -1,0 +1,17 @@
+# robots.txt pour Mkulima Chain
+# Note: Next.js 13+ utilisera automatiquement app/robots.ts
+# Ce fichier est un fallback pour compatibilité
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://app.mkulimachain.com/sitemap.xml
+Sitemap: https://mkulimachain.com/sitemap.xml
+
+# Interdire l'indexation des pages d'administration et API
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /profile/
+

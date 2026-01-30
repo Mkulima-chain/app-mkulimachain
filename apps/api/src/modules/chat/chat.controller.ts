@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -16,11 +24,29 @@ export class ChatController {
       productId?: string;
     },
   ) {
-    return this.chatService.createConversation(
-      body.participant1Id,
-      body.participant2Id,
-      body.productId,
-    );
+    try {
+      if (!body.participant1Id || !body.participant2Id) {
+        throw new HttpException(
+          'participant1Id et participant2Id sont requis',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return await this.chatService.createConversation(
+        body.participant1Id,
+        body.participant2Id,
+        body.productId,
+      );
+    } catch (error: any) {
+      console.error('Error in createConversation:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Erreur lors de la création de la conversation',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Get('conversations/:userId')

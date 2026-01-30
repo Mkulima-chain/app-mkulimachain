@@ -1,3 +1,5 @@
+// Import webcrypto polyfill pour Node.js côté serveur
+import "./webcrypto-polyfill";
 import { Blockfrost, Lucid, Network } from "lucid-cardano";
 
 /**
@@ -42,16 +44,16 @@ export async function initLucid(): Promise<Lucid> {
     );
     throw new Error(
       "Blockfrost API key is required. Set NEXT_PUBLIC_BLOCKFROST_API_KEY in your .env.local file.\n\n" +
-        "To get a free API key:\n" +
-        "1. Go to https://blockfrost.io/\n" +
-        "2. Create a free account\n" +
-        "3. Create a new project for 'Cardano Preprod'\n" +
-        "4. Copy the API key to your .env.local file"
+      "To get a free API key:\n" +
+      "1. Go to https://blockfrost.io/\n" +
+      "2. Create a free account\n" +
+      "3. Create a new project for 'Cardano Preprod'\n" +
+      "4. Copy the API key to your .env.local file"
     );
   }
 
   // Validate API key format (Blockfrost keys start with 'preprod' or 'mainnet' or 'preview')
-  const validPrefixes = ["preprod", "mainnet", "preview", "testnet"];
+  const validPrefixes = [ "preprod", "mainnet", "preview", "testnet" ];
   const hasValidPrefix = validPrefixes.some((prefix) =>
     BLOCKFROST_API_KEY.startsWith(prefix)
   );
@@ -80,9 +82,9 @@ export async function initLucid(): Promise<Lucid> {
     if (error.message?.includes("hex") || error.message?.includes("encoding")) {
       throw new Error(
         "Invalid Blockfrost API key format. The key should look like:\n" +
-          "preprodXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n\n" +
-          "Please check your NEXT_PUBLIC_BLOCKFROST_API_KEY in .env.local\n" +
-          "Get a free key at: https://blockfrost.io/"
+        "preprodXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n\n" +
+        "Please check your NEXT_PUBLIC_BLOCKFROST_API_KEY in .env.local\n" +
+        "Get a free key at: https://blockfrost.io/"
       );
     }
 
@@ -92,10 +94,10 @@ export async function initLucid(): Promise<Lucid> {
     ) {
       throw new Error(
         "Failed to connect to Cardano network. This usually means:\n" +
-          "1. Your Blockfrost API key is invalid or expired\n" +
-          "2. The network configuration doesn't match your API key\n" +
-          "3. Blockfrost service is temporarily unavailable\n\n" +
-          "Please verify your NEXT_PUBLIC_BLOCKFROST_API_KEY is correct."
+        "1. Your Blockfrost API key is invalid or expired\n" +
+        "2. The network configuration doesn't match your API key\n" +
+        "3. Blockfrost service is temporarily unavailable\n\n" +
+        "Please verify your NEXT_PUBLIC_BLOCKFROST_API_KEY is correct."
       );
     }
 
@@ -163,7 +165,7 @@ export function getContractCodes() {
   };
 
   // Validate all codes
-  Object.entries(codes).forEach(([name, code]) => {
+  Object.entries(codes).forEach(([ name, code ]) => {
     if (!code) {
       console.warn(`Warning: ${name} code is not set`);
     } else if (!validateContractCode(code)) {
