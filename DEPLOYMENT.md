@@ -69,7 +69,7 @@ règle de pare-feu soit correcte — sinon UFW vous coupera l'accès :
 SSH_PORT=1994 bash scripts/setup-server.sh
 ```
 
-Le script installe Node 20, pnpm, PM2, PostgreSQL et UFW, crée la base
+Le script installe Node 22, pnpm, PM2, PostgreSQL et UFW, crée la base
 `mkulimachain`, **génère un mot de passe PostgreSQL aléatoire** et affiche :
 
 - les identifiants de base de données à reporter dans `apps/api/.env.local` ;

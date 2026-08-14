@@ -46,25 +46,28 @@ sudo apt install -y git curl build-essential rsync
 # ===========================================================================
 # 2. Node.js 20 (via nvm, pour l'utilisateur courant)
 #
-# Node 20 est le minimum pour Next.js 16 ; le projet déclare >=18 mais Next 16
-# et React 19 exigent 20.9+ en pratique.
+# Node 20 a atteint sa fin de vie en avril 2026 : plus aucun correctif de
+# sécurité. Node 22 est en LTS maintenance et couvre les exigences de
+# Next.js 16 et React 19 (>= 20.9).
 # ===========================================================================
-echo -e "${YELLOW}📦 Installation de Node.js 20...${NC}"
+echo -e "${YELLOW}📦 Installation de Node.js 22...${NC}"
 if [ ! -d "$HOME/.nvm" ]; then
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 fi
 export NVM_DIR="$HOME/.nvm"
 # shellcheck disable=SC1091
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm install 20
-nvm use 20
-nvm alias default 20
+nvm install 22
+nvm use 22
+nvm alias default 22
 
 # ===========================================================================
 # 3. pnpm et PM2 (niveau utilisateur, sans sudo)
 # ===========================================================================
 echo -e "${YELLOW}📦 Installation de pnpm et PM2...${NC}"
-npm install -g pnpm@9 pm2
+# pnpm est épinglé sur la version de "packageManager" (package.json) ;
+# une version divergente déclenche ERR_PNPM_BAD_PM_VERSION.
+npm install -g pnpm@9.0.0 pm2
 
 # ===========================================================================
 # 4. PostgreSQL

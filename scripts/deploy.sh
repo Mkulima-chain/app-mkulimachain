@@ -48,7 +48,9 @@ fi
 
 if ! command -v pnpm &> /dev/null; then
     echo -e "${YELLOW}⚠️  pnpm introuvable, installation...${NC}"
-    npm install -g pnpm@9
+    # Version alignée sur "packageManager" dans package.json : pnpm refuse
+    # de tourner sur une version différente de celle déclarée.
+    npm install -g pnpm@9.0.0
 fi
 
 if ! command -v pm2 &> /dev/null; then

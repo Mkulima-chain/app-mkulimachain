@@ -13,8 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
-  PNPM_VERSION: "9"
+  NODE_VERSION: "22"
   API_URL: "https://api.mkulimachain.com/api"
   WEB_URL: "https://mkulimachain.com"
   ADMIN_URL: "https://app.mkulimachain.com"
@@ -31,10 +30,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Aucune clé "version" ici : pnpm/action-setup lit "packageManager" dans
+      # package.json. Indiquer les deux fait échouer l'action
+      # (ERR_PNPM_BAD_PM_VERSION). La source de vérité est package.json.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -152,7 +152,7 @@ jobs:
             set -e
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            nvm use 20 || nvm install 20
+            nvm use 22 || nvm install 22
             cd ~/app-mkulimachain
             bash scripts/deploy.sh main
           ENDSSH
