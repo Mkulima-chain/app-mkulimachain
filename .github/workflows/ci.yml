@@ -108,7 +108,7 @@ jobs:
             echo "::error::Le secret DEPLOY_SSH_KEY est vide ou absent"
             exit 1
           fi
-          PORT="${DEPLOY_PORT:-22}"
+          PORT="${DEPLOY_PORT:-1994}"
           mkdir -p ~/.ssh
           # Supprimer d'éventuelles fins de ligne CRLF (Windows) qui rendraient
           # la clé illisible.
@@ -125,7 +125,7 @@ jobs:
 
       - name: Sync code to server
         run: |
-          PORT="${DEPLOY_PORT:-22}"
+          PORT="${DEPLOY_PORT:-1994}"
           SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=accept-new"
           $SSH "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p ~/app-mkulimachain/logs"
           # --delete garde le serveur aligné sur le dépôt, mais les exclusions
@@ -146,7 +146,7 @@ jobs:
 
       - name: Build and restart on server
         run: |
-          PORT="${DEPLOY_PORT:-22}"
+          PORT="${DEPLOY_PORT:-1994}"
           ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=accept-new \
             "$DEPLOY_USER@$DEPLOY_HOST" << 'ENDSSH'
             set -e
