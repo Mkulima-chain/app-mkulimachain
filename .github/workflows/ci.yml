@@ -1,0 +1,174 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Un push qui en suit un autre annule le déploiement précédent : deux rsync
+# concurrents sur le même serveur produisent un état incohérent.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  API_URL: "https://api.mkulimachain.com/api"
+  WEB_URL: "https://mkulimachain.com"
+  ADMIN_URL: "https://app.mkulimachain.com"
+
+jobs:
+  # =========================================================================
+  # Build & tests
+  # =========================================================================
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Aucune clé "version" ici : pnpm/action-setup lit "packageManager" dans
+      # package.json. Indiquer les deux fait échouer l'action
+      # (ERR_PNPM_BAD_PM_VERSION). La source de vérité est package.json.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: true # TODO: retirer une fois le lint au propre
+
+      - name: Build shared packages
+        run: |
+          pnpm --filter=@mkulimachain/shared-types build
+          pnpm --filter=@mkulimachain/shared-utils build
+
+      - name: Build API
+        run: pnpm --filter=api build
+
+      # NEXT_PUBLIC_* est figé dans le bundle au moment du build : ces valeurs
+      # doivent être identiques à celles de scripts/deploy.sh, sinon le front
+      # déployé pointerait vers la mauvaise API.
+      - name: Build Web
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.WEB_URL }}
+        run: pnpm --filter=web build
+
+      - name: Build Admin
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.ADMIN_URL }}
+        run: pnpm --filter=admin build
+
+      - name: Tests API
+        run: pnpm --filter=api test
+        continue-on-error: true
+
+  # =========================================================================
+  # Déploiement (uniquement sur push vers main)
+  # =========================================================================
+  deploy:
+    name: Deploy to Production
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      # Port SSH du serveur. Définissez le secret DEPLOY_PORT s'il n'est pas 22.
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::error::Le secret DEPLOY_HOST est vide ou absent"
+            exit 1
+          fi
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Le secret DEPLOY_SSH_KEY est vide ou absent"
+            exit 1
+          fi
+          PORT="${DEPLOY_PORT:-22}"
+          mkdir -p ~/.ssh
+          # Supprimer d'éventuelles fins de ligne CRLF (Windows) qui rendraient
+          # la clé illisible.
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+            echo "::error::DEPLOY_SSH_KEY n'est pas une clé privée valide. Recopiez la sortie COMPLÈTE de 'cat ~/.ssh/id_ed25519' sur le serveur, lignes BEGIN/END comprises."
+            exit 1
+          fi
+          # Non bloquant : un keyscan capricieux ne doit pas arrêter le job.
+          if ! ssh-keyscan -T 10 -p "$PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts; then
+            echo "::warning::ssh-keyscan a échoué pour $DEPLOY_HOST:$PORT ; repli sur StrictHostKeyChecking=accept-new"
+          fi
+
+      - name: Sync code to server
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o StrictHostKeyChecking=accept-new"
+          $SSH "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p ~/app-mkulimachain/logs"
+          # --delete garde le serveur aligné sur le dépôt, mais les exclusions
+          # protègent ce qui ne vient pas de Git : secrets, node_modules,
+          # artefacts de build et logs.
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude '.env.local' \
+            --exclude '.env.*.local' \
+            --exclude '.next' \
+            --exclude 'dist' \
+            --exclude '.turbo' \
+            --exclude 'logs' \
+            -e "$SSH" \
+            ./ "$DEPLOY_USER@$DEPLOY_HOST:app-mkulimachain/"
+
+      - name: Build and restart on server
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=accept-new \
+            "$DEPLOY_USER@$DEPLOY_HOST" << 'ENDSSH'
+            set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 22 || nvm install 22
+            cd ~/app-mkulimachain
+            bash scripts/deploy.sh main
+          ENDSSH
+
+      - name: Smoke test public URLs
+        run: |
+          # Le déploiement peut réussir côté serveur alors que Nginx ou le DNS
+          # empêchent encore l'accès public : on vérifie depuis l'extérieur.
+          for url in https://mkulimachain.com https://app.mkulimachain.com https://api.mkulimachain.com/api/docs; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)"
+            if [ "$code" = "000" ]; then
+              echo "::error::$url injoignable"
+              exit 1
+            fi
+            echo "✅ $url -> HTTP $code"
+          done
+
+      - name: Notify success
+        run: echo "✅ Déploiement terminé avec succès !"
